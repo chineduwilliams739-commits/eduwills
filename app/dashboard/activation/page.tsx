@@ -1,93 +1,35 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Copy, KeyRound, WalletCards, MessageCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Copy, KeyRound, WalletCards, MessageCircle, ExternalLink, X } from 'lucide-react';
+import { collection, doc, getDoc, getDocs, query, where, updateDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
 const account = { number: '8129002773', bank: 'Palmpay', holder: 'Helen Umunnakwe' };
 const whatsappNumber = '2349077735074';
 
-type User = { username?: string; fullName?: string; activated?: boolean; activationExpiresAt?: string };
-type Token = { token: string; expiresAt: string };
+type User = { username?: string; fullName?: string; activated?: boolean; activationExpiresAt?: string | null };
 
 export default function ActivationPage() {
-  const [copied, setCopied] = useState(false);
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('Learner');
-  const [token, setToken] = useState('');
-  const [tokenMessage, setTokenMessage] = useState('');
-
-  useEffect(() => {
-    const current = localStorage.getItem('eduwills_current_user');
-    const users: User[] = JSON.parse(localStorage.getItem('eduwills_users') || '[]');
-    const user = users.find((item) => item.username === current);
-    if (user) {
-      setUsername(user.username || '');
-      setDisplayName(user.fullName?.split(' ')[0] || 'Learner');
-    }
-  }, []);
-
-  async function copyAccount() {
-    try { await navigator.clipboard.writeText(account.number); } catch {}
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+  const [copied, setCopied] = useState(false); const [username, setUsername] = useState(''); const [displayName, setDisplayName] = useState('Learner'); const [token, setToken] = useState(''); const [tokenMessage, setTokenMessage] = useState(''); const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => { (async () => { try { const uid = auth.currentUser?.uid || localStorage.getItem('eduwills_current_uid'); if (!uid) return; const snap = await getDoc(doc(db, 'users', uid)); const user = snap.data() as User | undefined; if (user) { setUsername(user.username || ''); setDisplayName(user.fullName?.split(' ')[0] || 'Learner'); } } catch {} })(); }, []);
+  async function copyAccount() { try { await navigator.clipboard.writeText(account.number); } catch {} setCopied(true); setTimeout(() => setCopied(false), 1800); }
+  function openWhatsApp() { const text = `Hello EDUWILLS Admin. I want to activate my account. My username is: ${username}. I have made my activation payment and will send my payment receipt/proof here. I will also send the amount paid and payment date/time.`; window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank'); }
+  async function activateToken() {
+    const clean = token.trim().toUpperCase(); if (!clean) { setTokenMessage('Enter your WilliToken.'); return; }
+    try {
+      const snap = await getDoc(doc(db, 'williTokens', clean));
+      if (!snap.exists()) { setTokenMessage('Invalid WilliToken. Please contact the admin.'); return; }
+      const record = snap.data() as { userId?: string; username?: string; expiresAt?: string; used?: boolean };
+      if (record.used) { setTokenMessage('This WilliToken has already been used.'); return; }
+      if (!record.expiresAt || new Date(record.expiresAt).getTime() <= Date.now()) { setTokenMessage('This WilliToken has expired.'); return; }
+      const uid = auth.currentUser?.uid || localStorage.getItem('eduwills_current_uid');
+      if (!uid || (record.userId && record.userId !== uid)) { setTokenMessage('This WilliToken is assigned to another user.'); return; }
+      await updateDoc(doc(db, 'users', uid), { activated: true, activationExpiresAt: record.expiresAt });
+      await updateDoc(doc(db, 'williTokens', clean), { used: true, usedAt: new Date().toISOString() });
+      setTokenMessage(`Activated until ${new Date(record.expiresAt).toLocaleString()}.`); setCelebrate(true);
+    } catch { setTokenMessage('Activation could not be completed. Check your Firestore rules and try again.'); }
   }
-
-  function openWhatsApp() {
-    const text = `Hello EDUWILLS Admin. I want to activate my account. My username is: ${username}. I have made my activation payment and will send my payment receipt/proof here. I will also send the amount paid and payment date/time.`;
-    window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
-  }
-
-  function activateToken() {
-    const clean = token.trim().toUpperCase();
-    const tokens: Token[] = JSON.parse(localStorage.getItem('eduwills_tokens') || '[]');
-    const found = tokens.find((item) => item.token === clean && new Date(item.expiresAt).getTime() > Date.now());
-    if (!found) {
-      setTokenMessage('Invalid or expired WilliToken. Please contact the admin.');
-      return;
-    }
-    const current = localStorage.getItem('eduwills_current_user');
-    const users: User[] = JSON.parse(localStorage.getItem('eduwills_users') || '[]');
-    const updated = users.map((user) => user.username === current ? { ...user, activated: true, activationExpiresAt: found.expiresAt } : user);
-    localStorage.setItem('eduwills_users', JSON.stringify(updated));
-    setTokenMessage(`Account activated until ${new Date(found.expiresAt).toLocaleString()}.`);
-  }
-
-  return (
-    <main className="min-h-screen bg-paper px-4 py-5 pb-10 sm:px-8">
-      <div className="mx-auto max-w-6xl">
-        <a href={`${BASE}/dashboard/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17} /> Back to dashboard</a>
-        <div className="mt-6 rounded-[2rem] bg-ink p-7 text-white sm:p-9">
-          <p className="text-xs font-black uppercase tracking-[.2em] text-cyan-200">Activation</p>
-          <h1 className="mt-3 text-3xl font-black">Hello {displayName}, let&apos;s activate your account.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Your username is already attached to this page, so you don&apos;t need to remember or retype it.</p>
-        </div>
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_390px]">
-          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft sm:p-9">
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-eduBlue"><WalletCards size={14} /> Payment</div>
-            <p className="mt-4 text-sm leading-6 text-slate-500">Make your activation payment, then send the proof to the admin on WhatsApp.</p>
-            <div className="mt-6 rounded-3xl bg-ink p-6 text-white">
-              <div className="text-xs font-black uppercase tracking-[.18em] text-cyan-200">Payment account</div>
-              <div className="mt-5 space-y-4">
-                <div><div className="text-xs text-slate-400">Account holder</div><div className="font-black">{account.holder}</div></div>
-                <div><div className="text-xs text-slate-400">Bank</div><div className="font-black">{account.bank}</div></div>
-                <div className="flex items-end justify-between gap-4"><div><div className="text-xs text-slate-400">Account number</div><div className="text-2xl font-black tracking-wider">{account.number}</div></div><button type="button" onClick={copyAccount} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold"><Copy size={14} className="mr-1 inline" />{copied ? 'Copied' : 'Copy'}</button></div>
-              </div>
-            </div>
-            <div className="mt-6 rounded-3xl border border-slate-200 p-6">
-              <div className="flex items-center gap-3"><MessageCircle className="text-eduBlue" /><div><h2 className="font-black">Send payment proof on WhatsApp</h2><p className="text-xs text-slate-500">Your registered username is filled in automatically.</p></div></div>
-              <div className="mt-5 rounded-2xl bg-blue-50 p-5"><div className="text-xs font-black uppercase tracking-wider text-eduBlue">Your EDUWILLS username</div><div className="mt-2 break-all text-lg font-black text-ink">{username || 'Loading…'}</div></div>
-              <div className="mt-5 rounded-2xl bg-amber-50 p-5"><div className="text-sm font-black text-amber-900">What to send</div><ol className="mt-3 list-decimal space-y-2 pl-5 text-xs leading-5 text-amber-900/80"><li>Make the activation payment.</li><li>Keep a clear receipt.</li><li>Send the receipt/proof.</li><li>Send the amount and payment date/time.</li><li>Your username is included automatically.</li></ol></div>
-              <button type="button" onClick={openWhatsApp} disabled={!username} className="mt-5 w-full rounded-xl bg-[#25D366] px-5 py-3.5 font-black text-white disabled:opacity-40"><MessageCircle size={18} className="mr-2 inline" /> Continue to WhatsApp</button>
-              <p className="mt-3 text-center text-xs text-slate-400">+234 907 773 5074</p>
-            </div>
-          </section>
-          <aside>
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-soft"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-600"><KeyRound size={22} /></div><h2 className="mt-5 text-xl font-black">Have a WilliToken?</h2><p className="mt-2 text-sm leading-6 text-slate-500">Enter the letters-and-numbers token given to you by the admin.</p><input value={token} onChange={(event) => setToken(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} className="mt-5 w-full rounded-xl border border-slate-200 bg-paper px-4 py-3 font-mono uppercase tracking-widest outline-none focus:border-eduBlue" placeholder="AB12CD34EF" /><button type="button" onClick={activateToken} className="mt-3 w-full rounded-xl bg-ink px-5 py-3.5 font-black text-white">Activate with WilliToken</button>{tokenMessage && <p className="mt-3 text-xs font-semibold text-slate-600">{tokenMessage}</p>}<div className="mt-4 flex gap-2 text-xs leading-5 text-slate-400"><CheckCircle2 size={15} /> Token duration is set by the admin.</div></div>
-            <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-emerald-50 p-7"><div className="flex items-center gap-2 text-sm font-black text-emerald-800"><MessageCircle size={18} /> WhatsApp activation</div><p className="mt-3 text-sm leading-6 text-emerald-900/70">A working WhatsApp account is required for activation.</p><a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800">WhatsApp +234 907 773 5074 <ExternalLink size={14} /></a></div>
-          </aside>
-        </div>
-      </div>
-    </main>
-  );
+  return <main className="min-h-screen bg-paper px-4 py-5 pb-10 sm:px-8"><div className="mx-auto max-w-6xl"><a href={`${BASE}/dashboard/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17}/> Back to dashboard</a><div className="mt-6 rounded-[2rem] bg-ink p-7 text-white sm:p-9"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-200">Activation</p><h1 className="mt-3 text-3xl font-black">Hello {displayName}, let&apos;s activate your account.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Your username is already attached to this page, so you don&apos;t need to remember or retype it.</p></div><div className="mt-6 grid gap-6 lg:grid-cols-[1fr_390px]"><section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft sm:p-9"><div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-eduBlue"><WalletCards size={14}/> Payment</div><p className="mt-4 text-sm leading-6 text-slate-500">Make your activation payment, then send the proof to the admin on WhatsApp.</p><div className="mt-6 rounded-3xl bg-ink p-6 text-white"><div className="text-xs font-black uppercase tracking-[.18em] text-cyan-200">Payment account</div><div className="mt-5 space-y-4"><div><div className="text-xs text-slate-400">Account holder</div><div className="font-black">{account.holder}</div></div><div><div className="text-xs text-slate-400">Bank</div><div className="font-black">{account.bank}</div></div><div className="flex items-end justify-between gap-4"><div><div className="text-xs text-slate-400">Account number</div><div className="text-2xl font-black tracking-wider">{account.number}</div></div><button type="button" onClick={copyAccount} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold"><Copy size={14} className="mr-1 inline"/>{copied?'Copied':'Copy'}</button></div></div></div><div className="mt-6 rounded-3xl border border-slate-200 p-6"><div className="flex items-center gap-3"><MessageCircle className="text-eduBlue"/><div><h2 className="font-black">Send payment proof on WhatsApp</h2><p className="text-xs text-slate-500">Your registered username is filled in automatically.</p></div></div><div className="mt-5 rounded-2xl bg-blue-50 p-5"><div className="text-xs font-black uppercase tracking-wider text-eduBlue">Your EDUWILLS username</div><div className="mt-2 break-all text-lg font-black text-ink">{username||'Loading…'}</div></div><div className="mt-5 rounded-2xl bg-amber-50 p-5"><div className="text-sm font-black text-amber-900">What to send</div><ol className="mt-3 list-decimal space-y-2 pl-5 text-xs leading-5 text-amber-900/80"><li>Make the activation payment.</li><li>Keep a clear receipt.</li><li>Send the receipt/proof.</li><li>Send the amount and payment date/time.</li><li>Your username is included automatically.</li></ol></div><button type="button" onClick={openWhatsApp} disabled={!username} className="mt-5 w-full rounded-xl bg-[#25D366] px-5 py-3.5 font-black text-white disabled:opacity-40"><MessageCircle size={18} className="mr-2 inline"/> Continue to WhatsApp</button><p className="mt-3 text-center text-xs text-slate-400">+234 907 773 5074</p></div></section><aside><div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-soft"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-600"><KeyRound size={22}/></div><h2 className="mt-5 text-xl font-black">Have a WilliToken?</h2><p className="mt-2 text-sm leading-6 text-slate-500">Enter the letters-and-numbers token given to you by the admin.</p><input value={token} onChange={event=>setToken(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''))} className="mt-5 w-full rounded-xl border border-slate-200 bg-paper px-4 py-3 font-mono uppercase tracking-widest outline-none focus:border-eduBlue" placeholder="AB12CD34EF"/><button type="button" onClick={activateToken} className="mt-3 w-full rounded-xl bg-ink px-5 py-3.5 font-black text-white">Activate with WilliToken</button>{tokenMessage&&<p className="mt-3 text-xs font-semibold text-slate-600">{tokenMessage}</p>}<div className="mt-4 flex gap-2 text-xs leading-5 text-slate-400"><CheckCircle2 size={15}/> Token duration is set by the admin.</div></div><div className="mt-6 rounded-[2rem] border border-emerald-100 bg-emerald-50 p-7"><div className="flex items-center gap-2 text-sm font-black text-emerald-800"><MessageCircle size={18}/> WhatsApp activation</div><p className="mt-3 text-sm leading-6 text-emerald-900/70">A working WhatsApp account is required for activation.</p><a href={`https://wa.me/${whatsappNumber}`} target="_blank" rel="noreferrer" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-emerald-800">WhatsApp +234 907 773 5074 <ExternalLink size={14}/></a></div></aside></div></div>{celebrate&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-5"><div className="relative w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-2xl"><button onClick={()=>setCelebrate(false)} className="absolute right-4 top-4 rounded-full p-2 text-slate-400"><X size={18}/></button><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-600"><CheckCircle2 size={32}/></div><p className="mt-6 text-xs font-black uppercase tracking-[.2em] text-emerald-600">Congratulations!</p><h2 className="mt-2 text-2xl font-black text-ink">Your EDUWILLS account is activated 🎉</h2><p className="mt-3 text-sm leading-6 text-slate-500">Welcome, {displayName}. Your Book Learner features are now unlocked.</p><button onClick={()=>window.location.href=`${BASE}/dashboard/`} className="mt-6 w-full rounded-xl bg-ink px-5 py-3.5 font-black text-white">Go to my dashboard</button></div></div>}</main>;
 }
