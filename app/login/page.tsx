@@ -1,0 +1,26 @@
+'use client';
+
+import { ArrowLeft, LockKeyhole, Phone } from 'lucide-react';
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen bg-paper px-5 py-6 sm:px-8">
+      <div className="mx-auto max-w-5xl">
+        <a href="/" className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17} /> Back to EDUWILLS</a>
+        <div className="mx-auto mt-10 max-w-md rounded-[2rem] border border-slate-200 bg-white p-7 shadow-soft sm:p-10">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-ink text-white"><LockKeyhole size={21}/></div>
+          <p className="mt-8 text-xs font-black uppercase tracking-[.2em] text-eduBlue">Welcome back</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-ink">Log in to EDUWILLS</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-500">Use your registered phone number and password to continue.</p>
+          <form className="mt-8 space-y-5" onSubmit={(e) => e.preventDefault()}>
+            <label className="block text-sm font-bold text-ink">Phone number<div className="relative mt-2"><Phone className="absolute left-4 top-3.5 text-slate-400" size={17}/><input required type="tel" className="w-full rounded-xl border border-slate-200 bg-paper py-3 pl-11 pr-4 outline-none focus:border-eduBlue" placeholder="0800 000 0000" /></div></label>
+            <label className="block text-sm font-bold text-ink">Password<input required type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Your password" /></label>
+            <div className="text-right"><a href="/forgot-password" className="text-xs font-bold text-eduBlue">Forgot password?</a></div>
+            <button type="submit" className="w-full rounded-xl bg-ink px-5 py-3.5 font-black text-white">Log in</button>
+          </form>
+          <p className="mt-6 text-center text-sm text-slate-500">New to EDUWILLS? <a href="/signup" className="font-bold text-eduBlue">Create an account</a></p>
+        </div>
+      </div>
+    </main>
+  );
+}
