@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #10233f;
+  --muted: #64748b;
+  --cream: #f7f9fc;
+  --blue: #2457d6;
+  --cyan: #26b7c9;
+  --gold: #f4b942;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+button, input { font: inherit; }
+
+::selection { background: #cfe0ff; color: var(--ink); }
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+}
