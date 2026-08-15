@@ -1,0 +1,22 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { ArrowLeft, Clock3, KeyRound, LayoutDashboard, Plus, ShieldCheck, Users } from 'lucide-react';
+
+function makeToken() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+export default function AdminPage() {
+  const [token, setToken] = useState('');
+  const [duration, setDuration] = useState('30 days');
+  const [tokens, setTokens] = useState<{ token: string; duration: string }[]>([]);
+  const generated = useMemo(() => token || 'Not generated', [token]);
+  const generate = () => { const next = makeToken(); setToken(next); setTokens((items) => [{ token: next, duration }, ...items]); };
+
+  return <main className="min-h-screen bg-slate-950 px-5 py-6 text-white sm:px-8"><div className="mx-auto max-w-6xl"><a href="/" className="inline-flex items-center gap-2 text-sm font-bold text-slate-300"><ArrowLeft size={17}/> EDUWILLS</a><div className="mt-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-cyan-200"><ShieldCheck size={14}/> Admin console</div><h1 className="mt-4 text-3xl font-black tracking-tight">EDUWILLS Administration</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Manage activation tokens, review users and monitor payment-proof submissions. This page is a UI foundation and must be protected by real server-side admin authentication before production use.</p></div></div>
+    <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1fr]"><section className="rounded-3xl border border-white/10 bg-white/5 p-6"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-400/10 text-cyan-200"><KeyRound size={19}/></div><div><h2 className="font-black">Generate WilliToken</h2><p className="text-xs text-slate-400">Letters + numbers · admin controlled duration</p></div></div><label className="mt-6 block text-sm font-bold">Activation duration<select value={duration} onChange={(e) => setDuration(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm outline-none"><option>7 days</option><option>14 days</option><option>30 days</option><option>90 days</option><option>180 days</option><option>365 days</option></select></label><div className="mt-5 rounded-2xl bg-black/20 p-5"><div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current token</div><div className="mt-2 break-all font-mono text-2xl font-black tracking-[.16em] text-cyan-200">{generated}</div></div><button onClick={generate} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3.5 font-black text-slate-950"><Plus size={17}/> Generate WilliToken</button></section>
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-6"><h2 className="font-black">Admin tools</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{[[Users,'Users','View, activate, suspend and manage accounts'],[Clock3,'Activation history','See token creation and expiry history'],[LayoutDashboard,'Payment proofs','Review submitted receipts'],[ShieldCheck,'Admin settings','Manage authorized administrators']].map(([Icon,title,desc])=>{const I=Icon as typeof Users; return <button key={title as string} className="rounded-2xl border border-white/10 bg-black/10 p-4 text-left hover:bg-white/5"><I size={18} className="text-cyan-200"/><div className="mt-4 text-sm font-black">{title as string}</div><div className="mt-1 text-xs leading-5 text-slate-400">{desc as string}</div></button>})}</div></section></div>
+    <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-6"><h2 className="font-black">Generated tokens</h2><div className="mt-4 overflow-hidden rounded-2xl border border-white/10">{tokens.length === 0 ? <div className="p-8 text-center text-sm text-slate-500">No tokens generated in this browser session.</div> : tokens.map((item) => <div key={item.token} className="flex flex-col gap-2 border-b border-white/10 p-4 last:border-0 sm:flex-row sm:items-center sm:justify-between"><span className="font-mono font-bold tracking-wider text-cyan-200">{item.token}</span><span className="text-xs text-slate-400">{item.duration}</span></div>)}</div></section></div></main>;
+}
