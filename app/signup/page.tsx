@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { ArrowLeft, Check, LockKeyhole, Phone, ShieldCheck } from 'lucide-react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
 const options = [
@@ -16,6 +19,7 @@ export default function SignUpPage() {
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function toggle(id: string) {
     const item = options.find((x) => x.id === id);
@@ -29,8 +33,9 @@ export default function SignUpPage() {
     setMessage(digits.length > 0 && digits.length !== 10 ? 'Enter exactly 10 digits after +234.' : '');
   }
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setMessage('');
     const form = new FormData(e.currentTarget);
     const fullName = String(form.get('fullName') || '').trim();
     const username = String(form.get('username') || '').trim().toLowerCase();
@@ -39,17 +44,39 @@ export default function SignUpPage() {
 
     if (phone.length !== 10) { setMessage('Invalid phone number. Enter exactly 10 digits after +234.'); return; }
     if (!fullName || !username || password.length < 6) { setMessage('Please complete your name, username and password. Password must be at least 6 characters.'); return; }
+    if (!/^[a-z0-9._-]{3,30}$/.test(username)) { setMessage('Username can contain only letters, numbers, dots, underscores and hyphens.'); return; }
     if (password !== confirm) { setMessage('The passwords do not match.'); return; }
     if (selected.length === 0) { setMessage('Choose the Book Learner category.'); return; }
 
-    const users = JSON.parse(localStorage.getItem('eduwills_users') || '[]');
-    if (users.some((u: { username: string }) => u.username === username)) { setMessage('That username is already registered.'); return; }
-    if (users.some((u: { phone: string }) => u.phone === phone)) { setMessage('That phone number is already registered.'); return; }
+    setSaving(true);
+    try {
+      // Firebase Email/Password is used as the free authentication identity.
+      // The user-facing EDUWILLS identifier remains their phone number/username.
+      const authEmail = `${username}@accounts.eduwills.app`;
+      const credential = await createUserWithEmailAndPassword(auth, authEmail, password);
+      await setDoc(doc(db, 'users', credential.user.uid), {
+        uid: credential.user.uid,
+        fullName,
+        username,
+        phone,
+        phoneE164: `+234${phone}`,
+        categories: selected,
+        activated: false,
+        activationExpiresAt: null,
+        createdAt: serverTimestamp(),
+      });
 
-    users.push({ fullName, username, phone, password, categories: selected, activated: false, createdAt: new Date().toISOString() });
-    localStorage.setItem('eduwills_users', JSON.stringify(users));
-    localStorage.setItem('eduwills_current_user', username);
-    window.location.href = `${BASE}/dashboard/`;
+      // Keep a lightweight local session marker for the existing static UI while Firebase is now the source of truth.
+      localStorage.setItem('eduwills_current_user', username);
+      localStorage.setItem('eduwills_current_uid', credential.user.uid);
+      window.location.href = `${BASE}/dashboard/`;
+    } catch (error: unknown) {
+      const code = error instanceof Error ? error.message : '';
+      if (code.includes('email-already-in-use')) setMessage('That username is already registered.');
+      else if (code.includes('weak-password')) setMessage('Password must be at least 6 characters.');
+      else setMessage('We could not create your account. Check your Firebase setup and try again.');
+      setSaving(false);
+    }
   }
 
   return (
@@ -66,7 +93,7 @@ export default function SignUpPage() {
               <div className="grid min-w-0 gap-4 sm:grid-cols-2"><label className="min-w-0 text-sm font-bold text-ink">Password<div className="relative mt-2"><input name="password" required minLength={6} type={showPassword?'text':'password'} className="block w-full min-w-0 rounded-xl border border-slate-200 bg-paper px-4 py-3 pr-16 outline-none focus:border-eduBlue" placeholder="Create a password"/><button type="button" onClick={()=>setShowPassword(!showPassword)} className="absolute right-3 top-3 text-xs font-bold text-eduBlue">{showPassword?'Hide':'Show'}</button></div></label><label className="min-w-0 text-sm font-bold text-ink">Confirm password<input name="confirmPassword" required minLength={6} type={showPassword?'text':'password'} className="mt-2 block w-full min-w-0 rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Repeat password"/></label></div>
               <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4"><ShieldCheck className="mt-0.5 shrink-0 text-emerald-600" size={18}/><p className="text-xs leading-5 text-slate-500">Your account is created for free. Quiz, History and EDUWILLS AI remain locked until activation. Activation and Personal remain accessible.</p></div>
               {message&&<p className="rounded-xl bg-red-50 px-4 py-3 text-sm leading-5 text-red-600">{message}</p>}
-              <button type="submit" className="w-full rounded-xl bg-eduBlue px-5 py-3.5 font-black text-white shadow-lg shadow-blue-100">Create free account</button>
+              <button disabled={saving} type="submit" className="w-full rounded-xl bg-eduBlue px-5 py-3.5 font-black text-white shadow-lg shadow-blue-100 disabled:opacity-60">{saving?'Creating account…':'Create free account'}</button>
               <p className="text-center text-sm text-slate-500">Already have an account? <a href={`${BASE}/login/`} className="font-bold text-eduBlue">Log in</a></p>
             </form>
           </div></section>
