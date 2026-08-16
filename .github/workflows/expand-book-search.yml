@@ -1,0 +1,33 @@
+name: Expand EDUWILLS book search
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  expand-search:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upgrade book discovery
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/dashboard/quiz/page.tsx')
+          s = p.read_text()
+          old = '''async function findBook(){setMessage('');setAuthors([]);setAuthor('');setAuthorQuery('');if(!title.trim())return;setSearching(true);try{const q=encodeURIComponent(title.trim());const urls=[`https://openlibrary.org/search.json?title=${q}&limit=20`,`https://openlibrary.org/search.json?q=${q}&limit=20`];let docs:any[]=[];for(const url of urls){const r=await fetch(url);if(r.ok){const d=await r.json();docs=[...docs,...(d.docs||[])];}}const names=Array.from(new Set(docs.flatMap(x=>x.author_name||[]).filter(Boolean))) as string[];setAuthors(names.slice(0,20));if(!names.length)setMessage('No author candidates were found. Try the full book title or another spelling.');}catch{setMessage('Book search is temporarily unavailable. Please try again.')}finally{setSearching(false)}}'''
+          new = '''async function findBook(){setMessage('');setAuthors([]);setAuthor('');setAuthorQuery('');if(!title.trim())return;setSearching(true);try{const raw=title.trim();const normalized=raw.toLowerCase().replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e').replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o').replace(/[ùúûü]/g,'u').replace(/[^a-z0-9 ]/g,' ').replace(/\\s+/g,' ').trim();const curated=[{title:'Sànyà',aliases:['sanya','sanya novel'],authors:['Oyin Olugbile','Óyìn Olúgbilé']},{title:'SCARS: Nigeria’s Journey and the Boko Haram Conundrum',aliases:['scars','scars nigeria','boko haram conundrum'],authors:['Gen. Leo Irabor','General Lucky Eluonye Onyenuchea Irabor','Lucky Irabor']}];const curatedAuthors=curated.filter(b=>[b.title,...b.aliases].some(x=>x.toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\\s+/g,' ').includes(normalized)||normalized.includes(x.toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\\s+/g,' '))).flatMap(b=>b.authors);const queries=[raw,normalized,`\\"${raw}\\"`];let docs:any[]=[];for(const qv of queries){for(const url of [`https://openlibrary.org/search.json?title=${encodeURIComponent(qv)}&limit=30`,`https://openlibrary.org/search.json?q=${encodeURIComponent(qv)}&limit=30`,`https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(qv)}&maxResults=20`]){try{const r=await fetch(url);if(r.ok){const d=await r.json();docs=[...docs,...(d.docs||[]),(d.items||[]).map((x:any)=>({author_name:(x.volumeInfo?.authors||[]),title:x.volumeInfo?.title}))]}}catch{}}}const names=Array.from(new Set([...curatedAuthors,...docs.flatMap(x=>x.author_name||[]).filter(Boolean)])) as string[];setAuthors(names.slice(0,40));if(!names.length)setMessage('No author candidates were found. Try the full title, an ISBN, or search for the author directly.');else if(curatedAuthors.length)setMessage('EDUWILLS found a match from its expanded Nigerian book catalogue.');}catch{setMessage('Book search is temporarily unavailable. Please try again.')}finally{setSearching(false)}}'''
+          if old not in s:
+              raise SystemExit('Expected book-search function was not found; refusing to modify the file.')
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Commit search upgrade
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/quiz/page.tsx
+          git diff --cached --quiet || git commit -m 'feat: broaden EDUWILLS book discovery'
+          git push
