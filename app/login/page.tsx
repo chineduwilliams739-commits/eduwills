@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ArrowLeft, LockKeyhole, Phone } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
@@ -23,20 +23,18 @@ export default function LoginPage() {
       let authEmail = '';
       let username = '';
       let expectedUid = '';
+      let indexed = false;
 
-      // Current accounts: public phone index maps the phone to Firebase Auth.
       const indexSnap = await getDoc(doc(db, 'phoneIndex', phone));
       if (indexSnap.exists()) {
+        indexed = true;
         const index = indexSnap.data() as { uid?: string; authEmail?: string; username?: string };
         authEmail = index.authEmail || '';
         username = index.username || '';
         expectedUid = index.uid || '';
       }
 
-      // Legacy accounts created before phoneIndex existed can still be logged into
-      // on the same device because registration stored the username locally. This
-      // preserves the original phone + password login experience without exposing
-      // the entire users collection to unauthenticated visitors.
+      // Compatibility for accounts created before phoneIndex was introduced.
       if (!authEmail) {
         const legacyUsername = localStorage.getItem('eduwills_current_user') || '';
         if (legacyUsername) {
@@ -52,6 +50,22 @@ export default function LoginPage() {
       }
 
       const credential = await signInWithEmailAndPassword(auth, authEmail, password);
+      const profileSnap = await getDoc(doc(db, 'users', credential.user.uid));
+      if (!profileSnap.exists()) {
+        await auth.signOut();
+        setMessage('Your login exists in Firebase, but your EDUWILLS profile is missing. Please contact the administrator.');
+        setLoading(false);
+        return;
+      }
+
+      const profile = profileSnap.data() as { phone?: string; username?: string; authEmail?: string };
+      if (profile.phone !== phone) {
+        await auth.signOut();
+        setMessage('That phone number does not belong to the account matching this password.');
+        setLoading(false);
+        return;
+      }
+
       if (expectedUid && credential.user.uid !== expectedUid) {
         await auth.signOut();
         setMessage('This phone number is not linked to that account.');
@@ -59,16 +73,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Repair/migrate the phone index after a successful legacy login.
-      if (!indexSnap.exists()) {
-        await import('firebase/firestore').then(({ setDoc }) => setDoc(doc(db, 'phoneIndex', phone), {
+      username = profile.username || username;
+      // Repair/migrate the missing phone index after a verified legacy login.
+      if (!indexed) {
+        await setDoc(doc(db, 'phoneIndex', phone), {
           uid: credential.user.uid,
-          authEmail,
+          authEmail: profile.authEmail || authEmail,
           username,
           migratedAt: new Date().toISOString(),
-        }, { merge: true })).catch(() => {
-          // Authentication succeeded; a temporary rules/index issue must not log the user out.
-        });
+        }, { merge: true });
       }
 
       localStorage.setItem('eduwills_current_user', username);
@@ -77,7 +90,7 @@ export default function LoginPage() {
     } catch (error: unknown) {
       const code = error instanceof Error ? error.message : '';
       if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) setMessage('Phone number or password is incorrect.');
-      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because the Firebase phone lookup is not readable. Publish the latest Firestore rules.');
+      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase rules are blocking the required account lookup. Publish the latest Firestore rules.');
       else setMessage('Unable to log in. Please check your details and try again.');
       setLoading(false);
     }
