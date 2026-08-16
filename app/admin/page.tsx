@@ -20,28 +20,17 @@ export default function AdminPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        sessionStorage.removeItem('eduwills_admin_auth');
-        window.location.replace(`${BASE}/admin/login/`);
-        return;
-      }
+      if (!firebaseUser) { sessionStorage.removeItem('eduwills_admin_auth'); window.location.replace(`${BASE}/admin/login/`); return; }
       try {
         const adminSnap = await getDoc(doc(db, 'admins', firebaseUser.uid));
-        if (!adminSnap.exists()) {
-          sessionStorage.removeItem('eduwills_admin_auth');
-          await auth.signOut();
-          window.location.replace(`${BASE}/admin/login/`);
-          return;
-        }
+        if (!adminSnap.exists()) { sessionStorage.removeItem('eduwills_admin_auth'); await auth.signOut(); window.location.replace(`${BASE}/admin/login/`); return; }
         sessionStorage.setItem('eduwills_admin_auth', 'true');
         const snap = await getDocs(collection(db, 'users'));
         setUsers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<User, 'id'>) })));
         setError('');
       } catch (err: any) {
         const code = err?.code || '';
-        setError(code === 'permission-denied'
-          ? 'Firebase denied Admin access. Make sure the current Firebase UID has an admins/{UID} document and that the latest Firestore rules are published in Firebase Console.'
-          : 'Could not load Firebase users. Check that the Admin Firebase account is signed in and Firestore is connected.');
+        setError(code === 'permission-denied' ? 'Firebase denied Admin access. Make sure the current Firebase UID has an admins/{UID} document and that the latest Firestore rules are published in Firebase Console.' : 'Could not load Firebase users. Check that the Admin Firebase account is signed in and Firestore is connected.');
       } finally { setLoading(false); }
     });
     return () => unsubscribe();
@@ -53,8 +42,11 @@ export default function AdminPage() {
     let ms = durations.find(d => d[0] === duration)?.[1] as number | undefined;
     if (!ms && custom.trim()) { const m = custom.match(/^(\d+(?:\.\d+)?)\s*(minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)$/i); if (!m) { alert('Use a duration such as 45 minutes, 3 days, or 2 months.'); return; } const n = Number(m[1]); const factors: Record<string, number> = { minute:60000,minutes:60000,hour:3600000,hours:3600000,day:86400000,days:86400000,week:604800000,weeks:604800000,month:2592000000,months:2592000000,year:31536000000,years:31536000000 }; ms = n * factors[m[2].toLowerCase()]; }
     if (!ms || ms < 30 * 60000 || ms > 365 * 86400000) { alert('Duration must be between 30 minutes and 1 year.'); return; }
-    const next = makeToken(); const expiresAt = new Date(Date.now() + ms).toISOString();
-    try { await setDoc(doc(db, 'williTokens', next), { token: next, userId: selected.uid || selected.id, username: selected.username, duration: custom.trim() || duration, createdAt: serverTimestamp(), expiresAt, used: false }); setToken(next); setCopied(false); } catch { alert('Could not save the WilliToken to Firestore. Check your Admin permissions and Firestore rules.'); }
+    const next = makeToken();
+    try {
+      await setDoc(doc(db, 'williTokens', next), { token: next, userId: selected.uid || selected.id, username: selected.username, duration: custom.trim() || duration, durationMs: ms, createdAt: serverTimestamp(), used: false });
+      setToken(next); setCopied(false);
+    } catch { alert('Could not save the WilliToken to Firestore. Check your Admin permissions and Firestore rules.'); }
   };
   const copy = async () => { if (!token) return; await navigator.clipboard?.writeText(token); setCopied(true); setTimeout(() => setCopied(false), 1800); };
   return <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:px-8"><div className="mx-auto max-w-7xl"><a href={`${BASE}/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-300"><ArrowLeft size={17}/> EDUWILLS</a><div className="mt-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-cyan-200"><ShieldCheck size={14}/> Admin console</div><h1 className="mt-3 text-3xl font-black">EDUWILLS Administration</h1><p className="mt-2 text-sm text-slate-400">Manage shared users, activation status and WilliTokens.</p></div><a href={`${BASE}/admin/settings/`} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold"><Settings size={17}/> Admin settings</a></div>
