@@ -23,11 +23,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Minimal phone-to-auth lookup used before Firebase Authentication can sign in.
-    // It contains no password or private profile information.
+    // Public lookup needed before Firebase Authentication can sign in with a phone number.
+    // Only the Firebase UID and internal auth email are stored here; never store passwords.
     match /phoneIndex/{phone} {
       allow read: if true;
-      allow create: if signedIn() && request.auth.uid == request.resource.data.uid;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin());
       allow delete: if isAdmin();
     }
@@ -68,6 +68,8 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
 
-    match /{document=**} { allow read, write: if false; }
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
