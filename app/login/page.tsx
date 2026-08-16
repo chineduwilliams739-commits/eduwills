@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { ArrowLeft, LockKeyhole, Phone } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
@@ -16,22 +16,25 @@ export default function LoginPage() {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage('');
-    const form = new FormData(e.currentTarget);
-    const password = String(form.get('password') || '');
+    const password = String(new FormData(e.currentTarget).get('password') || '');
     if (phone.length !== 10) { setMessage('Enter exactly 10 digits after +234.'); return; }
     setLoading(true);
     try {
-      const snap = await getDocs(query(collection(db, 'users'), where('phone', '==', phone)));
-      if (snap.empty) { setMessage('No EDUWILLS account was found for that phone number.'); setLoading(false); return; }
-      const user = snap.docs[0].data() as { username?: string };
-      if (!user.username) { setMessage('This account is missing its EDUWILLS username.'); setLoading(false); return; }
-      await signInWithEmailAndPassword(auth, `${user.username}@accounts.eduwills.app`, password);
-      localStorage.setItem('eduwills_current_user', user.username);
-      localStorage.setItem('eduwills_current_uid', snap.docs[0].id);
+      // Do not query the protected users collection before authentication.
+      // The small phoneIndex document maps the user's phone to their Firebase auth identity.
+      const indexSnap = await getDoc(doc(db, 'phoneIndex', phone));
+      if (!indexSnap.exists()) { setMessage('No EDUWILLS account was found for that phone number.'); setLoading(false); return; }
+      const index = indexSnap.data() as { uid?: string; authEmail?: string; username?: string };
+      if (!index.authEmail) { setMessage('This account needs to be updated before it can be logged into.'); setLoading(false); return; }
+      const credential = await signInWithEmailAndPassword(auth, index.authEmail, password);
+      localStorage.setItem('eduwills_current_user', index.username || '');
+      localStorage.setItem('eduwills_current_uid', credential.user.uid);
       window.location.href = `${BASE}/dashboard/`;
     } catch (error: unknown) {
-      const text = error instanceof Error ? error.message : '';
-      setMessage(text.includes('invalid-credential') || text.includes('wrong-password') ? 'Phone number or password is incorrect.' : 'Unable to log in. Please check your details and try again.');
+      const code = error instanceof Error ? error.message : '';
+      if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) setMessage('Phone number or password is incorrect.');
+      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase Firestore rules have not been updated for phone lookup.');
+      else setMessage('Unable to log in. Please check your details and try again.');
       setLoading(false);
     }
   }
