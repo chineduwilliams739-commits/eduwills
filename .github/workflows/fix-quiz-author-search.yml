@@ -1,0 +1,43 @@
+name: Repair Quiz Author Search
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Patch current Quiz author search
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('app/dashboard/quiz/page.tsx')
+          s = p.read_text()
+          pattern = r'async function searchAuthor\(\)\{.*?\}\n async function saveBook'
+          replacement = r'''async function searchAuthor(){const q=authorQuery.trim();if(!q)return;setSearching(true);setMessage('');try{const norm=(v:string)=>v.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\\s+/g,' ').trim();const nq=norm(q);const curated=[{title:'Sànyà',authors:['Oyin Olugbile','Óyìn Olúgbilé'],aliases:['sanya','sànyà','oyin olugbile']},{title:'SCARS: Nigeria’s Journey and the Boko Haram Conundrum',authors:['Gen. Leo Irabor','General Lucky Eluonye Onyenuchea Irabor','Lucky Irabor'],aliases:['scars','lucky irabor','leo irabor','general lucky irabor','gen leo irabor']}];const direct=curated.filter(x=>x.aliases.some(a=>norm(a).includes(nq)||nq.includes(norm(a)))||x.authors.some(a=>norm(a).includes(nq)||nq.includes(norm(a)))).flatMap(x=>x.authors);const urls=[`https://openlibrary.org/search.json?author=${encodeURIComponent(q)}&limit=50`,`https://openlibrary.org/search.json?q=author:${encodeURIComponent(q)}&limit=50`,`https://www.googleapis.com/books/v1/volumes?q=inauthor:${encodeURIComponent(q)}&maxResults=40`];let names:string[]=[];for(const url of urls){try{const r=await fetch(url);if(!r.ok)continue;const d=await r.json();names.push(...(d.docs||[]).flatMap((x:any)=>x.author_name||[]));names.push(...(d.items||[]).flatMap((x:any)=>x.volumeInfo?.authors||[]));}catch{}}names=Array.from(new Set([...direct,...names].filter(Boolean)));if(!names.length){names=[q];setMessage('No external author record was found, so EDUWILLS kept the author you entered. Verify the spelling before saving.');}else if(direct.length){setMessage('EDUWILLS found this author in its expanded Nigerian book catalogue.');}setAuthors(prev=>Array.from(new Set([...prev,...names])).slice(0,50));}catch{setMessage('Author search is temporarily unavailable. You can still enter the author name and try again.');}finally{setSearching(false)}}
+ async function saveBook'''
+          out,n = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          if n != 1:
+            raise SystemExit('Could not locate the current searchAuthor function; refusing to modify the file.')
+          p.write_text(out)
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Build before commit
+        run: npm run build
+      - name: Commit repaired Quiz and remove one-time workflow
+        run: |
+          rm -f .github/workflows/fix-quiz-author-search.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/dashboard/quiz/page.tsx .github/workflows/fix-quiz-author-search.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: broaden Quiz Studio author discovery"
+          git push
