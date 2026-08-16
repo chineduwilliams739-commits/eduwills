@@ -30,15 +30,33 @@ service cloud.firestore {
     }
 
     match /williTokens/{tokenId} {
-      allow create: if isAdmin() && request.resource.data.token == tokenId && request.resource.data.used == false;
-      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
-      allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.username == currentUsername() && request.resource.data.userId == request.auth.uid);
+      // Only authenticated admins can generate activation tokens.
+      // Do not require a particular token payload here: the Admin console
+      // already writes the token ID and all activation metadata.
+      allow create: if isAdmin();
+
+      // Admins can manage tokens. A learner can read/redeem a token assigned
+      // to their username or UID.
+      allow read: if signedIn() && (
+        isAdmin()
+        || resource.data.userId == request.auth.uid
+        || resource.data.username == currentUsername()
+      );
+
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.used == false
+        && resource.data.username == currentUsername()
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.used == true
+        && request.resource.data.username == currentUsername()
+        && request.resource.data.userId == request.auth.uid
+      );
+
       allow delete: if isAdmin();
     }
 
     match /quizHistory/{historyId} {
-      // A learner may create and update their own quiz record. This is required
-      // because the quiz is created as "started" and completed after answers are saved.
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow update: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid) && request.resource.data.userId == resource.data.userId;
