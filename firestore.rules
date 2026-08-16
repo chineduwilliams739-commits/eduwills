@@ -18,8 +18,7 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow create: if signedIn() && request.auth.uid == uid;
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow update: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read, update: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -33,25 +32,17 @@ service cloud.firestore {
     match /williTokens/{tokenId} {
       allow create: if isAdmin() && request.resource.data.token == tokenId && request.resource.data.used == false;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
-      // A user can redeem an unused token assigned to their EDUWILLS username.
-      // This deliberately supports older tokens whose stored userId may be a
-      // legacy Firestore document ID. The redeemed token is migrated to auth.uid.
-      allow update: if isAdmin() || (
-        signedIn() &&
-        resource.data.used == false &&
-        resource.data.username == currentUsername() &&
-        request.resource.data.token == resource.data.token &&
-        request.resource.data.used == true &&
-        request.resource.data.username == currentUsername() &&
-        request.resource.data.userId == request.auth.uid
-      );
+      allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.username == currentUsername() && request.resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
     }
 
     match /quizHistory/{historyId} {
+      // A learner may create and update their own quiz record. This is required
+      // because the quiz is created as "started" and completed after answers are saved.
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow update, delete: if isAdmin();
+      allow update: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /books/{bookId} {
@@ -60,9 +51,9 @@ service cloud.firestore {
     }
 
     match /bookSlots/{slotId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow create, update: if signedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
 
     match /supportMessages/{messageId} {
