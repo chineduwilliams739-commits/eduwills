@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, KeyRound, Plus, ShieldCheck, Settings, Copy, Check, Search } from 'lucide-react';
+import { KeyRound, Plus, ShieldCheck, Settings, Copy, Check, Search, ArrowLeft } from 'lucide-react';
 import { collection, getDocs, setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -12,7 +12,6 @@ const durations = [
   ['90 days', 90 * 24 * 60 * 60 * 1000], ['180 days', 180 * 24 * 60 * 60 * 1000], ['1 year', 365 * 24 * 60 * 60 * 1000],
 ] as const;
 const makeToken = () => { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join(''); };
-
 type User = { id: string; uid?: string; fullName?: string; username: string; phone?: string; activated?: boolean; activationExpiresAt?: string | null };
 
 export default function AdminPage() {
@@ -25,7 +24,7 @@ export default function AdminPage() {
     if (!ms && custom.trim()) { const m = custom.match(/^(\d+(?:\.\d+)?)\s*(minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)$/i); if (!m) { alert('Use a duration such as 45 minutes, 3 days, or 2 months.'); return; } const n = Number(m[1]); const factors: Record<string, number> = { minute:60000,minutes:60000,hour:3600000,hours:3600000,day:86400000,days:86400000,week:604800000,weeks:604800000,month:2592000000,months:2592000000,year:31536000000,years:31536000000 }; ms = n * factors[m[2].toLowerCase()]; }
     if (!ms || ms < 30 * 60000 || ms > 365 * 86400000) { alert('Duration must be between 30 minutes and 1 year.'); return; }
     const next = makeToken(); const expiresAt = new Date(Date.now() + ms).toISOString();
-    try { await setDoc(doc(db, 'williTokens', next), { token: next, userId: selected.id, username: selected.username, duration: custom.trim() || duration, createdAt: serverTimestamp(), expiresAt, used: false }); setToken(next); setCopied(false); } catch { alert('Could not save the WilliToken to Firestore. Check your Firestore rules.'); }
+    try { await setDoc(doc(db, 'williTokens', next), { token: next, userId: selected.uid || selected.id, username: selected.username, duration: custom.trim() || duration, createdAt: serverTimestamp(), expiresAt, used: false }); setToken(next); setCopied(false); } catch { alert('Could not save the WilliToken to Firestore. Check your Firestore rules.'); }
   };
   const copy = async () => { if (!token) return; await navigator.clipboard?.writeText(token); setCopied(true); setTimeout(() => setCopied(false), 1800); };
   return <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:px-8"><div className="mx-auto max-w-7xl"><a href={`${BASE}/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-300"><ArrowLeft size={17}/> EDUWILLS</a><div className="mt-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-cyan-200"><ShieldCheck size={14}/> Admin console</div><h1 className="mt-3 text-3xl font-black">EDUWILLS Administration</h1><p className="mt-2 text-sm text-slate-400">Manage shared users, activation status and WilliTokens.</p></div><a href={`${BASE}/admin/settings/`} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold"><Settings size={17}/> Admin settings</a></div>
