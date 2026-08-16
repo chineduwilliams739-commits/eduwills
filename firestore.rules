@@ -6,6 +6,9 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+    function currentUsername() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username;
+    }
 
     match /admins/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
@@ -22,8 +25,15 @@ service cloud.firestore {
 
     match /williTokens/{tokenId} {
       allow create: if isAdmin() && request.resource.data.token == tokenId && request.resource.data.used == false;
-      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow update: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid && resource.data.used == false && request.resource.data.userId == resource.data.userId && request.resource.data.token == resource.data.token && request.resource.data.used == true);
+      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
+      allow update: if isAdmin() || (
+        signedIn() &&
+        resource.data.used == false &&
+        request.resource.data.token == resource.data.token &&
+        request.resource.data.used == true &&
+        resource.data.username == currentUsername() &&
+        request.resource.data.userId == request.auth.uid
+      );
       allow delete: if isAdmin();
     }
 
