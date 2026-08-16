@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { KeyRound, Plus, ShieldCheck, Settings, Copy, Check, Search, ArrowLeft } from 'lucide-react';
-import { collection, getDocs, setDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, getDocs, setDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
 const durations = [
@@ -16,7 +17,36 @@ type User = { id: string; uid?: string; fullName?: string; username: string; pho
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]); const [selectedUser, setSelectedUser] = useState(''); const [duration, setDuration] = useState('30 minutes'); const [custom, setCustom] = useState(''); const [token, setToken] = useState(''); const [search, setSearch] = useState(''); const [copied, setCopied] = useState(false); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
-  useEffect(() => { if (sessionStorage.getItem('eduwills_admin_auth') !== 'true') { window.location.replace(`${BASE}/admin/login/`); return; } (async () => { try { const snap = await getDocs(collection(db, 'users')); setUsers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<User, 'id'>) }))); } catch { setError('Could not load Firebase users. Check your Firestore rules.'); } finally { setLoading(false); } })(); }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        sessionStorage.removeItem('eduwills_admin_auth');
+        window.location.replace(`${BASE}/admin/login/`);
+        return;
+      }
+      try {
+        const adminSnap = await getDoc(doc(db, 'admins', firebaseUser.uid));
+        if (!adminSnap.exists()) {
+          sessionStorage.removeItem('eduwills_admin_auth');
+          await auth.signOut();
+          window.location.replace(`${BASE}/admin/login/`);
+          return;
+        }
+        sessionStorage.setItem('eduwills_admin_auth', 'true');
+        const snap = await getDocs(collection(db, 'users'));
+        setUsers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<User, 'id'>) })));
+        setError('');
+      } catch (err: any) {
+        const code = err?.code || '';
+        setError(code === 'permission-denied'
+          ? 'Firebase denied Admin access. Make sure the current Firebase UID has an admins/{UID} document and that the latest Firestore rules are published in Firebase Console.'
+          : 'Could not load Firebase users. Check that the Admin Firebase account is signed in and Firestore is connected.');
+      } finally { setLoading(false); }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const filtered = useMemo(() => users.filter(u => `${u.fullName || ''} ${u.username} ${u.phone || ''}`.toLowerCase().includes(search.toLowerCase())), [users, search]);
   const createToken = async () => {
     const selected = users.find(u => u.username === selectedUser); if (!selected) { alert('Select a user first.'); return; }
@@ -24,10 +54,10 @@ export default function AdminPage() {
     if (!ms && custom.trim()) { const m = custom.match(/^(\d+(?:\.\d+)?)\s*(minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)$/i); if (!m) { alert('Use a duration such as 45 minutes, 3 days, or 2 months.'); return; } const n = Number(m[1]); const factors: Record<string, number> = { minute:60000,minutes:60000,hour:3600000,hours:3600000,day:86400000,days:86400000,week:604800000,weeks:604800000,month:2592000000,months:2592000000,year:31536000000,years:31536000000 }; ms = n * factors[m[2].toLowerCase()]; }
     if (!ms || ms < 30 * 60000 || ms > 365 * 86400000) { alert('Duration must be between 30 minutes and 1 year.'); return; }
     const next = makeToken(); const expiresAt = new Date(Date.now() + ms).toISOString();
-    try { await setDoc(doc(db, 'williTokens', next), { token: next, userId: selected.uid || selected.id, username: selected.username, duration: custom.trim() || duration, createdAt: serverTimestamp(), expiresAt, used: false }); setToken(next); setCopied(false); } catch { alert('Could not save the WilliToken to Firestore. Check your Firestore rules.'); }
+    try { await setDoc(doc(db, 'williTokens', next), { token: next, userId: selected.uid || selected.id, username: selected.username, duration: custom.trim() || duration, createdAt: serverTimestamp(), expiresAt, used: false }); setToken(next); setCopied(false); } catch { alert('Could not save the WilliToken to Firestore. Check your Admin permissions and Firestore rules.'); }
   };
   const copy = async () => { if (!token) return; await navigator.clipboard?.writeText(token); setCopied(true); setTimeout(() => setCopied(false), 1800); };
   return <main className="min-h-screen bg-slate-950 px-4 py-5 text-white sm:px-8"><div className="mx-auto max-w-7xl"><a href={`${BASE}/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-300"><ArrowLeft size={17}/> EDUWILLS</a><div className="mt-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-cyan-200"><ShieldCheck size={14}/> Admin console</div><h1 className="mt-3 text-3xl font-black">EDUWILLS Administration</h1><p className="mt-2 text-sm text-slate-400">Manage shared users, activation status and WilliTokens.</p></div><a href={`${BASE}/admin/settings/`} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold"><Settings size={17}/> Admin settings</a></div>
-  <div className="mt-7 grid gap-5 xl:grid-cols-[1.15fr_.85fr]"><section className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-black">All EDUWILLS users</h2><p className="text-xs text-slate-400">Users loaded from Firestore across devices.</p></div><div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-3"><Search size={16} className="text-slate-500"/><input value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="Search name, username or phone"/></div></div>{error&&<p className="mt-4 rounded-xl bg-red-500/10 p-3 text-xs text-red-200">{error}</p>}<div className="mt-5 space-y-2">{loading?<div className="p-8 text-center text-sm text-slate-500">Loading users…</div>:filtered.length ? filtered.map(u => { const active = !!u.activated && !!u.activationExpiresAt && new Date(u.activationExpiresAt).getTime() > Date.now(); return <button key={u.id} onClick={()=>setSelectedUser(u.username)} className={`w-full rounded-2xl border p-4 text-left ${selectedUser===u.username?'border-cyan-300 bg-cyan-400/10':'border-white/10 bg-black/10 hover:bg-white/5'}`}><div className="flex items-center justify-between gap-3"><div><div className="font-black">{u.fullName || 'Unnamed user'}</div><div className="mt-1 text-xs text-slate-400">@{u.username} · +234{u.phone || ''}</div></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${active?'bg-emerald-400/10 text-emerald-300':'bg-slate-400/10 text-slate-400'}`}>{active?'Active':'Inactive'}</span></div>{u.activationExpiresAt && <div className="mt-2 text-[11px] text-slate-500">Expires {new Date(u.activationExpiresAt).toLocaleString()}</div>}</button> }) : <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-500">No users found.</div>}</div></section>
+  <div className="mt-7 grid gap-5 xl:grid-cols-[1.15fr_.85fr]"><section className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><div><h2 className="font-black">All EDUWILLS users</h2><p className="text-xs text-slate-400">Users loaded from Firestore across devices.</p></div><div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-3"><Search size={16} className="text-slate-500"/><input value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="Search name, username or phone"/></div></div>{error&&<p className="mt-4 rounded-xl bg-red-500/10 p-3 text-xs text-red-200">{error}</p>}<div className="mt-5 space-y-2">{loading?<div className="p-8 text-center text-sm text-slate-500">Checking Admin access and loading users…</div>:filtered.length ? filtered.map(u => { const active = !!u.activated && !!u.activationExpiresAt && new Date(u.activationExpiresAt).getTime() > Date.now(); return <button key={u.id} onClick={()=>setSelectedUser(u.username)} className={`w-full rounded-2xl border p-4 text-left ${selectedUser===u.username?'border-cyan-300 bg-cyan-400/10':'border-white/10 bg-black/10 hover:bg-white/5'}`}><div className="flex items-center justify-between gap-3"><div><div className="font-black">{u.fullName || 'Unnamed user'}</div><div className="mt-1 text-xs text-slate-400">@{u.username} · +234{u.phone || ''}</div></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${active?'bg-emerald-400/10 text-emerald-300':'bg-slate-400/10 text-slate-400'}`}>{active?'Active':'Inactive'}</span></div>{u.activationExpiresAt && <div className="mt-2 text-[11px] text-slate-500">Expires {new Date(u.activationExpiresAt).toLocaleString()}</div>}</button> }) : <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-slate-500">No users found.</div>}</div></section>
   <section className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-400/10 text-cyan-200"><KeyRound size={19}/></div><div><h2 className="font-black">Generate WilliToken</h2><p className="text-xs text-slate-400">Assign a token directly to a Firestore user.</p></div></div><label className="mt-6 block text-sm font-bold">User<select value={selectedUser} onChange={e=>setSelectedUser(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm outline-none"><option value="">Select a user</option>{filtered.map(u=><option key={u.id} value={u.username}>{u.fullName || u.username} (@{u.username})</option>)}</select></label><label className="mt-4 block text-sm font-bold">Duration<select value={duration} onChange={e=>setDuration(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm outline-none">{durations.map(d=><option key={d[0]}>{d[0]}</option>)}<option value="custom">Custom duration</option></select></label>{duration==='custom'&&<input value={custom} onChange={e=>setCustom(e.target.value)} className="mt-3 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm outline-none" placeholder="e.g. 45 minutes, 3 days, 2 months"/>}<button onClick={createToken} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3.5 font-black text-slate-950"><Plus size={17}/> Generate WilliToken</button>{token&&<div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4"><p className="text-xs font-bold text-emerald-300">Token generated</p><div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all rounded-lg bg-black/20 px-3 py-2 text-lg font-black tracking-widest">{token}</code><button onClick={copy} className="rounded-lg border border-white/10 p-2">{copied?<Check size={17}/>:<Copy size={17}/>}</button></div></div>}</section></div></div></main>;
 }
