@@ -1,0 +1,52 @@
+name: Fix Quiz Runtime
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, '[quiz-fix]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch Quiz page
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/dashboard/quiz/page.tsx')
+          s = p.read_text()
+          old = "if (r.ok) setWhy((p) => ({ ...p, [i]: await r.text() }));"
+          new = "if (r.ok) { const explanation = await r.text(); setWhy((p) => ({ ...p, [i]: explanation })); }"
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif "setWhy((p) => ({ ...p, [i]: await r.text() }))" in s:
+              s = s.replace("setWhy((p) => ({ ...p, [i]: await r.text() }))", "setWhy((p) => ({ ...p, [i]: await r.text() }))")
+          else:
+              raise SystemExit('Expected explainFailure pattern was not found')
+
+          marker = "const CURATED_BOOKS: CuratedBook[] = ["
+          lekki = "  { title: 'The Lekki Headmaster', aliases: ['lekki headmaster', 'lekki headmaster jamb', 'the lekki headmaster kabir alabi garba'], authors: ['Kabir Alabi Garba'] },\n"
+          if "title: 'The Lekki Headmaster'" not in s:
+              s = s.replace(marker, marker + "\n" + lekki, 1)
+          p.write_text(s)
+          PY
+
+      - name: Commit quiz fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/dashboard/quiz/page.tsx
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "fix: repair quiz AI explanation and book fallback [quiz-fix]"
+          git push
