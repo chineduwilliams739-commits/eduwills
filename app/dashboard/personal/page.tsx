@@ -1,90 +1,10 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { ArrowLeft, UserRound, Phone, AtSign, ShieldCheck, BookOpen, LogOut } from 'lucide-react';
-
-const BASE = '/eduwills';
-
-type User = {
-  fullName: string;
-  username: string;
-  phone: string;
-  categories: string[];
-  activated: boolean;
-};
-
-function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 p-5">
-      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-2 break-words text-base font-black text-ink">{value}</div>
-    </div>
-  );
-}
-
-export default function PersonalPage() {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const current = localStorage.getItem('eduwills_current_user');
-    const users = JSON.parse(localStorage.getItem('eduwills_users') || '[]');
-    setUser(users.find((u: User) => u.username === current) || null);
-  }, []);
-
-  const firstName = user?.fullName?.split(' ')[0] || 'Learner';
-  const category = user?.categories?.includes('book') ? 'Book Learner' : 'Not selected';
-
-  return (
-    <main className="min-h-screen bg-paper px-4 py-5 pb-10 sm:px-8">
-      <div className="mx-auto max-w-4xl">
-        <a href={`${BASE}/dashboard/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600">
-          <ArrowLeft size={17} /> Back to dashboard
-        </a>
-
-        <div className="mt-6 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft">
-          <div className="bg-ink p-7 text-white sm:p-10">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10">
-              <UserRound size={25} />
-            </div>
-            <p className="mt-6 text-xs font-black uppercase tracking-[.2em] text-cyan-200">PERSONAL</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">Hello {firstName}.</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Welcome to your personal EDUWILLS space. Here you can review your account information.
-            </p>
-          </div>
-
-          <div className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8">
-            <InfoCard icon={<UserRound size={15} />} label="Full name" value={user?.fullName || 'Loading…'} />
-            <InfoCard icon={<AtSign size={15} />} label="Username" value={user?.username || 'Loading…'} />
-            <InfoCard icon={<Phone size={15} />} label="Phone" value={`+234 ${user?.phone || ''}`} />
-            <InfoCard icon={<BookOpen size={15} />} label="Learning category" value={category} />
-          </div>
-
-          <div className="border-t border-slate-100 p-6 sm:p-8">
-            <div className="flex items-start gap-3 rounded-2xl bg-blue-50 p-5">
-              <ShieldCheck className="mt-0.5 shrink-0 text-eduBlue" size={19} />
-              <div>
-                <div className="text-sm font-black text-ink">Account status</div>
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  {user?.activated
-                    ? 'Your account is activated.'
-                    : 'Your account is not activated yet. Visit Activation to unlock Quiz, History and EDUWILLS AI.'}
-                </p>
-              </div>
-            </div>
-
-            <a href={`${BASE}/dashboard/activation/`} className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-ink px-5 py-3.5 text-sm font-black text-white">
-              {user?.activated ? 'View activation' : 'Activate my account'}
-            </a>
-            <a href={`${BASE}/`} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-600">
-              <LogOut size={16} /> Log out
-            </a>
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-}
+import { useEffect,useState } from 'react';
+import { ArrowLeft,UserRound,Phone,AtSign,ShieldCheck,BookOpen,LogOut } from 'lucide-react';
+import { onAuthStateChanged,signOut } from 'firebase/auth';
+import { doc,getDoc } from 'firebase/firestore';
+import { auth,db } from '@/lib/firebase';
+const BASE='/eduwills';
+function expiryMs(v:any){if(!v)return 0;if(typeof v.toMillis==='function')return v.toMillis();if(v.seconds)return v.seconds*1000;const n=Date.parse(String(v));return Number.isFinite(n)?n:0;}
+function InfoCard({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="rounded-2xl border border-slate-200 p-5"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400">{icon}{label}</div><div className="mt-2 break-words text-base font-black text-ink">{value}</div></div>}
+export default function PersonalPage(){const [user,setUser]=useState<any>(null),[loading,setLoading]=useState(true),[active,setActive]=useState(false),[error,setError]=useState('');useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{const s=await getDoc(doc(db,'users',u.uid));if(!s.exists()){setError('Your EDUWILLS profile could not be found.');return;}const d=s.data();setUser({...d,uid:u.uid});setActive(d.activated===true&&expiryMs(d.activationExpiresAt)>Date.now());}catch(e){console.error(e);setError('Could not load your profile. Please try again.');}finally{setLoading(false);}}),[]);const firstName=user?.fullName?.split(' ')[0]||'Learner';const category=user?.categories?.includes('book')?'Book Learner':(user?.category||'Book Learner');async function logout(){await signOut(auth);window.location.replace(`${BASE}/`)}return <main className="min-h-screen bg-paper px-4 py-5 pb-10 sm:px-8"><div className="mx-auto max-w-4xl"><a href={`${BASE}/dashboard/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17}/> Back to dashboard</a><div className="mt-6 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft"><div className="bg-ink p-7 text-white sm:p-10"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10"><UserRound size={25}/></div><p className="mt-6 text-xs font-black uppercase tracking-[.2em] text-cyan-200">PERSONAL</p><h1 className="mt-2 text-3xl font-black tracking-tight">Hello {firstName}.</h1><p className="mt-2 text-sm leading-6 text-slate-300">{loading?'Loading your profile…':'Your EDUWILLS account information and learning status.'}</p></div>{error?<div className="p-8 text-center text-sm font-bold text-red-600">{error}</div>:<><div className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8"><InfoCard icon={<UserRound size={15}/>} label="Full name" value={user?.fullName||'Loading…'}/><InfoCard icon={<AtSign size={15}/>} label="Username" value={user?.username||'Loading…'}/><InfoCard icon={<Phone size={15}/>} label="Phone" value={user?.phone?`+234 ${String(user.phone).replace(/^\+234\s*/,'')}`:'Not available'}/><InfoCard icon={<BookOpen size={15}/>} label="Learning category" value={category}/></div><div className="border-t border-slate-100 p-6 sm:p-8"><div className={`flex items-start gap-3 rounded-2xl p-5 ${active?'bg-emerald-50':'bg-blue-50'}`}><ShieldCheck className={`mt-0.5 shrink-0 ${active?'text-emerald-600':'text-eduBlue'}`} size={19}/><div><div className="text-sm font-black text-ink">Account status</div><p className="mt-1 text-xs leading-5 text-slate-500">{active?'Your account is active and your learning features are unlocked.':'Your account is registered but not activated yet.'}</p></div></div>{!active&&<a href={`${BASE}/dashboard/activation/`} className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-ink px-5 py-3.5 text-sm font-black text-white">Activate my account</a>}<button onClick={logout} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-600"><LogOut size={16}/> Log out</button></div></>}</div></div></main>}
