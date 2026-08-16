@@ -1,0 +1,36 @@
+name: Repair Quiz Build
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'app/dashboard/quiz/page.tsx'
+      - '.github/workflows/repair-quiz-build.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair malformed quiz JSX
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/dashboard/quiz/page.tsx')
+          s = p.read_text()
+          # The previous generated version omitted a reliable closing wrapper in the quiz setup JSX.
+          # Normalize the setup header and footer markers if present.
+          s = s.replace('className="font-black"><Sparkles className="mr-1 inline text-eduBlue"/>QUIZ</div></header>', 'className="font-black"><Sparkles className="mr-1 inline text-eduBlue"/>QUIZ</div></div></header>')
+          p.write_text(s)
+          PY
+      - name: Validate build
+        run: |
+          npm install
+          npm run build
+      - name: Commit repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/quiz/page.tsx
+          git diff --cached --quiet || git commit -m 'fix: repair quiz JSX deployment build'
+          git push
