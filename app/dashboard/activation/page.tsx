@@ -8,7 +8,6 @@ import { auth, db } from '@/lib/firebase';
 const BASE = '/eduwills';
 const account = { number: '8129002773', bank: 'Palmpay', holder: 'Helen Umunnakwe' };
 const whatsappNumber = '2349077735074';
-
 type User = { username?: string; fullName?: string; activated?: boolean; activationExpiresAt?: string | null };
 
 export default function ActivationPage() {
@@ -19,15 +18,20 @@ export default function ActivationPage() {
   async function activateToken() {
     const clean = token.trim().toUpperCase(); if (!clean) { setTokenMessage('Enter your WilliToken.'); return; }
     try {
-      const snap = await getDoc(doc(db, 'williTokens', clean));
+      const tokenRef = doc(db, 'williTokens', clean); const snap = await getDoc(tokenRef);
       if (!snap.exists()) { setTokenMessage('Invalid WilliToken. Please contact the admin.'); return; }
       const record = snap.data() as { userId?: string; username?: string; expiresAt?: string; used?: boolean };
       if (record.used) { setTokenMessage('This WilliToken has already been used.'); return; }
       if (!record.expiresAt || new Date(record.expiresAt).getTime() <= Date.now()) { setTokenMessage('This WilliToken has expired.'); return; }
-      const uid = auth.currentUser?.uid || localStorage.getItem('eduwills_current_uid');
-      if (!uid || (record.userId && record.userId !== uid)) { setTokenMessage('This WilliToken is assigned to another user.'); return; }
-      await updateDoc(doc(db, 'users', uid), { activated: true, activationExpiresAt: record.expiresAt });
-      await updateDoc(doc(db, 'williTokens', clean), { used: true, usedAt: new Date().toISOString() });
+      const uid = auth.currentUser?.uid || localStorage.getItem('eduwills_current_uid'); if (!uid) { setTokenMessage('Please log in again before activating your account.'); return; }
+      const userSnap = await getDoc(doc(db, 'users', uid)); const currentUser = userSnap.data() as User | undefined;
+      const currentUsername = currentUser?.username || username;
+      // Tokens created before the UID fix may contain the user's Firestore document ID rather than Firebase UID.
+      // The username is the stable EDUWILLS identity, so accept an exact username match and migrate the token to the UID.
+      if (record.userId && record.userId !== uid && record.username !== currentUsername) { setTokenMessage('This WilliToken is assigned to another user.'); return; }
+      if (record.username && record.username !== currentUsername) { setTokenMessage('This WilliToken is assigned to another user.'); return; }
+      await updateDoc(doc(db, 'users', uid), { activated: true, activationExpiresAt: record.expiresAt, activatedAt: new Date().toISOString() });
+      await updateDoc(tokenRef, { used: true, usedAt: new Date().toISOString(), userId: uid, username: currentUsername });
       setTokenMessage(`Activated until ${new Date(record.expiresAt).toLocaleString()}.`); setCelebrate(true);
     } catch { setTokenMessage('Activation could not be completed. Check your Firestore rules and try again.'); }
   }
