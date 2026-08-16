@@ -20,20 +20,64 @@ export default function LoginPage() {
     if (phone.length !== 10) { setMessage('Enter exactly 10 digits after +234.'); return; }
     setLoading(true);
     try {
-      // Do not query the protected users collection before authentication.
-      // The small phoneIndex document maps the user's phone to their Firebase auth identity.
+      let authEmail = '';
+      let username = '';
+      let expectedUid = '';
+
+      // Current accounts: public phone index maps the phone to Firebase Auth.
       const indexSnap = await getDoc(doc(db, 'phoneIndex', phone));
-      if (!indexSnap.exists()) { setMessage('No EDUWILLS account was found for that phone number.'); setLoading(false); return; }
-      const index = indexSnap.data() as { uid?: string; authEmail?: string; username?: string };
-      if (!index.authEmail) { setMessage('This account needs to be updated before it can be logged into.'); setLoading(false); return; }
-      const credential = await signInWithEmailAndPassword(auth, index.authEmail, password);
-      localStorage.setItem('eduwills_current_user', index.username || '');
+      if (indexSnap.exists()) {
+        const index = indexSnap.data() as { uid?: string; authEmail?: string; username?: string };
+        authEmail = index.authEmail || '';
+        username = index.username || '';
+        expectedUid = index.uid || '';
+      }
+
+      // Legacy accounts created before phoneIndex existed can still be logged into
+      // on the same device because registration stored the username locally. This
+      // preserves the original phone + password login experience without exposing
+      // the entire users collection to unauthenticated visitors.
+      if (!authEmail) {
+        const legacyUsername = localStorage.getItem('eduwills_current_user') || '';
+        if (legacyUsername) {
+          authEmail = `${legacyUsername}@accounts.eduwills.app`;
+          username = legacyUsername;
+        }
+      }
+
+      if (!authEmail) {
+        setMessage('No EDUWILLS account was found for that phone number. If this is an older account, open EDUWILLS on the device where you registered once so we can migrate its login record.');
+        setLoading(false);
+        return;
+      }
+
+      const credential = await signInWithEmailAndPassword(auth, authEmail, password);
+      if (expectedUid && credential.user.uid !== expectedUid) {
+        await auth.signOut();
+        setMessage('This phone number is not linked to that account.');
+        setLoading(false);
+        return;
+      }
+
+      // Repair/migrate the phone index after a successful legacy login.
+      if (!indexSnap.exists()) {
+        await import('firebase/firestore').then(({ setDoc }) => setDoc(doc(db, 'phoneIndex', phone), {
+          uid: credential.user.uid,
+          authEmail,
+          username,
+          migratedAt: new Date().toISOString(),
+        }, { merge: true })).catch(() => {
+          // Authentication succeeded; a temporary rules/index issue must not log the user out.
+        });
+      }
+
+      localStorage.setItem('eduwills_current_user', username);
       localStorage.setItem('eduwills_current_uid', credential.user.uid);
       window.location.href = `${BASE}/dashboard/`;
     } catch (error: unknown) {
       const code = error instanceof Error ? error.message : '';
       if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) setMessage('Phone number or password is incorrect.');
-      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase Firestore rules have not been updated for phone lookup.');
+      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because the Firebase phone lookup is not readable. Publish the latest Firestore rules.');
       else setMessage('Unable to log in. Please check your details and try again.');
       setLoading(false);
     }
