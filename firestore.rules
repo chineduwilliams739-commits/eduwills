@@ -23,8 +23,6 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Public lookup needed before Firebase Authentication can sign in with a phone number.
-    // Only the Firebase UID and internal auth email are stored here; never store passwords.
     match /phoneIndex/{phone} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
@@ -35,11 +33,16 @@ service cloud.firestore {
     match /williTokens/{tokenId} {
       allow create: if isAdmin() && request.resource.data.token == tokenId && request.resource.data.used == false;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
+      // A user can redeem an unused token assigned to their EDUWILLS username.
+      // This deliberately supports older tokens whose stored userId may be a
+      // legacy Firestore document ID. The redeemed token is migrated to auth.uid.
       allow update: if isAdmin() || (
-        signedIn() && resource.data.used == false &&
+        signedIn() &&
+        resource.data.used == false &&
+        resource.data.username == currentUsername() &&
         request.resource.data.token == resource.data.token &&
         request.resource.data.used == true &&
-        resource.data.username == currentUsername() &&
+        request.resource.data.username == currentUsername() &&
         request.resource.data.userId == request.auth.uid
       );
       allow delete: if isAdmin();
