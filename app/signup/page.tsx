@@ -50,23 +50,24 @@ export default function SignUpPage() {
 
     setSaving(true);
     try {
-      // Firebase Email/Password is used as the free authentication identity.
-      // The user-facing EDUWILLS identifier remains their phone number/username.
       const authEmail = `${username}@accounts.eduwills.app`;
       const credential = await createUserWithEmailAndPassword(auth, authEmail, password);
-      await setDoc(doc(db, 'users', credential.user.uid), {
+      const userData = {
         uid: credential.user.uid,
         fullName,
         username,
         phone,
         phoneE164: `+234${phone}`,
+        authEmail,
         categories: selected,
         activated: false,
         activationExpiresAt: null,
         createdAt: serverTimestamp(),
-      });
+      };
+      await setDoc(doc(db, 'users', credential.user.uid), userData);
+      // Phone lookup is deliberately a small index rather than exposing the full user document.
+      await setDoc(doc(db, 'phoneIndex', phone), { uid: credential.user.uid, authEmail, username });
 
-      // Keep a lightweight local session marker for the existing static UI while Firebase is now the source of truth.
       localStorage.setItem('eduwills_current_user', username);
       localStorage.setItem('eduwills_current_uid', credential.user.uid);
       window.location.href = `${BASE}/dashboard/`;
