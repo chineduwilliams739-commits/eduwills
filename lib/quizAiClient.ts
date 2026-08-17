@@ -3,6 +3,7 @@ import app from '@/lib/firebase';
 
 export type QuizBook = { title: string; author: string };
 export type QuizQuestion = { question: string; options: string[]; answer: number; explanation?: string };
+export type BookSearchResult = { title: string; authors: string[]; source: string };
 
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 const model = getGenerativeModel(ai, {
@@ -18,6 +19,26 @@ const model = getGenerativeModel(ai, {
               options: Schema.array({ items: Schema.string() }),
               answer: Schema.number(),
               explanation: Schema.string(),
+            },
+          }),
+        }),
+      },
+    }),
+  },
+});
+
+const searchModel = getGenerativeModel(ai, {
+  model: 'gemini-3.5-flash-lite',
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: Schema.object({
+      properties: {
+        results: Schema.array({
+          items: Schema.object({
+            properties: {
+              title: Schema.string(),
+              authors: Schema.array({ items: Schema.string() }),
+              source: Schema.string(),
             },
           }),
         }),
@@ -62,6 +83,72 @@ async function json(url: string, ms = 4500): Promise<any> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
+  const query = value.trim();
+  if (!query) return [];
+  const key = normalize(query);
+  const results: BookSearchResult[] = [];
+  const seen = new Set<string>();
+
+  const add = (title: string, authors: string[], source: string) => {
+    const cleanTitle = String(title || '').trim();
+    const cleanAuthors = [...new Set(authors.map(String).map(x => x.trim()).filter(Boolean))];
+    if (!cleanTitle || !cleanAuthors.length) return;
+    if (kind === 'author' && !cleanAuthors.some(a => normalize(a).includes(key) || key.includes(normalize(a)))) return;
+    const id = `${normalize(cleanTitle)}|${cleanAuthors.map(normalize).sort().join(',')}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    results.push({ title: cleanTitle, authors: cleanAuthors, source });
+  };
+
+  // Curated EDUWILLS knowledge is always checked first.
+  for (const [title, facts] of Object.entries(curated)) {
+    if (title.includes(key) || key.includes(title)) {
+      const authorLines = facts.filter(x => /written by|by /i.test(x));
+      const authors = authorLines.flatMap(x => {
+        const match = x.match(/(?:written by|by)\s+(.+?)\.?$/i);
+        return match ? [match[1].trim()] : [];
+      });
+      if (authors.length) add(title, authors, 'EDUWILLS catalogue');
+    }
+  }
+
+  // Public catalogues are queried in parallel so a single unavailable source cannot break search.
+  const t = encodeURIComponent(query);
+  const endpoints = kind === 'title'
+    ? [
+        [`Open Library`, `https://openlibrary.org/search.json?title=${t}&limit=50`],
+        [`Google Books`, `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`],
+        [`Internet Archive`, `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=40&page=1&output=json`],
+      ]
+    : [
+        [`Open Library`, `https://openlibrary.org/search.json?author=${t}&limit=50`],
+        [`Google Books`, `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`],
+      ];
+
+  const responses = await Promise.allSettled(endpoints.map(([source, url]) => json(url).then(data => ({ source, data }))));
+  for (const response of responses) {
+    if (response.status !== 'fulfilled') continue;
+    const { source, data } = response.value;
+    for (const x of data.docs || []) add(x.title, x.author_name || [], source);
+    for (const x of data.items || []) add(x.volumeInfo?.title, x.volumeInfo?.authors || [], source);
+    for (const x of data.response?.docs || []) add(x.title, Array.isArray(x.creator) ? x.creator : x.creator ? [x.creator] : [], source);
+  }
+
+  // Gemini resolves incomplete/variant catalogue results and can identify authors for obscure titles,
+  // but it is instructed to use the supplied catalogue evidence rather than inventing an author.
+  const evidence = results.slice(0, 50).map(r => `${r.title} — ${r.authors.join(', ')} (${r.source})`).join('\n');
+  try {
+    const aiResult = await searchModel.generateContent(`You are EDUWILLS Book Search. Search the supplied public catalogue evidence for the user's ${kind}: "${query}". Return only books/authors supported by the evidence. If the evidence contains no reliable match, return an empty results array. Do not invent authors. Merge spelling/diacritic variants of the same author and preserve the title from the evidence. Evidence:\n${evidence || 'No catalogue evidence was returned.'}`);
+    const parsed = JSON.parse(aiResult.response.text());
+    for (const item of parsed.results || []) add(item.title, item.authors || [], item.source || 'EDUWILLS AI + catalogues');
+  } catch {
+    // Catalogue results remain usable if Gemini is temporarily unavailable.
+  }
+
+  return results.slice(0, 80);
 }
 
 export async function researchBooks(books: QuizBook[]): Promise<string> {
