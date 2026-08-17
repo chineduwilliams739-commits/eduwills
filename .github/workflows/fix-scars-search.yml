@@ -1,0 +1,37 @@
+name: Fix SCARS search
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-scars:
+    if: ${{ !contains(github.event.head_commit.message, 'fix: improve SCARS author search') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add explicit SCARS author mapping
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('lib/quizAiClient.ts')
+          s = p.read_text()
+          old = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.'],"
+          new = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.','SCARS: Nigeria’s Journey and the Boko Haram Conundrum was written by Gen. Lucky Irabor.'],"
+          if old not in s:
+              raise SystemExit('Expected SCARS catalogue entry was not found; refusing to modify the file.')
+          if new in s:
+              raise SystemExit(0)
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/quizAiClient.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: improve SCARS author search"
+          git push
