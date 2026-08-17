@@ -63,15 +63,16 @@ export default function QuizPage(){
   setBusy(true);setGenerationError('');setGenerationStatus('Preparing your research…');setMessage('');
   try{
    const chosen=books.filter(b=>selected.includes(b.id));const setupData={books:chosen.map(b=>({title:b.title,author:b.author})),questions,duration:duration==='none'?null:Number(duration),difficulty,instructions};
-   const ref=await addDoc(collection(db,'quizHistory'),{userId:auth.currentUser.uid,...setupData,status:'generating',score:null,percentage:null,createdAt:serverTimestamp()});
-   const s:Setup={id:ref.id,...setupData};setSetup(s);setIdx(0);setDone(false);setConfirm(false);setAnswers(Array(questions).fill(null));setElapsed(0);setSeconds(s.duration?s.duration*60:null);
    setGenerationStatus('Researching your selected books from multiple sources…');
-   const [research,recent]=await Promise.all([researchBooks(s.books),recentQuestions()]);
+   const [research,recent]=await Promise.all([researchBooks(setupData.books),recentQuestions()]);
    if(!research.trim())throw new Error('No reliable book information was found. Please try another saved book.');
    setGenerationStatus('Generating questions with Gemini…');
-   const generated=await generateQuiz(s.books,questions,difficulty,instructions,recent,research);
-   setQs(generated);await updateDoc(doc(db,'quizHistory',s.id),{status:'ready',questionsData:generated,total:generated.length,generationMode:'firebase-gemini-research'});setGenerationStatus('');
-  }catch(e:any){console.error(e);setGenerationError(e?.message||'Quiz generation failed.');setGenerationStatus('');setQs([]);if(setup&&auth.currentUser)try{await updateDoc(doc(db,'quizHistory',setup.id),{status:'failed',error:e?.message||'Quiz generation failed.'})}catch{}}
+   const generated=await generateQuiz(setupData.books,questions,difficulty,instructions,recent,research);
+   if(!Array.isArray(generated)||generated.length<questions)throw new Error(`EDUWILLS generated only ${Array.isArray(generated)?generated.length:0} usable questions. Please try again.`);
+   if(generated.some(q=>!q.question||!Array.isArray(q.options)||q.options.length!==4||!Number.isInteger(q.answer)||q.answer<0||q.answer>3))throw new Error('The AI returned an incomplete question set. Please try again.');
+   const ref=await addDoc(collection(db,'quizHistory'),{userId:auth.currentUser.uid,...setupData,status:'ready',score:null,percentage:null,questionsData:generated,total:generated.length,generationMode:'firebase-gemini-research',createdAt:serverTimestamp()});
+   const s:Setup={id:ref.id,...setupData};setSetup(s);setIdx(0);setDone(false);setConfirm(false);setAnswers(Array(generated.length).fill(null));setElapsed(0);setSeconds(s.duration?s.duration*60:null);setQs(generated);setGenerationStatus('');
+  }catch(e:any){console.error(e);setGenerationError(e?.message||'Quiz generation failed.');setGenerationStatus('');setQs([]);setSetup(null)}
   finally{setBusy(false)}
  }
 
