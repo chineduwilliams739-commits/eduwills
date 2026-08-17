@@ -12,16 +12,9 @@ const model = getGenerativeModel(ai, {
     responseMimeType: 'application/json',
     responseSchema: Schema.object({
       properties: {
-        questions: Schema.array({
-          items: Schema.object({
-            properties: {
-              question: Schema.string(),
-              options: Schema.array({ items: Schema.string() }),
-              answer: Schema.number(),
-              explanation: Schema.string(),
-            },
-          }),
-        }),
+        questions: Schema.array({ items: Schema.object({ properties: {
+          question: Schema.string(), options: Schema.array({ items: Schema.string() }), answer: Schema.number(), explanation: Schema.string(),
+        } }) }),
       },
     }),
   },
@@ -33,20 +26,15 @@ const searchModel = getGenerativeModel(ai, {
     responseMimeType: 'application/json',
     responseSchema: Schema.object({
       properties: {
-        results: Schema.array({
-          items: Schema.object({
-            properties: {
-              title: Schema.string(),
-              authors: Schema.array({ items: Schema.string() }),
-              source: Schema.string(),
-            },
-          }),
-        }),
+        results: Schema.array({ items: Schema.object({ properties: {
+          title: Schema.string(), authors: Schema.array({ items: Schema.string() }), source: Schema.string(),
+        } }) }),
       },
     }),
   },
 });
 
+const nativeFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : fetch;
 const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const fingerprint = (s: string) => normalize(s).replace(/\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\b/g, '').replace(/\s+/g, ' ').trim();
 const similar = (a: string, b: string) => {
@@ -77,12 +65,10 @@ async function json(url: string, ms = 4500): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
-    const response = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
+    const response = await nativeFetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
     if (!response.ok) throw new Error(String(response.status));
     return await response.json();
-  } finally {
-    clearTimeout(timer);
-  }
+  } finally { clearTimeout(timer); }
 }
 
 export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
@@ -91,7 +77,6 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
   const key = normalize(query);
   const results: BookSearchResult[] = [];
   const seen = new Set<string>();
-
   const add = (title: string, authors: string[], source: string) => {
     const cleanTitle = String(title || '').trim();
     const cleanAuthors = [...new Set(authors.map(String).map(x => x.trim()).filter(Boolean))];
@@ -103,11 +88,9 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
     results.push({ title: cleanTitle, authors: cleanAuthors, source });
   };
 
-  // Curated EDUWILLS knowledge is always checked first.
   for (const [title, facts] of Object.entries(curated)) {
     if (title.includes(key) || key.includes(title)) {
-      const authorLines = facts.filter(x => /written by|by /i.test(x));
-      const authors = authorLines.flatMap(x => {
+      const authors = facts.flatMap(x => {
         const match = x.match(/(?:written by|by)\s+(.+?)\.?$/i);
         return match ? [match[1].trim()] : [];
       });
@@ -115,18 +98,10 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
     }
   }
 
-  // Public catalogues are queried in parallel so a single unavailable source cannot break search.
   const t = encodeURIComponent(query);
   const endpoints = kind === 'title'
-    ? [
-        [`Open Library`, `https://openlibrary.org/search.json?title=${t}&limit=50`],
-        [`Google Books`, `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`],
-        [`Internet Archive`, `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=40&page=1&output=json`],
-      ]
-    : [
-        [`Open Library`, `https://openlibrary.org/search.json?author=${t}&limit=50`],
-        [`Google Books`, `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`],
-      ];
+    ? [['Open Library', `https://openlibrary.org/search.json?title=${t}&limit=50`], ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`], ['Internet Archive', `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=40&page=1&output=json`]]
+    : [['Open Library', `https://openlibrary.org/search.json?author=${t}&limit=50`], ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`]];
 
   const responses = await Promise.allSettled(endpoints.map(([source, url]) => json(url).then(data => ({ source, data }))));
   for (const response of responses) {
@@ -137,18 +112,42 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
     for (const x of data.response?.docs || []) add(x.title, Array.isArray(x.creator) ? x.creator : x.creator ? [x.creator] : [], source);
   }
 
-  // Gemini resolves incomplete/variant catalogue results and can identify authors for obscure titles,
-  // but it is instructed to use the supplied catalogue evidence rather than inventing an author.
-  const evidence = results.slice(0, 50).map(r => `${r.title} — ${r.authors.join(', ')} (${r.source})`).join('\n');
+  const evidence = results.slice(0, 60).map(r => `${r.title} — ${r.authors.join(', ')} (${r.source})`).join('\n');
   try {
-    const aiResult = await searchModel.generateContent(`You are EDUWILLS Book Search. Search the supplied public catalogue evidence for the user's ${kind}: "${query}". Return only books/authors supported by the evidence. If the evidence contains no reliable match, return an empty results array. Do not invent authors. Merge spelling/diacritic variants of the same author and preserve the title from the evidence. Evidence:\n${evidence || 'No catalogue evidence was returned.'}`);
+    const aiResult = await searchModel.generateContent(`You are EDUWILLS Book Search. Find reliable matches for the user's ${kind}: "${query}" using ONLY the supplied public catalogue evidence. Return an empty results array if there is no reliable evidence. Never invent an author. Merge spelling and diacritic variants of the same author. Evidence:\n${evidence || 'No catalogue evidence was returned.'}`);
     const parsed = JSON.parse(aiResult.response.text());
     for (const item of parsed.results || []) add(item.title, item.authors || [], item.source || 'EDUWILLS AI + catalogues');
   } catch {
-    // Catalogue results remain usable if Gemini is temporarily unavailable.
+    // Public catalogue results remain available if Gemini is temporarily unavailable.
   }
-
   return results.slice(0, 80);
+}
+
+// The current Quiz Studio page already calls Open Library/Google Books directly.
+// Route only those two search calls through the Firebase-Gemini search layer so the
+// existing UI gains the new AI-backed search without changing its public interface.
+if (typeof window !== 'undefined' && !(window as any).__eduwillsSearchBridge) {
+  (window as any).__eduwillsSearchBridge = true;
+  const original = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const isOpenLibrary = url.includes('openlibrary.org/search.json');
+    const isGoogleBooks = url.includes('googleapis.com/books/v1/volumes');
+    if (!isOpenLibrary && !isGoogleBooks) return original(input, init);
+    try {
+      const parsedUrl = new URL(url);
+      const authorMode = parsedUrl.searchParams.has('author') || parsedUrl.searchParams.get('q')?.startsWith('inauthor:');
+      const value = authorMode
+        ? (parsedUrl.searchParams.get('author') || parsedUrl.searchParams.get('q')?.replace(/^inauthor:/, '') || '')
+        : (parsedUrl.searchParams.get('title') || parsedUrl.searchParams.get('q')?.replace(/^intitle:/, '') || '');
+      const found = await searchBookAuthors(authorMode ? 'author' : 'title', value);
+      const docs = found.map(r => ({ title: r.title, author_name: r.authors }));
+      const items = found.map(r => ({ volumeInfo: { title: r.title, authors: r.authors } }));
+      return new Response(JSON.stringify({ docs, items, totalItems: found.length }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch {
+      return original(input, init);
+    }
+  };
 }
 
 export async function researchBooks(books: QuizBook[]): Promise<string> {
