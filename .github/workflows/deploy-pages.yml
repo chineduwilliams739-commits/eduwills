@@ -43,6 +43,14 @@ jobs:
           fi
           echo "Firebase App Check site key is configured."
 
+      - name: Verify quiz exit protection is present
+        run: |
+          if ! grep -R "leaveAttempts" -n app pages components 2>/dev/null | head -1; then
+            echo "ERROR: quiz exit protection code was not found in the source tree."
+            exit 1
+          fi
+          echo "Quiz exit protection is present in the source tree."
+
       - name: Build static site
         run: npm run build
 
