@@ -1,4 +1,4 @@
-import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
+import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from 'firebase/ai';
 import app from '@/lib/firebase';
 
 export type QuizBook = { title: string; author: string };
@@ -7,16 +7,55 @@ export type BookSearchResult = { title: string; authors: string[]; source: strin
 
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 
-// Firebase AI Logic currently supports these Gemini Flash-Lite models. Gemini 3.5
-// Flash-Lite is the current high-volume stable model and supports Google Search grounding.
+// Keep the normal generation request independent of Google Search grounding.
+// This is important because enabling AI Logic does not automatically enable every
+// optional grounded-search capability in the Firebase project. Book research is
+// collected separately below, then supplied to Gemini as verified context.
+const questionSchema = Schema.object({
+  properties: {
+    questions: Schema.array({
+      items: Schema.object({
+        properties: {
+          question: Schema.string(),
+          options: Schema.array({ items: Schema.string() }),
+          answer: Schema.integer(),
+          explanation: Schema.string(),
+        },
+      }),
+    }),
+  },
+});
+
 const model = getGenerativeModel(ai, {
   model: 'gemini-3.5-flash-lite',
-  generationConfig: { responseMimeType: 'application/json', temperature: 0.75 },
-  tools: [{ googleSearch: {} }],
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: questionSchema,
+    temperature: 0.75,
+    maxOutputTokens: 8192,
+  },
 });
+
 const fallbackModel = getGenerativeModel(ai, {
   model: 'gemini-3.1-flash-lite',
-  generationConfig: { responseMimeType: 'application/json', temperature: 0.75 },
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: questionSchema,
+    temperature: 0.75,
+    maxOutputTokens: 8192,
+  },
+});
+
+// Google Search is optional. It is deliberately a second attempt rather than the
+// only generation path, so a missing grounding permission cannot prevent quizzes.
+const groundedModel = getGenerativeModel(ai, {
+  model: 'gemini-3.5-flash-lite',
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: questionSchema,
+    temperature: 0.75,
+    maxOutputTokens: 8192,
+  },
   tools: [{ googleSearch: {} }],
 });
 
@@ -46,14 +85,14 @@ const curated: Record<string, string[]> = {
   ],
 };
 
-async function withTimeout<T>(promise: Promise<T>, ms = 22000): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
   return await Promise.race([
     promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('AI request timed out after 22 seconds.')), ms)),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Firebase AI Logic request timed out after ${Math.round(ms / 1000)} seconds.`)), ms)),
   ]);
 }
 
-async function json(url: string, ms = 5000): Promise<any> {
+async function json(url: string, ms = 6000): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
@@ -113,14 +152,16 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
     for (const x of data.response?.docs || []) add(x.title, Array.isArray(x.creator) ? x.creator : x.creator ? [x.creator] : [], source);
   }
 
-  // Gemini is used as a catalogue-matching layer, never as permission to invent an author.
+  // Gemini only merges catalogue evidence. It is never allowed to invent an author.
   const evidence = results.slice(0, 60).map(r => `${r.title} — ${r.authors.join(', ')} (${r.source})`).join('\n');
-  try {
-    const r = await withTimeout(model.generateContent(`You are EDUWILLS Book Search. Merge reliable matches for the ${kind} "${query}" using ONLY the public catalogue evidence below. Never invent a book or author. Return JSON only: {"results":[{"title":"...","authors":["..."],"source":"..."}]}. Evidence:\n${evidence || 'No catalogue evidence was returned.'}`), 12000);
-    const parsed = JSON.parse(r.response.text());
-    for (const item of parsed.results || []) add(item.title, item.authors || [], item.source || 'EDUWILLS AI + catalogues');
-  } catch {
-    // Public catalogue results remain usable if Gemini is unavailable.
+  if (evidence) {
+    try {
+      const r = await withTimeout(model.generateContent(`You are EDUWILLS Book Search. Merge reliable matches for the ${kind} "${query}" using ONLY the public catalogue evidence below. Never invent a book or author. Return JSON only: {"results":[{"title":"...","authors":["..."],"source":"..."}]}. Evidence:\n${evidence}`), 12000);
+      const parsed = JSON.parse(r.response.text());
+      for (const item of parsed.results || []) add(item.title, item.authors || [], item.source || 'EDUWILLS AI + catalogues');
+    } catch {
+      // Catalogue results remain usable when AI is unavailable.
+    }
   }
   return results.slice(0, 80);
 }
@@ -137,6 +178,7 @@ export async function researchBooks(books: QuizBook[]): Promise<string> {
       json(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=30`),
       json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(book.title.replace(/ /g, '_'))}`),
       json(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(book.title + ' ' + book.author)}&language=en&format=json&limit=5&origin=*`),
+      json(`https://archive.org/advancedsearch.php?q=title:%28${t}%29+AND+creator:%28${a}%29&fl[]=title&fl[]=creator&fl[]=description&rows=20&page=1&output=json`),
     ];
   });
 
@@ -153,13 +195,15 @@ export async function researchBooks(books: QuizBook[]): Promise<string> {
     for (const item of data.docs || []) {
       if (item.first_sentence) chunks.push(`Open Library: ${(item.first_sentence || []).join(' ')}`);
       if (item.subject) chunks.push(`Open Library subjects: ${(item.subject || []).slice(0, 60).join(', ')}`);
+      if (item.description) chunks.push(`Open Library description: ${item.description}`);
     }
+    for (const item of data.response?.docs || []) if (item.description || item.creator) chunks.push(`Internet Archive: ${item.description || ''} Creator: ${item.creator || ''}`);
     if (data.extract) chunks.push(`Wikipedia: ${data.extract}`);
     for (const item of Object.values(data.query?.pages || {}) as any[]) if (item.extract) chunks.push(`Wikipedia: ${item.extract}`);
     for (const item of data.search || []) if (item.description || item.aliases) chunks.push(`Wikidata: ${item.description || ''} ${item.aliases?.join(', ') || ''}`);
   }
 
-  return [...new Set(chunks.map(x => String(x).trim()).filter(Boolean))].join('\n').slice(0, 70000);
+  return [...new Set(chunks.map(x => String(x).trim()).filter(Boolean))].join('\n').slice(0, 90000);
 }
 
 function validate(raw: any, previous: string[], target: number): QuizQuestion[] {
@@ -180,32 +224,50 @@ function validate(raw: any, previous: string[], target: number): QuizQuestion[] 
 
 function deterministicFallback(books: QuizBook[], research: string, count: number, previous: string[]): QuizQuestion[] {
   const facts = [...books.flatMap(b => curated[normalize(b.title)] || []), ...research.split(/\n+/).filter(x => x.length > 35)]
-    .map(x => x.replace(/^(Google Books|Open Library|Wikipedia|Wikidata|Categories|Subjects|Publication):\s*/i, '').trim())
+    .map(x => x.replace(/^(Google Books|Open Library|Wikipedia|Wikidata|Internet Archive|Categories|Subjects|Publication|description):\s*/i, '').trim())
     .filter(Boolean);
   const uniqueFacts = [...new Set(facts)];
   const recent = new Set(previous.map(fingerprint));
   const out: QuizQuestion[] = [];
   const templates = [
-    (book: string, fact: string) => `According to the available research, what detail is associated with ${book}?`,
-    (book: string, fact: string) => `Which researched fact best describes ${book}?`,
-    (book: string, fact: string) => `What does the available evidence report about ${book}?`,
-    (book: string, fact: string) => `Which statement is supported by the research on ${book}?`,
-    (book: string, fact: string) => `What information about ${book} is confirmed by the research?`,
+    (book: string) => `Which researched fact is associated with ${book}?`,
+    (book: string) => `Which statement about ${book} is supported by the available research?`,
+    (book: string) => `What does the available evidence report about ${book}?`,
+    (book: string) => `Which detail about ${book} is confirmed by the research?`,
+    (book: string) => `According to the available sources, which statement best describes ${book}?`,
   ];
 
   for (let i = 0; i < uniqueFacts.length && out.length < count; i++) {
     const book = books[i % Math.max(1, books.length)]?.title || 'the selected book';
     const fact = uniqueFacts[i];
     const distractors = uniqueFacts.filter((x, j) => j !== i).slice(0, 3);
-    while (distractors.length < 3) distractors.push('This detail is not supported by the available research.');
+    while (distractors.length < 3) distractors.push('This statement is not supported by the available research.');
     const correctIndex = i % 4;
     const options = [...distractors];
     options.splice(correctIndex, 0, fact);
-    const question = templates[i % templates.length](book, fact) + ` (Research detail ${i + 1})`;
+    const question = `${templates[i % templates.length](book)} (Research detail ${i + 1})`;
     if (recent.has(fingerprint(question)) || out.some(x => similar(x.question, question))) continue;
-    out.push({ question, options: options.slice(0, 4), answer: correctIndex, explanation: 'This question was produced from the verified book research available to EDUWILLS while the AI generation service was unavailable.' });
+    out.push({ question, options: options.slice(0, 4), answer: correctIndex, explanation: 'This question was produced from verified book research while the AI generation service was unavailable.' });
   }
   return out;
+}
+
+async function generateBatch(prompt: string): Promise<any> {
+  try {
+    return await withTimeout(model.generateContent(prompt), 30000);
+  } catch (firstError) {
+    try {
+      return await withTimeout(fallbackModel.generateContent(prompt), 30000);
+    } catch (secondError) {
+      // Only use grounded generation as a third attempt. If Google Search grounding
+      // is not configured, the normal Gemini path above can still work.
+      try {
+        return await withTimeout(groundedModel.generateContent(prompt), 30000);
+      } catch {
+        throw secondError || firstError;
+      }
+    }
+  }
 }
 
 export async function generateQuiz(books: QuizBook[], count: number, difficulty: string, instructions: string, previous: string[], research: string): Promise<QuizQuestion[]> {
@@ -213,18 +275,10 @@ export async function generateQuiz(books: QuizBook[], count: number, difficulty:
   const batchCount = target <= 12 ? 2 : target <= 30 ? 3 : target <= 60 ? 4 : 6;
   const perBatch = Math.min(16, Math.ceil(target / batchCount) + 3);
   const recent = previous.slice(-60).join(' | ');
-  const promptBase = `You are EDUWILLS Book Intelligence AI. Generate ${perBatch} DIFFERENT multiple-choice questions for these exact saved books: ${books.map(b => `${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions ? `Student instruction: ${instructions}.` : ''} You have Google Search grounding available and MUST use it when the supplied research is incomplete or the book is obscure. Verify the book, author, characters, events, themes, setting, chronology and other details before writing questions. Never invent quotations, chapters or scenes. Do not confuse similarly named books. Exactly four distinct options and exactly one correct answer. Vary question types across characters, events, chronology, themes, setting, cause/effect, vocabulary, literary devices, inference, author and publication information when supported. A question may return in a later test after a cooling-off period, but do not repeat or closely paraphrase recent questions. Return ONLY valid JSON: {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"..."}]}. Recent questions: ${recent || 'none'}. Supplied research:\n${research || 'No catalogue research was returned; use Google Search grounding.'}`;
-
+  const promptBase = `You are EDUWILLS Book Intelligence AI. Generate ${perBatch} DIFFERENT multiple-choice questions for these exact saved books: ${books.map(b => `${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions ? `Student instruction: ${instructions}.` : ''} Use the supplied research as the factual source. If it is incomplete, you may use Google Search grounding. Verify the book, author, characters, events, themes, setting, chronology and other details before writing questions. Never invent quotations, chapters or scenes. Do not confuse similarly named books. Exactly four distinct options and exactly one correct answer. Vary question types across characters, events, chronology, themes, setting, cause/effect, vocabulary, literary devices, inference, author and publication information when supported. A question may return in a later test after a cooling-off period, but do not repeat or closely paraphrase recent questions. Return a JSON object containing a questions array. Recent questions: ${recent || 'none'}. Supplied research:\n${research || 'No catalogue research was returned.'}`;
   const prompts = Array.from({ length: batchCount }, (_, i) => `${promptBase}\nThis is independent batch ${i + 1} of ${batchCount}. Produce a different set from the other batches.`);
-  const calls = prompts.map(async prompt => {
-    try {
-      return await withTimeout(model.generateContent(prompt), 22000);
-    } catch (firstError) {
-      return await withTimeout(fallbackModel.generateContent(prompt), 22000).catch(() => { throw firstError; });
-    }
-  });
 
-  const results = await Promise.allSettled(calls);
+  const results = await Promise.allSettled(prompts.map(generateBatch));
   let out: QuizQuestion[] = [];
   const errors: string[] = [];
   for (const result of results) {
@@ -241,15 +295,12 @@ export async function generateQuiz(books: QuizBook[], count: number, difficulty:
     if (out.length >= target) break;
   }
 
-  // Never make the learner wait forever or lose the test because one AI request failed.
-  // Use deterministic, research-backed questions to fill any remaining slots.
   if (out.length < target) {
-    const extra = deterministicFallback(books, research, target - out.length, previous.concat(out.map(q => q.question)));
-    out = out.concat(extra);
+    out = out.concat(deterministicFallback(books, research, target - out.length, previous.concat(out.map(q => q.question))));
   }
 
   if (out.length < target) {
-    throw new Error(`EDUWILLS could prepare only ${out.length} of ${target} questions. Gemini may be blocked by Firebase AI Logic/App Check. ${errors[0] || 'Please try again.'}`);
+    throw new Error(`EDUWILLS could prepare only ${out.length} of ${target} questions. Firebase AI Logic may still need App Check/API configuration. ${errors[0] || 'Please try again.'}`);
   }
   return out.slice(0, target);
 }
@@ -257,10 +308,15 @@ export async function generateQuiz(books: QuizBook[], count: number, difficulty:
 export async function explainFailure(book: string, question: string, learnerAnswer: string, correctAnswer: string): Promise<string> {
   const prompt = `Give a short study explanation for this wrong answer. Do not chat or ask follow-up questions. Book: ${book}. Question: ${question}. Learner answer: ${learnerAnswer}. Correct answer: ${correctAnswer}. Include the key reasoning and one memory tip.`;
   try {
-    const r = await withTimeout(model.generateContent(prompt), 12000);
+    const r = await withTimeout(model.generateContent(prompt), 15000);
     return r.response.text().trim();
   } catch {
-    const r = await withTimeout(fallbackModel.generateContent(prompt), 12000);
-    return r.response.text().trim();
+    try {
+      const r = await withTimeout(fallbackModel.generateContent(prompt), 15000);
+      return r.response.text().trim();
+    } catch {
+      const r = await withTimeout(groundedModel.generateContent(prompt), 15000);
+      return r.response.text().trim();
+    }
   }
 }
