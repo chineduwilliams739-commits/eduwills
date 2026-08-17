@@ -6,339 +6,58 @@ export type QuizQuestion = { question: string; options: string[]; answer: number
 export type BookSearchResult = { title: string; authors: string[]; source: string };
 
 const ai = getAI(app, { backend: new GoogleAIBackend() });
+const questionSchema = Schema.object({ properties: { questions: Schema.array({ items: Schema.object({ properties: { question: Schema.string(), options: Schema.array({ items: Schema.string() }), answer: Schema.integer() } }) }) } });
+const model = getGenerativeModel(ai, { model: 'gemini-3.6-flash', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.65, maxOutputTokens: 8192 } });
+const fallbackModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.65, maxOutputTokens: 4096 } });
+const groundedModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.65, maxOutputTokens: 4096 }, tools: [{ googleSearch: {} }] });
 
-// Keep the AI response small and deterministic. Gemini 3.5 Flash-Lite has a
-// 4,096-token output limit, so the previous 8,192-token setting could make
-// otherwise valid quiz requests fail. Explanations are generated separately
-// only when the learner asks why an answer was wrong.
-const questionSchema = Schema.object({
-  properties: {
-    questions: Schema.array({
-      items: Schema.object({
-        properties: {
-          question: Schema.string(),
-          options: Schema.array({ items: Schema.string() }),
-          answer: Schema.integer(),
-        },
-      }),
-    }),
-  },
-});
-
-const model = getGenerativeModel(ai, {
-  model: 'gemini-3.6-flash',
-  generationConfig: {
-    responseMimeType: 'application/json',
-    responseSchema: questionSchema,
-    temperature: 0.65,
-    maxOutputTokens: 8192,
-  },
-});
-
-const fallbackModel = getGenerativeModel(ai, {
-  model: 'gemini-3.5-flash-lite',
-  generationConfig: {
-    responseMimeType: 'application/json',
-    responseSchema: questionSchema,
-    temperature: 0.65,
-    maxOutputTokens: 4096,
-  },
-});
-
-const groundedModel = getGenerativeModel(ai, {
-  model: 'gemini-3.5-flash-lite',
-  generationConfig: {
-    responseMimeType: 'application/json',
-    responseSchema: questionSchema,
-    temperature: 0.65,
-    maxOutputTokens: 4096,
-  },
-  tools: [{ googleSearch: {} }],
-});
-
+const CACHE_VERSION = 'v3';
+const RESEARCH_TTL = 24 * 60 * 60 * 1000;
+const QUIZ_TTL = 7 * 24 * 60 * 60 * 1000;
+const SEARCH_TTL = 6 * 60 * 60 * 1000;
+const MAX_POOL = 40;
 const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const fingerprint = (s: string) => normalize(s).replace(/\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according|statement|following)\b/g, '').replace(/\s+/g, ' ').trim();
-const similar = (a: string, b: string) => {
-  const x = new Set(fingerprint(a).split(' ').filter(Boolean));
-  const y = new Set(fingerprint(b).split(' ').filter(Boolean));
-  if (!x.size || !y.size) return false;
-  const hit = [...x].filter(v => y.has(v)).length;
-  return hit / Math.max(1, Math.min(x.size, y.size)) >= 0.84;
-};
-
+const similar = (a: string, b: string) => { const x = new Set(fingerprint(a).split(' ').filter(Boolean)); const y = new Set(fingerprint(b).split(' ').filter(Boolean)); if (!x.size || !y.size) return false; const hit = [...x].filter(v => y.has(v)).length; return hit / Math.max(1, Math.min(x.size, y.size)) >= 0.84; };
 const curated: Record<string, string[]> = {
-  'the lekki headmaster': [
-    'The Lekki Headmaster was written by Kabir Alabi Garba.',
-    'The story follows Bepo Adewale, a dedicated headmaster at Stardom Schools in Lekki, Lagos.',
-    'The novel explores education, integrity, service, migration pressure and the japa phenomenon.',
-    'Bepo faces pressure to relocate to the United Kingdom but remains committed to his students and school.',
-    'The novel was published by Winepress Publishing in 2023.',
-    'JAMB selected The Lekki Headmaster as the general reading text for the 2025 and 2026 UTME Use of English.',
-  ],
+  'the lekki headmaster': ['The Lekki Headmaster was written by Kabir Alabi Garba.','The story follows Bepo Adewale, a dedicated headmaster at Stardom Schools in Lekki, Lagos.','The novel explores education, integrity, service, migration pressure and the japa phenomenon.','Bepo faces pressure to relocate to the United Kingdom but remains committed to his students and school.','The novel was published by Winepress Publishing in 2023.','JAMB selected The Lekki Headmaster as the general reading text for the 2025 and 2026 UTME Use of English.'],
   'sanya': ['Sànyà is a Nigerian literary work by Oyin Olugbile.'],
-  'scars': [
-    'SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.',
-    'SCARS is associated with Gen. Lucky Irabor.',
-  ],
+  'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.'],
 };
-
-async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> {
-  return await Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Firebase AI Logic request timed out after ${Math.round(ms / 1000)} seconds.`)), ms)),
-  ]);
-}
-
-async function json(url: string, ms = 6000): Promise<any> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    const response = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
-    if (!response.ok) throw new Error(String(response.status));
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function extractJson(text: string): any {
-  const cleaned = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  try { return JSON.parse(cleaned); } catch {}
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
-  throw new Error('Gemini returned an unreadable question response.');
-}
+function storageGet<T>(key: string): T | null { if (typeof window === 'undefined') return null; try { const raw = localStorage.getItem(key); if (!raw) return null; const p = JSON.parse(raw); if (p.expiresAt && p.expiresAt < Date.now()) { localStorage.removeItem(key); return null; } return p.value as T; } catch { return null; } }
+function storageSet<T>(key: string, value: T, ttl: number) { if (typeof window === 'undefined') return; try { localStorage.setItem(key, JSON.stringify({ expiresAt: Date.now() + ttl, value })); } catch {} }
+function cacheKey(prefix: string, value: unknown) { return `eduwills:${CACHE_VERSION}:${prefix}:${normalize(JSON.stringify(value))}`; }
+async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> { return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Firebase AI Logic request timed out after ${Math.round(ms / 1000)} seconds.`)), ms))]); }
+async function json(url: string, ms = 6000): Promise<any> { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), ms); try { const response = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal }); if (!response.ok) throw new Error(String(response.status)); return response.json(); } finally { clearTimeout(timer); } }
+function extractJson(text: string): any { const cleaned = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim(); try { return JSON.parse(cleaned); } catch {} const start = cleaned.indexOf('{'), end = cleaned.lastIndexOf('}'); if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1)); throw new Error('Gemini returned an unreadable question response.'); }
 
 export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
-  const query = value.trim();
-  if (!query) return [];
-  const key = normalize(query);
-  const results: BookSearchResult[] = [];
-  const seen = new Set<string>();
-  const add = (title: string, authors: string[], source: string) => {
-    const t = String(title || '').trim();
-    const a = [...new Set((authors || []).map(String).map(x => x.trim()).filter(Boolean))];
-    if (!t || !a.length) return;
-    if (kind === 'author' && !a.some(x => normalize(x).includes(key) || key.includes(normalize(x)))) return;
-    const id = normalize(t) + '|' + a.map(normalize).sort().join(',');
-    if (seen.has(id)) return;
-    seen.add(id);
-    results.push({ title: t, authors: a, source });
-  };
-
-  for (const [title, facts] of Object.entries(curated)) {
-    if (title.includes(key) || key.includes(title)) {
-      const authors = facts.flatMap(x => {
-        const m = x.match(/(?:written by|by)\s+(.+?)\.?$/i);
-        return m ? [m[1].trim()] : [];
-      });
-      if (authors.length) add(title, authors, 'EDUWILLS catalogue');
-    }
-  }
-
-  const t = encodeURIComponent(query);
-  const endpoints = kind === 'title'
-    ? [
-        ['Open Library', `https://openlibrary.org/search.json?title=${t}&limit=50`],
-        ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`],
-        ['Internet Archive', `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=40&page=1&output=json`],
-      ]
-    : [
-        ['Open Library', `https://openlibrary.org/search.json?author=${t}&limit=50`],
-        ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`],
-      ];
-
-  const responses = await Promise.allSettled(endpoints.map(([source, url]) => json(url).then(data => ({ source, data }))));
-  for (const r of responses) {
-    if (r.status !== 'fulfilled') continue;
-    const { source, data } = r.value;
-    for (const x of data.docs || []) add(x.title, x.author_name || [], source);
-    for (const x of data.items || []) add(x.volumeInfo?.title, x.volumeInfo?.authors || [], source);
-    for (const x of data.response?.docs || []) add(x.title, Array.isArray(x.creator) ? x.creator : x.creator ? [x.creator] : [], source);
-  }
-
-  const evidence = results.slice(0, 60).map(r => `${r.title} — ${r.authors.join(', ')} (${r.source})`).join('\n');
-  if (evidence) {
-    try {
-      const r = await withTimeout(fallbackModel.generateContent(`You are EDUWILLS Book Search. Merge reliable matches for the ${kind} "${query}" using ONLY the public catalogue evidence below. Never invent a book or author. Return JSON only with a results array. Evidence:\n${evidence}`), 12000);
-      const parsed = extractJson(r.response.text());
-      for (const item of parsed.results || []) add(item.title, item.authors || [], item.source || 'EDUWILLS AI + catalogues');
-    } catch {
-      // Catalogue results remain usable when AI is unavailable.
-    }
-  }
-  return results.slice(0, 80);
+  const query = value.trim(); if (!query) return []; const key = normalize(query); const cached = storageGet<BookSearchResult[]>(cacheKey('search', { kind, key })); if (cached) return cached;
+  const results: BookSearchResult[] = []; const seen = new Set<string>(); const add = (title: string, authors: string[], source: string) => { const t = String(title || '').trim(); const a = [...new Set((authors || []).map(String).map(x => x.trim()).filter(Boolean))]; if (!t || !a.length) return; if (kind === 'author' && !a.some(x => normalize(x).includes(key) || key.includes(normalize(x)))) return; const id = normalize(t) + '|' + a.map(normalize).sort().join(','); if (seen.has(id)) return; seen.add(id); results.push({ title: t, authors: a, source }); };
+  for (const [title, facts] of Object.entries(curated)) if (title.includes(key) || key.includes(title)) { const authors = facts.flatMap(x => { const m = x.match(/(?:written by|by)\s+(.+?)\.?$/i); return m ? [m[1].trim()] : []; }); if (authors.length) add(title, authors, 'EDUWILLS catalogue'); }
+  const t = encodeURIComponent(query); const endpoints = kind === 'title' ? [['Open Library', `https://openlibrary.org/search.json?title=${t}&limit=50`], ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`], ['Internet Archive', `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=40&page=1&output=json`]] : [['Open Library', `https://openlibrary.org/search.json?author=${t}&limit=50`], ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`]];
+  const responses = await Promise.allSettled(endpoints.map(([source, url]) => json(url).then(data => ({ source, data })))); for (const r of responses) if (r.status === 'fulfilled') { const { source, data } = r.value; for (const x of data.docs || []) add(x.title, x.author_name || [], source); for (const x of data.items || []) add(x.volumeInfo?.title, x.volumeInfo?.authors || [], source); for (const x of data.response?.docs || []) add(x.title, Array.isArray(x.creator) ? x.creator : x.creator ? [x.creator] : [], source); }
+  const final = results.slice(0, 80); storageSet(cacheKey('search', { kind, key }), final, SEARCH_TTL); return final;
 }
 
 export async function researchBooks(books: QuizBook[]): Promise<string> {
-  const chunks: string[] = [];
-  for (const book of books) chunks.push(...(curated[normalize(book.title)] || []));
-
-  const requests = books.flatMap(book => {
-    const t = encodeURIComponent(book.title);
-    const a = encodeURIComponent(book.author);
-    return [
-      json(`https://www.googleapis.com/books/v1/volumes?q=intitle:${t}+inauthor:${a}&maxResults=20`),
-      json(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=30`),
-      json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(book.title.replace(/ /g, '_'))}`),
-      json(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(book.title + ' ' + book.author)}&language=en&format=json&limit=5&origin=*`),
-      json(`https://archive.org/advancedsearch.php?q=title:%28${t}%29+AND+creator:%28${a}%29&fl[]=title&fl[]=creator&fl[]=description&rows=20&page=1&output=json`),
-    ];
-  });
-
-  const results = await Promise.allSettled(requests);
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue;
-    const data = result.value;
-    for (const item of data.items || []) {
-      const v = item.volumeInfo || {};
-      if (v.description) chunks.push(`Google Books: ${v.description}`);
-      if (v.categories) chunks.push(`Google Books categories: ${v.categories.join(', ')}`);
-      if (v.publishedDate) chunks.push(`Publication: ${v.publishedDate}; publisher: ${v.publisher || 'unknown'}.`);
-    }
-    for (const item of data.docs || []) {
-      if (item.first_sentence) chunks.push(`Open Library: ${(item.first_sentence || []).join(' ')}`);
-      if (item.subject) chunks.push(`Open Library subjects: ${(item.subject || []).slice(0, 60).join(', ')}`);
-      if (item.description) chunks.push(`Open Library description: ${item.description}`);
-    }
-    for (const item of data.response?.docs || []) if (item.description || item.creator) chunks.push(`Internet Archive: ${item.description || ''} Creator: ${item.creator || ''}`);
-    if (data.extract) chunks.push(`Wikipedia: ${data.extract}`);
-    for (const item of Object.values(data.query?.pages || {}) as any[]) if (item.extract) chunks.push(`Wikipedia: ${item.extract}`);
-    for (const item of data.search || []) if (item.description || item.aliases) chunks.push(`Wikidata: ${item.description || ''} ${item.aliases?.join(', ') || ''}`);
-  }
-
-  return [...new Set(chunks.map(x => String(x).trim()).filter(Boolean))].join('\n').slice(0, 90000);
+  const normalizedBooks = books.map(b => ({ title: b.title.trim(), author: b.author.trim() })); const key = cacheKey('research', normalizedBooks); const cached = storageGet<string>(key); if (cached) return cached;
+  const chunks: string[] = []; for (const book of books) chunks.push(...(curated[normalize(book.title)] || []));
+  const requests = books.flatMap(book => { const t = encodeURIComponent(book.title), a = encodeURIComponent(book.author); return [json(`https://www.googleapis.com/books/v1/volumes?q=intitle:${t}+inauthor:${a}&maxResults=20`), json(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=30`), json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(book.title.replace(/ /g, '_'))}`), json(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(book.title + ' ' + book.author)}&language=en&format=json&limit=5&origin=*`), json(`https://archive.org/advancedsearch.php?q=title:%28${t}%29+AND+creator:%28${a}%29&fl[]=title&fl[]=creator&fl[]=description&rows=20&page=1&output=json`)]; });
+  const results = await Promise.allSettled(requests); for (const result of results) if (result.status === 'fulfilled') { const data = result.value; for (const item of data.items || []) { const v = item.volumeInfo || {}; if (v.description) chunks.push(`Google Books: ${v.description}`); if (v.categories) chunks.push(`Categories: ${v.categories.join(', ')}`); if (v.publishedDate) chunks.push(`Publication: ${v.publishedDate}; publisher: ${v.publisher || 'unknown'}.`); } for (const item of data.docs || []) { if (item.first_sentence) chunks.push(`Open Library: ${(item.first_sentence || []).join(' ')}`); if (item.subject) chunks.push(`Subjects: ${(item.subject || []).slice(0, 60).join(', ')}`); if (item.description) chunks.push(`Open Library description: ${item.description}`); } for (const item of data.response?.docs || []) if (item.description || item.creator) chunks.push(`Internet Archive: ${item.description || ''} Creator: ${item.creator || ''}`); if (data.extract) chunks.push(`Wikipedia: ${data.extract}`); for (const item of Object.values(data.query?.pages || {}) as any[]) if (item.extract) chunks.push(`Wikipedia: ${item.extract}`); for (const item of data.search || []) if (item.description || item.aliases) chunks.push(`Wikidata: ${item.description || ''} ${item.aliases?.join(', ') || ''}`); }
+  const research = [...new Set(chunks.map(x => String(x).trim()).filter(Boolean))].join('\n').slice(0, 90000); storageSet(key, research, RESEARCH_TTL); return research;
 }
 
-function validate(raw: any, previous: string[], target: number): QuizQuestion[] {
-  const list = Array.isArray(raw?.questions) ? raw.questions : [];
-  const recent = new Set(previous.map(fingerprint).filter(Boolean));
-  const out: QuizQuestion[] = [];
-  for (const item of list) {
-    const q = String(item?.question || '').trim();
-    const o = Array.isArray(item?.options) ? item.options.map((x: any) => String(x).trim()).filter(Boolean).slice(0, 4) : [];
-    const a = Number(item?.answer);
-    if (!q || o.length !== 4 || new Set(o.map(normalize)).size !== 4 || !Number.isInteger(a) || a < 0 || a > 3) continue;
-    if (recent.has(fingerprint(q)) || out.some(x => similar(x.question, q))) continue;
-    out.push({ question: q, options: o, answer: a });
-    if (out.length >= target) break;
-  }
-  return out;
-}
-
-function deterministicFallback(books: QuizBook[], research: string, count: number, previous: string[]): QuizQuestion[] {
-  const facts = [...books.flatMap(b => curated[normalize(b.title)] || []), ...research.split(/\n+/).filter(x => x.length > 35)]
-    .map(x => x.replace(/^(Google Books|Open Library|Wikipedia|Wikidata|Internet Archive|Categories|Subjects|Publication|description):\s*/i, '').trim())
-    .filter(Boolean);
-  const uniqueFacts = [...new Set(facts)];
-  const recent = new Set(previous.map(fingerprint));
-  const out: QuizQuestion[] = [];
-  const templates = [
-    (book: string) => `Which researched fact is associated with ${book}?`,
-    (book: string) => `Which statement about ${book} is supported by the available research?`,
-    (book: string) => `What does the available evidence report about ${book}?`,
-    (book: string) => `Which detail about ${book} is confirmed by the research?`,
-    (book: string) => `According to the available sources, which statement best describes ${book}?`,
-  ];
-
-  for (let i = 0; i < uniqueFacts.length && out.length < count; i++) {
-    const book = books[i % Math.max(1, books.length)]?.title || 'the selected book';
-    const fact = uniqueFacts[i];
-    const distractors = uniqueFacts.filter((x, j) => j !== i).slice(0, 3);
-    while (distractors.length < 3) distractors.push('This statement is not supported by the available research.');
-    const correctIndex = i % 4;
-    const options = [...distractors];
-    options.splice(correctIndex, 0, fact);
-    const question = `${templates[i % templates.length](book)} (Research detail ${i + 1})`;
-    if (recent.has(fingerprint(question)) || out.some(x => similar(x.question, question))) continue;
-    out.push({ question, options: options.slice(0, 4), answer: correctIndex, explanation: 'Produced from verified book research while the AI service was unavailable.' });
-  }
-  return out;
-}
-
-async function generateBatch(prompt: string): Promise<any> {
-  try {
-    return await withTimeout(model.generateContent(prompt), 30000);
-  } catch (firstError) {
-    try {
-      return await withTimeout(fallbackModel.generateContent(prompt), 30000);
-    } catch (secondError) {
-      // Grounding is last. A grounding configuration problem cannot block the
-      // normal Gemini path above.
-      try {
-        return await withTimeout(groundedModel.generateContent(prompt), 30000);
-      } catch {
-        throw secondError || firstError;
-      }
-    }
-  }
-}
+function validate(raw: any, previous: string[], target: number): QuizQuestion[] { const list = Array.isArray(raw?.questions) ? raw.questions : []; const recent = new Set(previous.map(fingerprint).filter(Boolean)); const out: QuizQuestion[] = []; for (const item of list) { const q = String(item?.question || '').trim(); const options = Array.isArray(item?.options) ? item.options.map((x: any) => String(x).trim()).filter(Boolean).slice(0, 4) : []; const answer = Number(item?.answer); if (!q || options.length !== 4 || new Set(options.map(normalize)).size !== 4 || !Number.isInteger(answer) || answer < 0 || answer > 3) continue; if (recent.has(fingerprint(q)) || out.some(x => similar(x.question, q))) continue; out.push({ question: q, options, answer }); if (out.length >= target) break; } return out; }
+async function generateBatch(prompt: string, allowGrounding = false): Promise<any> { try { return await withTimeout(model.generateContent(prompt), 30000); } catch (firstError) { try { return await withTimeout(fallbackModel.generateContent(prompt), 30000); } catch (secondError) { if (allowGrounding) { try { return await withTimeout(groundedModel.generateContent(prompt), 30000); } catch {} } throw secondError || firstError; } } }
+function shuffle<T>(items: T[]): T[] { const a = [...items]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 export async function generateQuiz(books: QuizBook[], count: number, difficulty: string, instructions: string, previous: string[], research: string): Promise<QuizQuestion[]> {
-  const target = Math.min(100, Math.max(1, count));
-  // Keep each response comfortably below the model output limit. Parallel batches
-  // make large quizzes faster without asking one request to produce 20+ questions.
-  const batchCount = target <= 10 ? 3 : target <= 30 ? 5 : target <= 60 ? 7 : 10;
-  const perBatch = Math.min(7, Math.ceil(target / batchCount) + 2);
-  const recent = previous.slice(-60).join(' | ');
-  const promptBase = `You are EDUWILLS Book Intelligence AI. Generate ${perBatch} DIFFERENT multiple-choice questions for these exact saved books: ${books.map(b => `${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions ? `Student instruction: ${instructions}.` : ''} Use the supplied research as the primary factual source. If research is incomplete, you may use Google Search grounding. Verify the exact book and author before writing questions. Never invent quotations, chapters, scenes, characters or events. Do not confuse similarly named books. Every question must have exactly four distinct options and exactly one correct answer indexed 0-3. Vary question types across characters, events, chronology, themes, setting, cause/effect, vocabulary, literary devices, inference, author and publication information only when supported. Do not repeat or closely paraphrase the recent questions. A question may return in a later test after a cooling-off period. Return JSON only as {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0]}. Recent questions: ${recent || 'none'}. Supplied research:\n${research || 'No catalogue research was returned.'}`;
-  const prompts = Array.from({ length: batchCount }, (_, i) => `${promptBase}\nThis is independent batch ${i + 1} of ${batchCount}. Make this batch meaningfully different from the others.`);
-
-  const results = await Promise.allSettled(prompts.map(generateBatch));
-  let out: QuizQuestion[] = [];
-  const errors: string[] = [];
-  for (const result of results) {
-    if (result.status !== 'fulfilled') {
-      errors.push(result.reason?.message || 'Gemini request failed');
-      continue;
-    }
-    try {
-      const parsed = extractJson(result.value.response.text());
-      out = out.concat(validate(parsed, previous.concat(out.map(q => q.question)), target - out.length));
-    } catch (e: any) {
-      errors.push(e?.message || 'Gemini returned invalid JSON');
-    }
-    if (out.length >= target) break;
-  }
-
-  // If Gemini returned some questions but not enough, one final smaller request
-  // is more useful than manufacturing weak duplicates from a tiny research set.
-  if (out.length < target) {
-    const remaining = target - out.length;
-    try {
-      const rescue = await generateBatch(`${promptBase}\nGenerate exactly ${Math.min(remaining + 2, 7)} NEW questions. Do not use any question already present in this existing set: ${out.map(q => q.question).join(' | ')}`);
-      out = out.concat(validate(extractJson(rescue.response.text()), previous.concat(out.map(q => q.question)), remaining));
-    } catch (e: any) {
-      errors.push(e?.message || 'Final Gemini rescue request failed');
-    }
-  }
-
-  // Deterministic research fallback is only used for the small remainder. This
-  // prevents a transient AI failure from trapping the learner on the builder.
-  if (out.length < target) {
-    out = out.concat(deterministicFallback(books, research, target - out.length, previous.concat(out.map(q => q.question))));
-  }
-
-  if (out.length < target) {
-    const detail = errors.find(Boolean) || 'No usable Gemini response was returned.';
-    throw new Error(`EDUWILLS could prepare only ${out.length} of ${target} questions. ${detail}`);
-  }
-  return out.slice(0, target);
+  const target = Math.min(100, Math.max(1, count)); const poolKey = cacheKey('quiz-pool', { books: books.map(b => ({ title: normalize(b.title), author: normalize(b.author) })), difficulty, instructions: normalize(instructions) }); const cachedPool = storageGet<QuizQuestion[]>(poolKey) || []; const recent = previous.slice(-80); const eligible = shuffle(cachedPool.filter(q => !recent.some(r => similar(r, q.question)))); if (eligible.length >= target) return eligible.slice(0, target);
+  const desiredPool = Math.min(MAX_POOL, Math.max(target, target <= 20 ? 20 : target)); let pool = validate({ questions: cachedPool }, recent, desiredPool); const needed = desiredPool - pool.length; const batchSize = 6; const rounds = Math.ceil(needed / batchSize); const base = `You are EDUWILLS Book Intelligence AI. Generate up to ${batchSize} different multiple-choice questions for these exact books: ${books.map(b => `${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions ? `Learner instruction: ${instructions}.` : ''} Use the supplied research as the primary factual source. Verify the exact book and author. Never invent unsupported chapters, quotations, scenes, characters or events. Each question must have exactly four distinct options and one correct answer indexed 0-3. Vary question types across characters, events, chronology, themes, setting, cause/effect, vocabulary, literary devices, inference, author and publication facts only when supported. Do not repeat or closely paraphrase the existing questions. Return JSON only. Existing questions: ${pool.map(q => q.question).join(' | ') || 'none'}. Research:\n${research}`;
+  for (let cursor = 0; cursor < rounds && pool.length < desiredPool; cursor += 3) { const active = Math.min(3, rounds - cursor); const results = await Promise.allSettled(Array.from({ length: active }, (_, n) => generateBatch(`${base}\nBatch ${cursor + n + 1}. Make this batch meaningfully different from all existing questions.`))); for (const result of results) if (result.status === 'fulfilled') { try { pool = pool.concat(validate(extractJson(result.value.response.text()), recent.concat(pool.map(q => q.question)), desiredPool - pool.length)); } catch {} } }
+  if (pool.length < desiredPool) { try { const rescue = await generateBatch(`${base}\nGenerate ${Math.min(batchSize, desiredPool - pool.length)} additional questions. Avoid every existing question listed above.`, true); pool = pool.concat(validate(extractJson(rescue.response.text()), recent.concat(pool.map(q => q.question)), desiredPool - pool.length)); } catch {} }
+  if (pool.length) storageSet(poolKey, pool.slice(0, MAX_POOL), QUIZ_TTL); const finalEligible = shuffle(pool.filter(q => !recent.some(r => similar(r, q.question)))); if (finalEligible.length >= target) return finalEligible.slice(0, target); throw new Error(`EDUWILLS could prepare only ${finalEligible.length} of ${target} questions. Please try again.`);
 }
 
-export async function explainFailure(book: string, question: string, learnerAnswer: string, correctAnswer: string): Promise<string> {
-  const prompt = `Give a short study explanation for this wrong answer. Do not chat or ask follow-up questions. Book: ${book}. Question: ${question}. Learner answer: ${learnerAnswer}. Correct answer: ${correctAnswer}. Include the key reasoning and one memory tip.`;
-  try {
-    const r = await withTimeout(fallbackModel.generateContent(prompt), 15000);
-    return r.response.text().trim();
-  } catch {
-    try {
-      const r = await withTimeout(model.generateContent(prompt), 15000);
-      return r.response.text().trim();
-    } catch {
-      const r = await withTimeout(groundedModel.generateContent(prompt), 15000);
-      return r.response.text().trim();
-    }
-  }
-}
+export async function explainFailure(book: string, question: string, learnerAnswer: string, correctAnswer: string): Promise<string> { const key = cacheKey('explanation', { book, question, learnerAnswer, correctAnswer }); const cached = storageGet<string>(key); if (cached) return cached; const prompt = `Give a short study explanation for this wrong answer. Book: ${book}. Question: ${question}. Learner answer: ${learnerAnswer}. Correct answer: ${correctAnswer}. Include the key reasoning and one memory tip.`; try { const r = await withTimeout(fallbackModel.generateContent(prompt), 15000); const text = r.response.text().trim(); storageSet(key, text, QUIZ_TTL); return text; } catch { const r = await withTimeout(model.generateContent(prompt), 15000); const text = r.response.text().trim(); storageSet(key, text, QUIZ_TTL); return text; } }
