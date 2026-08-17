@@ -15,11 +15,13 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ vars.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
+  NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ vars.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY || secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,8 +37,8 @@ jobs:
       - name: Verify App Check configuration
         run: |
           if [ -z "$NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY" ]; then
-            echo "ERROR: NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY is not configured in GitHub Actions Variables."
-            echo "Add the reCAPTCHA Enterprise site key under Settings > Secrets and variables > Actions > Variables."
+            echo "ERROR: NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY is not available to this workflow."
+            echo "Add it under Settings > Secrets and variables > Actions > Variables, or under the github-pages environment Variables."
             exit 1
           fi
           echo "Firebase App Check site key is configured."
