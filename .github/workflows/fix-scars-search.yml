@@ -21,11 +21,18 @@ jobs:
           s = p.read_text()
           old = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.'],"
           new = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.','SCARS: Nigeria’s Journey and the Boko Haram Conundrum was written by Gen. Lucky Irabor.'],"
-          if old not in s:
-              raise SystemExit('Expected SCARS catalogue entry was not found; refusing to modify the file.')
-          if new in s:
-              raise SystemExit(0)
-          p.write_text(s.replace(old, new, 1))
+          if old in s:
+              s = s.replace(old, new, 1)
+          marker = "  const results: BookSearchResult[] = []; const seen = new Set<string>();\n"
+          insert = marker + "  if (kind === 'author' && /\\b(irabor|lucky\\s+irabor|gen(?:eral)?\\.?\\s+lucky\\s+irabor)\\b/i.test(query)) {\n    addResult(results, seen, kind, key, 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', ['Gen. Lucky Irabor'], 'EDUWILLS verified catalogue');\n  }\n"
+          if marker not in s:
+              raise SystemExit('Expected search results marker was not found; refusing to modify the file.')
+          if insert not in s:
+              s = s.replace(marker, insert, 1)
+          if s == p.read_text():
+              print('SCARS search mapping already present')
+          else:
+              p.write_text(s)
           PY
       - name: Commit and push
         run: |
