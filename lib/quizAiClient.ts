@@ -1,25 +1,27 @@
 import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from 'firebase/ai';
-import app from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import app, { db } from '@/lib/firebase';
 
 export type QuizBook = { title: string; author: string };
-export type QuizQuestion = { question: string; options: string[]; answer: number; explanation?: string };
+export type QuizQuestion = { question: string; options: string[]; answer: number; explanation?: string; evidence?: string };
 export type BookSearchResult = { title: string; authors: string[]; source: string };
 
 const ai = getAI(app, { backend: new GoogleAIBackend() });
-const questionSchema = Schema.object({ properties: { questions: Schema.array({ items: Schema.object({ properties: { question: Schema.string(), options: Schema.array({ items: Schema.string() }), answer: Schema.integer() } }) }) } });
-const model = getGenerativeModel(ai, { model: 'gemini-3.6-flash', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.65, maxOutputTokens: 8192 } });
-const fallbackModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.65, maxOutputTokens: 4096 } });
-const groundedModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.65, maxOutputTokens: 4096 }, tools: [{ googleSearch: {} }] });
+const questionSchema = Schema.object({ properties: { questions: Schema.array({ items: Schema.object({ properties: { question: Schema.string(), options: Schema.array({ items: Schema.string() }), answer: Schema.integer(), evidence: Schema.string() } }) }) } });
+const model = getGenerativeModel(ai, { model: 'gemini-3.6-flash', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.45, maxOutputTokens: 8192 } });
+const fallbackModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.45, maxOutputTokens: 4096 } });
+const groundedModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { responseMimeType: 'application/json', responseSchema: questionSchema, temperature: 0.45, maxOutputTokens: 4096 }, tools: [{ googleSearch: {} }] });
 const remarksModel = getGenerativeModel(ai, { model: 'gemini-3.5-flash-lite', generationConfig: { temperature: 0.45, maxOutputTokens: 220 } });
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const RESEARCH_TTL = 24 * 60 * 60 * 1000;
 const QUIZ_TTL = 7 * 24 * 60 * 60 * 1000;
 const SEARCH_TTL = 6 * 60 * 60 * 1000;
 const REMARKS_TTL = 7 * 24 * 60 * 60 * 1000;
-const MAX_POOL = 40;
+const MAX_POOL = 80;
+const SHARED_POOL_LIMIT = 80;
 const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-const fingerprint = (s: string) => normalize(s).replace(/\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according|statement|following)\b/g, '').replace(/\s+/g, ' ').trim();
+const fingerprint = (s: string) => normalize(s).replace(/\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according|statement|following|describe|identify|explain)\b/g, '').replace(/\s+/g, ' ').trim();
 const similar = (a: string, b: string) => { const x = new Set(fingerprint(a).split(' ').filter(Boolean)); const y = new Set(fingerprint(b).split(' ').filter(Boolean)); if (!x.size || !y.size) return false; const hit = [...x].filter(v => y.has(v)).length; return hit / Math.max(1, Math.min(x.size, y.size)) >= 0.84; };
 const curated: Record<string, string[]> = {
   'the lekki headmaster': ['The Lekki Headmaster was written by Kabir Alabi Garba.','The story follows Bepo Adewale, a dedicated headmaster at Stardom Schools in Lekki, Lagos.','The novel explores education, integrity, service, migration pressure and the japa phenomenon.','Bepo faces pressure to relocate to the United Kingdom but remains committed to his students and school.','The novel was published by Winepress Publishing in 2023.','JAMB selected The Lekki Headmaster as the general reading text for the 2025 and 2026 UTME Use of English.'],
@@ -30,47 +32,105 @@ function storageGet<T>(key: string): T | null { if (typeof window === 'undefined
 function storageSet<T>(key: string, value: T, ttl: number) { if (typeof window === 'undefined') return; try { localStorage.setItem(key, JSON.stringify({ expiresAt: Date.now() + ttl, value })); } catch {} }
 function cacheKey(prefix: string, value: unknown) { return `eduwills:${CACHE_VERSION}:${prefix}:${normalize(JSON.stringify(value))}`; }
 async function withTimeout<T>(promise: Promise<T>, ms = 30000): Promise<T> { return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Firebase AI Logic request timed out after ${Math.round(ms / 1000)} seconds.`)), ms))]); }
-async function json(url: string, ms = 4500): Promise<any> { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), ms); try { const response = await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' }, signal: controller.signal }); if (!response.ok) throw new Error(String(response.status)); return response.json(); } finally { clearTimeout(timer); } }
+async function json(url: string, ms = 3500): Promise<any> { const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), ms); try { const response = await fetch(url, { cache: 'force-cache', headers: { Accept: 'application/json' }, signal: controller.signal }); if (!response.ok) throw new Error(String(response.status)); return response.json(); } finally { clearTimeout(timer); } }
 function extractJson(text: string): any { const cleaned = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim(); try { return JSON.parse(cleaned); } catch {} const start = cleaned.indexOf('{'), end = cleaned.lastIndexOf('}'); if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1)); throw new Error('Gemini returned an unreadable question response.'); }
 
-export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
-  const query = value.trim(); if (!query) return []; const key = normalize(query); const cached = storageGet<BookSearchResult[]>(cacheKey('search', { kind, key })); if (cached) return cached;
-  const results: BookSearchResult[] = []; const seen = new Set<string>(); const add = (title: string, authors: string[], source: string) => { const t = String(title || '').trim(); const a = [...new Set((authors || []).map(String).map(x => x.trim()).filter(Boolean))]; if (!t || !a.length) return; if (kind === 'author' && !a.some(x => normalize(x).includes(key) || key.includes(normalize(x)))) return; const id = normalize(t) + '|' + a.map(normalize).sort().join(','); if (seen.has(id)) return; seen.add(id); results.push({ title: t, authors: a, source }); };
-  for (const [title, facts] of Object.entries(curated)) if (title.includes(key) || key.includes(title)) { const authors = facts.flatMap(x => { const m = x.match(/(?:written by|by)\s+(.+?)\.?$/i); return m ? [m[1].trim()] : []; }); if (authors.length) add(title, authors, 'EDUWILLS catalogue'); }
-  const t = encodeURIComponent(query);
-  const endpoints = kind === 'title'
-    ? [['Open Library', `https://openlibrary.org/search.json?title=${t}&limit=60`], ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`], ['Internet Archive', `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&fl[]=description&rows=50&page=1&output=json`], ['Library of Congress', `https://www.loc.gov/books/?q=${t}&fo=json&c=40`]]
-    : [['Open Library', `https://openlibrary.org/search.json?author=${t}&limit=60`], ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`], ['Library of Congress', `https://www.loc.gov/books/?q=${t}&fo=json&c=40`]];
-  const responses = await Promise.allSettled(endpoints.map(([source, url]) => json(url).then(data => ({ source, data }))));
-  for (const r of responses) if (r.status === 'fulfilled') { const { source, data } = r.value; for (const x of data.docs || []) add(x.title, x.author_name || [], source); for (const x of data.items || []) add(x.volumeInfo?.title, x.volumeInfo?.authors || [], source); for (const x of data.response?.docs || []) add(x.title || x.heading, Array.isArray(x.creator) ? x.creator : x.creator ? [x.creator] : [], source); for (const x of data.results || []) add(x.title || x.item?.title, Array.isArray(x.contributor) ? x.contributor : x.contributor ? [x.contributor] : [], source); }
-  const final = results.slice(0, 120); storageSet(cacheKey('search', { kind, key }), final, SEARCH_TTL); return final;
+function addResult(results: BookSearchResult[], seen: Set<string>, kind: 'title'|'author', key: string, title: any, authors: any, source: string) {
+  const t = String(title || '').trim();
+  const a = [...new Set((Array.isArray(authors) ? authors : authors ? [authors] : []).map(String).map(x => x.trim()).filter(Boolean))];
+  if (!t || !a.length) return;
+  if (kind === 'author' && !a.some(x => normalize(x).includes(key) || key.includes(normalize(x)))) return;
+  if (kind === 'title' && !normalize(t).includes(key) && !key.includes(normalize(t))) return;
+  const id = normalize(t) + '|' + a.map(normalize).sort().join(',');
+  if (seen.has(id)) return;
+  seen.add(id); results.push({ title: t, authors: a, source });
 }
+
+export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
+  const query = value.trim(); if (!query) return [];
+  const key = normalize(query); const cache = storageGet<BookSearchResult[]>(cacheKey('search', { kind, key })); if (cache) return cache;
+  const results: BookSearchResult[] = []; const seen = new Set<string>();
+  for (const [title, facts] of Object.entries(curated)) if (title.includes(key) || key.includes(title)) {
+    const authors = facts.flatMap(x => { const m = x.match(/(?:written by|by)\s+(.+?)\.?$/i); return m ? [m[1].trim()] : []; });
+    addResult(results, seen, kind, key, title, authors, 'EDUWILLS catalogue');
+  }
+  const t = encodeURIComponent(query);
+  const endpoints: [string,string][] = kind === 'title' ? [
+    ['Open Library', `https://openlibrary.org/search.json?title=${t}&limit=80&fields=title,author_name,first_publish_year,key`],
+    ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`],
+    ['Internet Archive', `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=60&page=1&output=json`],
+    ['Library of Congress', `https://www.loc.gov/books/?q=${t}&fo=json&c=50`],
+    ['Open Library catalogue', `https://openlibrary.org/search.json?q=${t}&limit=60&fields=title,author_name,first_publish_year,key`]
+  ] : [
+    ['Open Library', `https://openlibrary.org/search.json?author=${t}&limit=80&fields=title,author_name,first_publish_year,key`],
+    ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`],
+    ['Library of Congress', `https://www.loc.gov/books/?q=${t}&fo=json&c=50`],
+    ['Internet Archive', `https://archive.org/advancedsearch.php?q=creator:%28${t}%29&fl[]=title&fl[]=creator&rows=60&page=1&output=json`]
+  ];
+  const responses = await Promise.allSettled(endpoints.map(([source,url]) => json(url).then(data => ({source,data}))));
+  for (const r of responses) if (r.status === 'fulfilled') {
+    const {source,data}=r.value;
+    for (const x of data.docs || []) addResult(results,seen,kind,key,x.title,x.author_name,source);
+    for (const x of data.items || []) addResult(results,seen,kind,key,x.volumeInfo?.title,x.volumeInfo?.authors,source);
+    for (const x of data.response?.docs || []) addResult(results,seen,kind,key,x.title || x.heading,x.creator || x.contributor,source);
+  }
+  const final=results.slice(0,160); storageSet(cacheKey('search',{kind,key}),final,SEARCH_TTL); return final;
+}
+
+function pushUnique(chunks: string[], text: string) { const s=String(text||'').replace(/\s+/g,' ').trim(); if(s && s.length>20 && !chunks.some(x=>normalize(x)===normalize(s))) chunks.push(s); }
+function sourceMatchesBook(text: string, book: QuizBook) { const n=normalize(text); const title=normalize(book.title); const author=normalize(book.author); const titleWords=title.split(' ').filter(w=>w.length>3); const hits=titleWords.filter(w=>n.includes(w)).length; return hits>=Math.max(1,Math.ceil(titleWords.length*0.45)) || n.includes(author); }
 
 export async function researchBooks(books: QuizBook[]): Promise<string> {
-  const normalizedBooks = books.map(b => ({ title: b.title.trim(), author: b.author.trim() })); const key = cacheKey('research', normalizedBooks); const cached = storageGet<string>(key); if (cached) return cached;
-  const chunks: string[] = []; for (const book of books) chunks.push(...(curated[normalize(book.title)] || []));
-  const requests = books.flatMap(book => { const t = encodeURIComponent(book.title), a = encodeURIComponent(book.author); return [json(`https://www.googleapis.com/books/v1/volumes?q=intitle:${t}+inauthor:${a}&maxResults=20`), json(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=30`), json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(book.title.replace(/ /g, '_'))}`), json(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(book.title + ' ' + book.author)}&language=en&format=json&limit=5&origin=*`), json(`https://archive.org/advancedsearch.php?q=title:%28${t}%29+AND+creator:%28${a}%29&fl[]=title&fl[]=creator&fl[]=description&rows=20&page=1&output=json`), json(`https://www.loc.gov/books/?q=${t}&fo=json&c=20`)]; });
-  const results = await Promise.allSettled(requests); for (const result of results) if (result.status === 'fulfilled') { const data = result.value; for (const item of data.items || []) { const v = item.volumeInfo || {}; if (v.description) chunks.push(`Google Books: ${v.description}`); if (v.categories) chunks.push(`Categories: ${v.categories.join(', ')}`); if (v.publishedDate) chunks.push(`Publication: ${v.publishedDate}; publisher: ${v.publisher || 'unknown'}.`); } for (const item of data.docs || []) { if (item.first_sentence) chunks.push(`Open Library: ${(item.first_sentence || []).join(' ')}`); if (item.subject) chunks.push(`Subjects: ${(item.subject || []).slice(0, 60).join(', ')}`); if (item.description) chunks.push(`Open Library description: ${item.description}`); } for (const item of data.response?.docs || []) if (item.description || item.creator) chunks.push(`Internet Archive: ${item.description || ''} Creator: ${item.creator || ''}`); if (data.extract) chunks.push(`Wikipedia: ${data.extract}`); for (const item of Object.values(data.query?.pages || {}) as any[]) if (item.extract) chunks.push(`Wikipedia: ${item.extract}`); for (const item of data.search || []) if (item.description || item.aliases) chunks.push(`Wikidata: ${item.description || ''} ${item.aliases?.join(', ') || ''}`); for (const item of data.results || []) if (item.description || item.title) chunks.push(`Library of Congress: ${item.title || ''} ${item.description || ''}`); }
-  const research = [...new Set(chunks.map(x => String(x).trim()).filter(Boolean))].join('\n').slice(0, 90000); storageSet(key, research, RESEARCH_TTL); return research;
+  const normalizedBooks=books.map(b=>({title:b.title.trim(),author:b.author.trim()})); const key=cacheKey('research',normalizedBooks); const cached=storageGet<string>(key); if(cached)return cached;
+  const chunks:string[]=[];
+  for(const book of books) for(const fact of curated[normalize(book.title)]||[]) pushUnique(chunks,`EDUWILLS verified catalogue: ${fact}`);
+  const requests=books.flatMap(book=>{const t=encodeURIComponent(book.title),a=encodeURIComponent(book.author); return [
+    json(`https://www.googleapis.com/books/v1/volumes?q=intitle:${t}+inauthor:${a}&maxResults=20`),
+    json(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=40&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`),
+    json(`https://openlibrary.org/search.json?q=${encodeURIComponent(`${book.title} ${book.author}`)}&limit=30&fields=title,author_name,first_sentence,subject,description`),
+    json(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(book.title.replace(/ /g,'_'))}`),
+    json(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(book.title+' '+book.author)}&language=en&format=json&limit=8&origin=*`),
+    json(`https://archive.org/advancedsearch.php?q=title:%28${t}%29+AND+creator:%28${a}%29&fl[]=title&fl[]=creator&fl[]=description&fl[]=subject&rows=30&page=1&output=json`),
+    json(`https://www.loc.gov/books/?q=${t}&fo=json&c=30`),
+    json(`https://gutendex.com/books/?search=${encodeURIComponent(book.title+' '+book.author)}`)
+  ].map(p=>p.then(data=>({book,data})))});
+  const results=await Promise.allSettled(requests);
+  for(const result of results) if(result.status==='fulfilled'){
+    const {book,data}=result.value;
+    for(const item of data.items||[]){const v=item.volumeInfo||{};if(!v.title||!sourceMatchesBook(`${v.title} ${(v.authors||[]).join(' ')}`,book))continue;if(v.description)pushUnique(chunks,`Google Books (${book.title}): ${v.description}`);if(v.categories)pushUnique(chunks,`Google Books categories: ${v.categories.join(', ')}`);if(v.publishedDate)pushUnique(chunks,`Google Books publication: ${v.publishedDate}; publisher: ${v.publisher||'unknown'}.`);}
+    for(const item of data.docs||[]){const identity=`${item.title||''} ${(item.author_name||[]).join(' ')}`;if(!sourceMatchesBook(identity,book))continue;if(item.first_sentence)pushUnique(chunks,`Open Library first sentence: ${(item.first_sentence||[]).join(' ')}`);if(item.subject)pushUnique(chunks,`Open Library subjects: ${(item.subject||[]).slice(0,80).join(', ')}`);if(item.description)pushUnique(chunks,`Open Library description: ${typeof item.description==='string'?item.description:JSON.stringify(item.description)}`);if(item.first_publish_year)pushUnique(chunks,`Open Library first publication year: ${item.first_publish_year}.`);}
+    if(data.extract&&sourceMatchesBook(`${data.title||''} ${data.extract||''}`,book))pushUnique(chunks,`Wikipedia: ${data.extract}`);
+    for(const item of Object.values(data.query?.pages||{}) as any[]) if(item.extract&&sourceMatchesBook(`${item.title||''} ${item.extract||''}`,book))pushUnique(chunks,`Wikipedia: ${item.extract}`);
+    for(const item of data.search||[]) if(item.description||item.aliases)pushUnique(chunks,`Wikidata: ${item.description||''} ${(item.aliases||[]).join(', ')}`);
+    for(const item of data.results||[]) if(item.description||item.subject)pushUnique(chunks,`Internet Archive: ${item.description||''} Subjects: ${(item.subject||[]).join(', ')}`);
+    for(const item of data.results||[]) if(item.title||item.description)pushUnique(chunks,`Library of Congress: ${item.title||''} ${item.description||''}`);
+  }
+  const research=[...new Set(chunks)].join('\n').slice(0,100000); storageSet(key,research,RESEARCH_TTL); return research;
 }
 
-function validate(raw: any, previous: string[], target: number): QuizQuestion[] { const list = Array.isArray(raw?.questions) ? raw.questions : []; const recent = new Set(previous.map(fingerprint).filter(Boolean)); const out: QuizQuestion[] = []; for (const item of list) { const q = String(item?.question || '').trim(); const options = Array.isArray(item?.options) ? item.options.map((x: any) => String(x).trim()).filter(Boolean).slice(0, 4) : []; const answer = Number(item?.answer); if (!q || options.length !== 4 || new Set(options.map(normalize)).size !== 4 || !Number.isInteger(answer) || answer < 0 || answer > 3) continue; if (recent.has(fingerprint(q)) || out.some(x => similar(x.question, q))) continue; out.push({ question: q, options, answer }); if (out.length >= target) break; } return out; }
-async function generateBatch(prompt: string, allowGrounding = false): Promise<any> { try { return await withTimeout(model.generateContent(prompt), 30000); } catch (firstError) { try { return await withTimeout(fallbackModel.generateContent(prompt), 30000); } catch (secondError) { if (allowGrounding) { try { return await withTimeout(groundedModel.generateContent(prompt), 30000); } catch {} } throw secondError || firstError; } } }
-function shuffle<T>(items: T[]): T[] { const a = [...items]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function validate(raw:any, previous:string[], target:number):QuizQuestion[]{const list=Array.isArray(raw?.questions)?raw.questions:[];const recent=new Set(previous.map(fingerprint).filter(Boolean));const out:QuizQuestion[]=[];for(const item of list){const q=String(item?.question||'').trim();const options=Array.isArray(item?.options)?item.options.map((x:any)=>String(x).trim()).filter(Boolean).slice(0,4):[];const answer=Number(item?.answer);const evidence=String(item?.evidence||'').trim();if(!q||options.length!==4||new Set(options.map(normalize)).size!==4||!Number.isInteger(answer)||answer<0||answer>3||evidence.length<20)continue;if(recent.has(fingerprint(q))||out.some(x=>similar(x.question,q)))continue;out.push({question:q,options,answer,evidence});if(out.length>=target)break;}return out;}
+async function generateBatch(prompt:string,allowGrounding=false):Promise<any>{try{return await withTimeout(model.generateContent(prompt),30000)}catch(firstError){try{return await withTimeout(fallbackModel.generateContent(prompt),30000)}catch(secondError){if(allowGrounding){try{return await withTimeout(groundedModel.generateContent(prompt),30000)}catch{}}throw secondError||firstError}}}
+function shuffle<T>(items:T[]):T[]{const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+async function loadSharedPool(poolId:string):Promise<QuizQuestion[]>{try{const snap=await getDoc(doc(db,'quizQuestionPools',poolId));const d=snap.data();return Array.isArray(d?.questions)?d.questions.slice(0,SHARED_POOL_LIMIT):[]}catch{return []}}
+async function saveSharedPool(poolId:string,questions:QuizQuestion[]):Promise<void>{try{await setDoc(doc(db,'quizQuestionPools',poolId),{questions:questions.slice(0,SHARED_POOL_LIMIT),updatedAt:Date.now(),version:CACHE_VERSION},{merge:true})}catch{}}
 
-export async function generateQuiz(books: QuizBook[], count: number, difficulty: string, instructions: string, previous: string[], research: string): Promise<QuizQuestion[]> {
-  const target = Math.min(100, Math.max(1, count)); const poolKey = cacheKey('quiz-pool', { books: books.map(b => ({ title: normalize(b.title), author: normalize(b.author) })), difficulty, instructions: normalize(instructions) }); const cachedPool = storageGet<QuizQuestion[]>(poolKey) || []; const recent = previous.slice(-80); const eligible = shuffle(cachedPool.filter(q => !recent.some(r => similar(r, q.question)))); if (eligible.length >= target) return eligible.slice(0, target);
-  const desiredPool = Math.min(MAX_POOL, Math.max(target, target <= 20 ? 20 : target)); let pool = validate({ questions: cachedPool }, recent, desiredPool); const needed = desiredPool - pool.length; const batchSize = 6; const rounds = Math.ceil(needed / batchSize); const base = `You are EDUWILLS Book Intelligence AI. Generate up to ${batchSize} different multiple-choice questions for these exact books: ${books.map(b => `${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions ? `Learner instruction: ${instructions}.` : ''} Use the supplied research as the primary factual source. Verify the exact book and author. Never invent unsupported chapters, quotations, scenes, characters or events. Each question must have exactly four distinct options and one correct answer indexed 0-3. Vary question types across characters, events, chronology, themes, setting, cause/effect, vocabulary, literary devices, inference, author and publication facts only when supported. Do not repeat or closely paraphrase the existing questions. Return JSON only. Existing questions: ${pool.map(q => q.question).join(' | ') || 'none'}. Research:\n${research}`;
-  for (let cursor = 0; cursor < rounds && pool.length < desiredPool; cursor += 3) { const active = Math.min(3, rounds - cursor); const results = await Promise.allSettled(Array.from({ length: active }, (_, n) => generateBatch(`${base}\nBatch ${cursor + n + 1}. Make this batch meaningfully different from all existing questions.`))); for (const result of results) if (result.status === 'fulfilled') { try { pool = pool.concat(validate(extractJson(result.value.response.text()), recent.concat(pool.map(q => q.question)), desiredPool - pool.length)); } catch {} } }
-  if (pool.length < desiredPool) { try { const rescue = await generateBatch(`${base}\nGenerate ${Math.min(batchSize, desiredPool - pool.length)} additional questions. Avoid every existing question listed above.`, true); pool = pool.concat(validate(extractJson(rescue.response.text()), recent.concat(pool.map(q => q.question)), desiredPool - pool.length)); } catch {} }
-  if (pool.length) storageSet(poolKey, pool.slice(0, MAX_POOL), QUIZ_TTL); const finalEligible = shuffle(pool.filter(q => !recent.some(r => similar(r, q.question)))); if (finalEligible.length >= target) return finalEligible.slice(0, target); throw new Error(`EDUWILLS could prepare only ${finalEligible.length} of ${target} questions. Please try again.`);
+export async function generateQuiz(books:QuizBook[],count:number,difficulty:string,instructions:string,previous:string[],research:string):Promise<QuizQuestion[]>{
+  const target=Math.min(100,Math.max(1,count));const poolKey=cacheKey('quiz-pool',{books:books.map(b=>({title:normalize(b.title),author:normalize(b.author)})),difficulty,instructions:normalize(instructions)});const sharedId=normalize(JSON.stringify({books:books.map(b=>({title:b.title,author:b.author})),difficulty})).replace(/[^a-z0-9]+/g,'-').slice(0,180);
+  const [localPool,sharedPool]=await Promise.all([Promise.resolve(storageGet<QuizQuestion[]>(poolKey)||[]),loadSharedPool(sharedId)]);const cachedPool=[...sharedPool,...localPool];const recent=previous.slice(-80);let eligible=shuffle(cachedPool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target)return eligible.slice(0,target);
+  const desiredPool=Math.min(MAX_POOL,Math.max(target,target<=20?30:target));let pool=validate({questions:cachedPool},recent,desiredPool);const needed=desiredPool-pool.length;const batchSize=6;const rounds=Math.ceil(needed/batchSize);
+  const base=`You are EDUWILLS Book Intelligence AI, a careful academic quiz writer. Generate up to ${batchSize} original multiple-choice questions about these exact books: ${books.map(b=>`${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions?`Learner instruction: ${instructions}.`:''}
+
+Accuracy rules: use the supplied research as evidence, and prefer facts supported by multiple independent sources. Never invent chapters, quotations, characters, events, settings, dates or plot details. If a detail is not supported by the research, do not ask about it. Do not confuse similarly titled books or different editions. Questions must test the actual book, not a generic topic associated with it. Each question must have exactly four distinct plausible options, exactly one correct answer indexed 0-3, and an evidence field containing the specific research fact that supports the answer. Vary question types across plot/events, characters, chronology, themes, setting, cause/effect, literary devices, vocabulary, inference, author and publication facts only when supported. Avoid trivia unless it is clearly supported. Do not repeat or closely paraphrase any existing question.
+
+Existing questions: ${pool.map(q=>q.question).join(' | ')||'none'}
+
+Research dossier:\n${research}`;
+  for(let cursor=0;cursor<rounds&&pool.length<desiredPool;cursor+=3){const active=Math.min(3,rounds-cursor);const results=await Promise.allSettled(Array.from({length:active},(_,n)=>generateBatch(`${base}\nBatch ${cursor+n+1}: deliberately use different evidence and a different question style from the other batches.`)));for(const result of results)if(result.status==='fulfilled'){try{pool=pool.concat(validate(extractJson(result.value.response.text()),recent.concat(pool.map(q=>q.question)),desiredPool-pool.length))}catch{}}}
+  if(pool.length<desiredPool){try{const rescue=await generateBatch(`${base}\nRescue batch: generate ${Math.min(batchSize,desiredPool-pool.length)} additional questions using only evidence that is explicit in the dossier.`,true);pool=pool.concat(validate(extractJson(rescue.response.text()),recent.concat(pool.map(q=>q.question)),desiredPool-pool.length))}catch{}}
+  if(pool.length){const merged=shuffle([...pool,...sharedPool]).filter((q,i,a)=>a.findIndex(x=>fingerprint(x.question)===fingerprint(q.question))===i).slice(0,MAX_POOL);storageSet(poolKey,merged,QUIZ_TTL);await saveSharedPool(sharedId,merged)}
+  eligible=shuffle(pool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target)return eligible.slice(0,target);throw new Error(`EDUWILLS could prepare only ${eligible.length} of ${target} questions. Please try again.`);
 }
 
-export async function explainFailure(book: string, question: string, learnerAnswer: string, correctAnswer: string): Promise<string> { const key = cacheKey('explanation', { book, question, learnerAnswer, correctAnswer }); const cached = storageGet<string>(key); if (cached) return cached; const prompt = `Give a short study explanation for this wrong answer. Book: ${book}. Question: ${question}. Learner answer: ${learnerAnswer}. Correct answer: ${correctAnswer}. Include the key reasoning and one memory tip.`; try { const r = await withTimeout(fallbackModel.generateContent(prompt), 15000); const text = r.response.text().trim(); storageSet(key, text, QUIZ_TTL); return text; } catch { const r = await withTimeout(model.generateContent(prompt), 15000); const text = r.response.text().trim(); storageSet(key, text, QUIZ_TTL); return text; } }
+export async function explainFailure(book:string,question:string,learnerAnswer:string,correctAnswer:string):Promise<string>{const key=cacheKey('explanation',{book,question,learnerAnswer,correctAnswer});const cached=storageGet<string>(key);if(cached)return cached;const prompt=`Give a short study explanation for this wrong answer. Book: ${book}. Question: ${question}. Learner answer: ${learnerAnswer}. Correct answer: ${correctAnswer}. Include the key reasoning and one memory tip. Do not invent facts.`;try{const r=await withTimeout(fallbackModel.generateContent(prompt),15000);const text=r.response.text().trim();storageSet(key,text,QUIZ_TTL);return text}catch{const r=await withTimeout(model.generateContent(prompt),15000);const text=r.response.text().trim();storageSet(key,text,QUIZ_TTL);return text}}
 
-export async function generateRemarks(books: QuizBook[], score: number, total: number, percentage: number, difficulty: string, elapsedSeconds: number): Promise<string> {
-  const key = cacheKey('remarks', { books, score, total, percentage, difficulty }); const cached = storageGet<string>(key); if (cached) return cached;
-  const level = percentage >= 80 ? 'strong' : percentage >= 60 ? 'developing' : 'needs improvement';
-  const prompt = `You are EDUWILLS academic feedback assistant. Give the learner a short, warm, specific test-overview remark in 2-3 sentences. Result: ${score}/${total} (${percentage}%). Difficulty: ${difficulty}. Performance level: ${level}. Books: ${books.map(b => `${b.title} by ${b.author}`).join('; ')}. Time used: ${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s. Do not invent details about the learner's answers or the books. Mention one clear strength or improvement point and one practical next step. Do not use headings, bullets, markdown, or emojis.`;
-  try { const r = await withTimeout(remarksModel.generateContent(prompt), 12000); const text = r.response.text().trim(); if (!text) throw new Error('Empty AI remark'); storageSet(key, text, REMARKS_TTL); return text; } catch { const text = percentage >= 80 ? 'Excellent work. Your result shows strong understanding; keep practising with harder questions to deepen your mastery.' : percentage >= 60 ? 'Good progress. Review the questions you missed and retake a similar quiz to strengthen the areas that need more practice.' : 'Keep going. Review the book carefully, revisit the questions you missed, and try another quiz to build stronger recall and understanding.'; storageSet(key, text, REMARKS_TTL); return text; }
-}
+export async function generateRemarks(books:QuizBook[],score:number,total:number,percentage:number,difficulty:string,elapsedSeconds:number):Promise<string>{const key=cacheKey('remarks',{books,score,total,percentage,difficulty});const cached=storageGet<string>(key);if(cached)return cached;const level=percentage>=80?'strong':percentage>=60?'developing':'needs improvement';const prompt=`You are EDUWILLS academic feedback assistant. Give the learner a short, warm, specific test-overview remark in 2-3 sentences. Result: ${score}/${total} (${percentage}%). Difficulty: ${difficulty}. Performance level: ${level}. Books: ${books.map(b=>`${b.title} by ${b.author}`).join('; ')}. Time used: ${Math.floor(elapsedSeconds/60)}m ${elapsedSeconds%60}s. Do not invent details about the learner's answers or the books. Mention one clear strength or improvement point and one practical next step. Do not use headings, bullets, markdown, or emojis.`;try{const r=await withTimeout(remarksModel.generateContent(prompt),12000);const text=r.response.text().trim();if(!text)throw new Error('Empty AI remark');storageSet(key,text,REMARKS_TTL);return text}catch{const text=percentage>=80?'Excellent work. Your result shows strong understanding; keep practising with harder questions to deepen your mastery.':percentage>=60?'Good progress. Review the questions you missed and retake a similar quiz to strengthen the areas that need more practice.':'Keep going. Review the book carefully, revisit the questions you missed, and try another quiz to build stronger recall and understanding.';storageSet(key,text,REMARKS_TTL);return text}}
