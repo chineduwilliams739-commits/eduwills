@@ -27,81 +27,56 @@ jobs:
 
           quiz = Path('lib/quizAiClient.ts')
           text = quiz.read_text(encoding='utf-8')
-
-          # 1) Lock the ambiguous Sanya title to the exact Oyin Olugbile novel.
-          text = text.replace(
-              "'sanya': ['Sànyà is a Nigerian literary work by Oyin Olugbile.'],",
-              "'sanya': [\n                'Sànyà (Sanya) is the 2022 debut novel by Nigerian author Oyin Olugbile, published by Masobe Books.',\n                'The exact book is a mythological fantasy / fiction retelling of Yoruba mythology, reimagining the story and legacy of Ṣàngó through a female protagonist named Sànyà.',\n                'Sànyà grows up in a village and has a beloved brother named Dada and an aunt named Abike.',\n                'Sànyà is connected to an ancient prophecy concerning her future, powers, warrior identity and leadership.',\n                'Ajoke and Aganju are Sànyà’s parents; the prophecy they receive concerns a mighty warrior and leader and they did not expect the foretold warrior king to be a girl.',\n                'Dada is Sànyà’s older brother; he is physically weak but highly intelligent and gifted with seeing into the future.',\n                'The novel includes dangerous love, family conflict, identity, ancestry, Òrìsà and a deadly war.',\n                'The exact book is not Sanya Bay, Sanya Island, a mountain, a place, or another work named Sanya.',\n                'Masobe Books identifies Sànyà as Oyin Olugbile’s debut novel, released on December 2, 2022, with 400 pages and ISBN 978-978-998-791-7.',\n                'The novel won the Nigeria Prize for Literature in 2025.'\n              ],"
-          )
-
-          # 2) Make the book-identity matcher strict for short/ambiguous titles.
+          text = text.replace("'sanya': ['Sànyà is a Nigerian literary work by Oyin Olugbile.'],", "'sanya': ['Sànyà (Sanya) is the 2022 debut novel by Nigerian author Oyin Olugbile, published by Masobe Books.','The exact book is a mythological fantasy / fiction retelling of Yoruba mythology, reimagining the story and legacy of Ṣàngó through a female protagonist named Sànyà.','Sànyà grows up in a village and has a beloved brother named Dada and an aunt named Abike.','Sànyà is connected to an ancient prophecy concerning her future, powers, warrior identity and leadership.','Ajoke and Aganju are Sànyà’s parents; the prophecy they receive concerns a mighty warrior and leader and they did not expect the foretold warrior king to be a girl.','Dada is Sànyà’s older brother; he is physically weak but highly intelligent and gifted with seeing into the future.','The novel includes dangerous love, family conflict, identity, ancestry, Òrìsà and a deadly war.','The exact book is not Sanya Bay, Sanya Island, a mountain, a place, or another work named Sanya.','Masobe Books identifies Sànyà as Oyin Olugbile’s debut novel, released on December 2, 2022, with 400 pages and ISBN 978-978-998-791-7.','The novel won the Nigeria Prize for Literature in 2025.'],")
           old = "function sourceMatchesBook(text:string,book:QuizBook){const n=normalize(text),title=normalize(book.title),author=normalize(book.author),titleWords=title.split(' ').filter(w=>w.length>3);const hits=titleWords.filter(w=>n.includes(w)).length;return hits>=Math.max(1,Math.ceil(titleWords.length*0.45))||n.includes(author)}"
-          new = "function sourceMatchesBook(text:string,book:QuizBook){const n=normalize(text),title=normalize(book.title),author=normalize(book.author);if(title==='sanya'){return n.includes('oyin olugbile')||n.includes('oyin olugbile')||((n.includes('sanya')||n.includes('sanya novel'))&&(n.includes('dada')||n.includes('ajoke')||n.includes('aganju')||n.includes('sango')||n.includes('yoruba')||n.includes('orisa')||n.includes('olugbile')))}const titleWords=title.split(' ').filter(w=>w.length>3);const hits=titleWords.filter(w=>n.includes(w)).length;return hits>=Math.max(1,Math.ceil(titleWords.length*0.45))||n.includes(author)}"
-          if old in text:
-              text = text.replace(old, new)
-          else:
-              raise SystemExit('Expected sourceMatchesBook implementation not found')
-
-          # 3) Explicitly disambiguate Sanya in Gemini's research prompt.
-          needle = "Research the exact book \"${book.title}\" by ${book.author} for an academic quiz. Use Google Search grounding and distinguish this exact book from similarly named works."
-          replacement = "Research the exact book \"${book.title}\" by ${book.author} for an academic quiz. Use Google Search grounding and distinguish this exact book from similarly named works. If the book is Sànyà/Sanya by Oyin Olugbile, ONLY research the 2022 Masobe Books novel by Oyin Olugbile; completely ignore Sanya Mountain, Sanya Bay, Sanya Island, locations, travel pages, weather, geography, hotels, and every other unrelated Sanya."
-          if needle in text:
-              text = text.replace(needle, replacement)
-          else:
-              raise SystemExit('Expected research prompt not found')
-
-          # 4) Bump cache version so old Sanya research/question caches cannot survive.
-          text = text.replace("const CACHE_VERSION = 'v7-direct-content-engine';", "const CACHE_VERSION = 'v8-exact-book-identity-and-content';")
-
-          # 5) Strip Markdown/code fences from AI explanation/remarks before returning them.
-          old_exp = "const r=await withTimeout(fallbackModel.generateContent(prompt),15000),text=r.response.text().trim();storageSet(key,text,QUIZ_TTL);return text"
-          new_exp = "const r=await withTimeout(fallbackModel.generateContent(prompt),15000),text=cleanAiText(r.response.text());storageSet(key,text,QUIZ_TTL);return text"
-          text = text.replace(old_exp, new_exp)
-          old_exp2 = "const r=await withTimeout(model.generateContent(prompt),15000),text=r.response.text().trim();storageSet(key,text,QUIZ_TTL);return text"
-          new_exp2 = "const r=await withTimeout(model.generateContent(prompt),15000),text=cleanAiText(r.response.text());storageSet(key,text,QUIZ_TTL);return text"
-          text = text.replace(old_exp2, new_exp2)
-          old_rem = "const r=await withTimeout(remarksModel.generateContent(prompt),12000),text=r.response.text().trim();if(!text)throw new Error('Empty AI remark');"
-          new_rem = "const r=await withTimeout(remarksModel.generateContent(prompt),12000),text=cleanAiText(r.response.text());if(!text)throw new Error('Empty AI remark');"
-          text = text.replace(old_rem, new_rem)
-          marker = "function extractJson(text: string): any {"
-          cleaner = "function cleanAiText(value:string):string{return String(value||'').replace(/```(?:markdown|md|text|plain)?/gi,'').replace(/```/g,'').replace(/^\\s*[#>*-]+\\s?/gm,'').replace(/\\*\\*(.*?)\\*\\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/`([^`]+)`/g,'$1').replace(/\\s+\\n/g,'\\n').replace(/\\n{3,}/g,'\\n\\n').trim()}\\n"
-          if cleaner.strip() not in text:
+          new = "function sourceMatchesBook(text:string,book:QuizBook){const n=normalize(text),title=normalize(book.title),author=normalize(book.author);if(title==='sanya'){return n.includes('oyin olugbile')||((n.includes('sanya')||n.includes('sanya novel'))&&(n.includes('dada')||n.includes('ajoke')||n.includes('aganju')||n.includes('sango')||n.includes('yoruba')||n.includes('orisa')||n.includes('olugbile')))}const titleWords=title.split(' ').filter(w=>w.length>3);const hits=titleWords.filter(w=>n.includes(w)).length;return hits>=Math.max(1,Math.ceil(titleWords.length*0.45))||n.includes(author)}"
+          if old not in text: raise SystemExit('sourceMatchesBook implementation not found')
+          text=text.replace(old,new)
+          needle="Research the exact book \"${book.title}\" by ${book.author} for an academic quiz. Use Google Search grounding and distinguish this exact book from similarly named works."
+          replacement="Research the exact book \"${book.title}\" by ${book.author} for an academic quiz. Use Google Search grounding and distinguish this exact book from similarly named works. If the book is Sànyà/Sanya by Oyin Olugbile, ONLY research the 2022 Masobe Books novel by Oyin Olugbile; completely ignore Sanya Mountain, Sanya Bay, Sanya Island, locations, travel pages, weather, geography, hotels, and every other unrelated Sanya."
+          if needle not in text: raise SystemExit('research prompt not found')
+          text=text.replace(needle,replacement)
+          text=text.replace("const CACHE_VERSION = 'v7-direct-content-engine';","const CACHE_VERSION = 'v8-exact-book-identity-and-content';")
+          cleaner="function cleanAiText(value:string):string{return String(value||'').replace(/```(?:markdown|md|text|plain)?/gi,'').replace(/```/g,'').replace(/^\\s*[#>*-]+\\s?/gm,'').replace(/\\*\\*(.*?)\\*\\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/`([^`]+)`/g,'$1').replace(/\\s+\\n/g,'\\n').replace(/\\n{3,}/g,'\\n\\n').trim()}\\n"
+          if 'function cleanAiText(value:string)' not in text:
+              marker='function extractJson(text: string): any {'
               if marker not in text: raise SystemExit('extractJson marker not found')
-              text = text.replace(marker, cleaner + marker, 1)
+              text=text.replace(marker,cleaner+marker,1)
+          text=text.replace("const r=await withTimeout(fallbackModel.generateContent(prompt),15000),text=r.response.text().trim();storageSet(key,text,QUIZ_TTL);return text","const r=await withTimeout(fallbackModel.generateContent(prompt),15000),text=cleanAiText(r.response.text());storageSet(key,text,QUIZ_TTL);return text")
+          text=text.replace("const r=await withTimeout(model.generateContent(prompt),15000),text=r.response.text().trim();storageSet(key,text,QUIZ_TTL);return text","const r=await withTimeout(model.generateContent(prompt),15000),text=cleanAiText(r.response.text());storageSet(key,text,QUIZ_TTL);return text")
+          text=text.replace("const r=await withTimeout(remarksModel.generateContent(prompt),12000),text=r.response.text().trim();if(!text)throw new Error('Empty AI remark');","const r=await withTimeout(remarksModel.generateContent(prompt),12000),text=cleanAiText(r.response.text());if(!text)throw new Error('Empty AI remark');")
+          quiz.write_text(text,encoding='utf-8')
 
-          quiz.write_text(text, encoding='utf-8')
-
-          # 6) Clean the visible History/Test Overview AI response too, because that page
-          # also calls the AI directly and can receive Markdown/code fences.
-          history = Path('app/dashboard/history/page.tsx')
-          h = history.read_text(encoding='utf-8')
-          hmarker = "const elapsedText=(n:any)=>{const s=Math.max(0,Number(n||0));return s>=60?`${Math.floor(s/60)}m ${s%60}s`:`${s}s`};"
-          hclean = "const cleanAiText=(value:any)=>String(value||'').replace(/```(?:markdown|md|text|plain)?/gi,'').replace(/```/g,'').replace(/^\\s*[#>*-]+\\s?/gm,'').replace(/\\*\\*(.*?)\\*\\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/`([^`]+)`/g,'$1').replace(/\\s+\\n/g,'\\n').replace(/\\n{3,}/g,'\\n\\n').trim();"
-          if hclean not in h:
+          history=Path('app/dashboard/history/page.tsx')
+          h=history.read_text(encoding='utf-8')
+          hmarker="const elapsedText=(n:any)=>{const s=Math.max(0,Number(n||0));return s>=60?`${Math.floor(s/60)}m ${s%60}s`:`${s}s`};"
+          hclean="const cleanAiText=(value:any)=>String(value||'').replace(/```(?:markdown|md|text|plain)?/gi,'').replace(/```/g,'').replace(/^\\s*[#>*-]+\\s?/gm,'').replace(/\\*\\*(.*?)\\*\\*/g,'$1').replace(/__(.*?)__/g,'$1').replace(/`([^`]+)`/g,'$1').replace(/\\s+\\n/g,'\\n').replace(/\\n{3,}/g,'\\n\\n').trim();"
+          if 'const cleanAiText=(value:any)' not in h:
               if hmarker not in h: raise SystemExit('history marker not found')
-              h = h.replace(hmarker, hmarker + hclean, 1)
-          h = h.replace("const text=(await res.text()).trim();setAiFeedback(text);", "const text=cleanAiText(await res.text());setAiFeedback(text);")
-          h = h.replace("const text=(await res.text()).trim();const next={...why,[key]:text};", "const text=cleanAiText(await res.text());const next={...why,[key]:text};")
-          h = h.replace("setAiFeedback(String(found?.aiFeedback||''));", "setAiFeedback(cleanAiText(found?.aiFeedback||''));")
-          h = h.replace("setAiFeedback(String(x.aiFeedback||''));", "setAiFeedback(cleanAiText(x.aiFeedback||''));")
-          history.write_text(h, encoding='utf-8')
+              h=h.replace(hmarker,hmarker+hclean,1)
+          h=h.replace("const text=(await res.text()).trim();setAiFeedback(text);","const text=cleanAiText(await res.text());setAiFeedback(text);")
+          h=h.replace("const text=(await res.text()).trim();const next={...why,[key]:text};","const text=cleanAiText(await res.text());const next={...why,[key]:text};")
+          h=h.replace("setAiFeedback(String(found?.aiFeedback||''));","setAiFeedback(cleanAiText(found?.aiFeedback||''));")
+          h=h.replace("setAiFeedback(String(x.aiFeedback||''));","setAiFeedback(cleanAiText(x.aiFeedback||''));")
+          history.write_text(h,encoding='utf-8')
+          print('Repair source patched.')
 
-          print('Patched exact Sanya identity, global quiz research, and AI feedback formatting.')
-
-      - name: Verify source contains the real fixes
+      - name: Verify
         run: |
           grep -q "The exact book is not Sanya Bay" lib/quizAiClient.ts
           grep -q "ONLY research the 2022 Masobe Books novel" lib/quizAiClient.ts
           grep -q "v8-exact-book-identity-and-content" lib/quizAiClient.ts
           grep -q "function cleanAiText" lib/quizAiClient.ts
           grep -q "const cleanAiText" app/dashboard/history/page.tsx
-          echo "Source verification passed."
+          echo "Verification passed."
 
       - name: Commit repaired source
         run: |
           git config user.name "eduwills-repair-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add lib/quizAiClient.ts app/dashboard/history/page.tsx
-          git diff --cached --quiet && echo "No changes needed." && exit 0
+          if git diff --cached --quiet; then echo "No changes needed."; exit 0; fi
           git commit -m "fix: disambiguate Sanya and clean AI feedback"
           git push origin main
+
+# trigger repair after workflow installation
