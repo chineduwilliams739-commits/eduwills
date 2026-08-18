@@ -6,11 +6,11 @@ let page = fs.readFileSync(pagePath, 'utf8');
 if (!page.includes('generationTicker')) {
   page = page.replace(
     "const [message,setMessage]=useState(''),[searching,setSearching]=useState(false),[busy,setBusy]=useState(false),[generationStatus,setGenerationStatus]=useState(''),[generationError,setGenerationError]=useState('');",
-    "const [message,setMessage]=useState(''),[searching,setSearching]=useState(false),[busy,setBusy]=useState(false),[generationStatus,setGenerationStatus]=useState(''),[generationError,setGenerationError]=useState('');\n const [generationTicker,setGenerationTicker]=useState(0);\n const generationMessages=[\n  'Reading your quiz instructions carefully…',\n  'Identifying the exact book and author…',\n  'Researching the book content…',\n  'Checking characters, events and important details…',\n  'Building your questions…',\n  'Checking every question against your instructions…',\n  'Removing duplicates and weak questions…',\n  'Finalising your quiz…'\n ];"
+    "const [message,setMessage]=useState(''),[searching,setSearching]=useState(false),[busy,setBusy]=useState(false),[generationStatus,setGenerationStatus]=useState(''),[generationError,setGenerationError]=useState('');\n const [generationTicker,setGenerationTicker]=useState(0);\n const generationMessages=['Reading your quiz instructions carefully…','Identifying the exact book and author…','Researching the book content…','Checking characters, events and important details…','Building your questions…','Checking every question against your instructions…','Removing duplicates and weak questions…','Finalising your quiz…'];"
   );
   page = page.replace(
     "useEffect(()=>{answersRef.current=answers},[answers]);",
-    "useEffect(()=>{answersRef.current=answers},[answers]);\n useEffect(()=>{if(!busy||setup||generationError){setGenerationTicker(0);return}const t=setInterval(()=>setGenerationTicker(v=>(v+1)%generationMessages.length),2200);return()=>clearInterval(t)},[busy,setup,generationError,generationMessages.length]);"
+    "useEffect(()=>{answersRef.current=answers},[answers]);\n useEffect(()=>{if(!busy||setup||generationError){setGenerationTicker(0);return}const t=setInterval(()=>setGenerationTicker(v=>(v+1)%generationMessages.length),2200);return()=>clearInterval(t)},[busy,setup,generationError]);"
   );
 }
 
@@ -24,28 +24,27 @@ fs.writeFileSync(pagePath, page);
 const libPath = 'lib/quizAiClient.ts';
 let lib = fs.readFileSync(libPath, 'utf8');
 
-if (!lib.includes('ThinkingLevel')) {
-  lib = lib.replace(
-    "import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from 'firebase/ai';",
-    "import { getAI, getGenerativeModel, GoogleAIBackend, Schema, ThinkingLevel } from 'firebase/ai';"
-  );
+if (!lib.includes("from 'firebase/auth'")) {
+  lib = lib.replace("import app from '@/lib/firebase';", "import app from '@/lib/firebase';\nimport { getAuth } from 'firebase/auth';");
 }
 
-const models = /\/\/ Gemini 3\.6 Flash[\s\S]*?const CACHE = '[^']+';/;
-const modelReplacement = `// Fast, purpose-specific Gemini models. Research returns plain text; quiz generation returns strict JSON.\nconst researchModel = getGenerativeModel(ai, {\n  model: 'gemini-3.6-flash',\n  generationConfig: {\n    temperature: 0.2,\n    maxOutputTokens: 5000,\n    thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },\n  },\n  tools: [{ googleSearch: {} }],\n});\nconst grounded = getGenerativeModel(ai, {\n  model: 'gemini-3.6-flash',\n  generationConfig: {\n    responseMimeType: 'application/json',\n    responseSchema: questionSchema,\n    temperature: 0.25,\n    maxOutputTokens: 7000,\n    thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },\n  },\n});\nconst fast = getGenerativeModel(ai, {\n  model: 'gemini-3.5-flash-lite',\n  generationConfig: {\n    responseMimeType: 'application/json',\n    responseSchema: questionSchema,\n    temperature: 0.2,\n    maxOutputTokens: 6500,\n    thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },\n  },\n});\nconst plain = getGenerativeModel(ai, {\n  model: 'gemini-3.6-flash',\n  generationConfig: { temperature: 0.2, maxOutputTokens: 700, thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } },\n});\nconst plainQuiz = fast;\n\nconst CACHE = 'v16-fast-functional-quiz';`;
-if (models.test(lib)) lib = lib.replace(models, modelReplacement);
-else throw new Error('Quiz model block not found');
+if (!lib.includes('EDUWILLS_MULTI_PROVIDER_ROUTER')) {
+  const marker = 'async function generateBatch(prompt: string): Promise<QuizQuestion[]> {';
+  const router = `async function EDUWILLS_MULTI_PROVIDER_ROUTER(prompt: string): Promise<QuizQuestion[]> {\n  const user = getAuth(app).currentUser;\n  if (!user) throw new Error('AI_AUTH_REQUIRED');\n  const token = await user.getIdToken();\n  const controller = new AbortController();\n  const timer = setTimeout(() => controller.abort(), 38000);\n  try {\n    const r = await fetch('https://us-central1-eduwills.cloudfunctions.net/quizAiRouter', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },\n      body: JSON.stringify({ prompt }),\n      signal: controller.signal,\n    });\n    if (!r.ok) throw new Error('AI_ROUTER_' + r.status);\n    const data = await r.json();\n    const questions = parseQuestions(String(data?.text || ''));\n    if (!questions.length) throw new Error('AI_ROUTER_EMPTY');\n    return questions;\n  } finally { clearTimeout(timer); }\n}\n\n`;
+  if (lib.includes(marker)) lib = lib.replace(marker, router + marker);
+}
 
-lib = lib.replace(/aiCall\(grounded, prompt, 65000\)/g, 'aiCall(researchModel, prompt, 18000)');
-lib = lib.replace(/aiCall\(fast, prompt, 50000\)/g, 'aiCall(researchModel, prompt, 10000)');
+if (!lib.includes('ROUTER_FIRST_GENERATION')) {
+  const old = `async function generateBatch(prompt: string): Promise<QuizQuestion[]> {\n  let last: any = null;\n  for (let attempt = 1; attempt <= 4; attempt++) {`;
+  const replacement = `async function generateBatch(prompt: string): Promise<QuizQuestion[]> {\n  let last: any = null;\n  // ROUTER_FIRST_GENERATION: Groq/OpenRouter first; Gemini is the final fallback.\n  try { return await EDUWILLS_MULTI_PROVIDER_ROUTER(prompt); } catch (e) { last = e; }\n  for (let attempt = 1; attempt <= 2; attempt++) {`;
+  if (lib.includes(old)) lib = lib.replace(old, replacement);
+}
 
-const batch = /async function generateBatch\(prompt: string\): Promise<QuizQuestion\[\]> \{[\s\S]*?\n\}\n\nexport async function generateQuiz/;
-const batchReplacement = `async function generateBatch(prompt: string): Promise<QuizQuestion[]> {\n  let last: any = null;\n  const attempts = [\n    [fast, 30000],\n    [fast, 30000],\n    [grounded, 30000],\n  ] as const;\n  for (let attempt = 0; attempt < attempts.length; attempt++) {\n    try {\n      const [model, timeout] = attempts[attempt];\n      const result = await aiCall(model, prompt, timeout);\n      const questions = parseQuestions(result.response.text());\n      if (questions.length) return questions;\n      last = new Error('Gemini returned no usable questions.');\n    } catch (e) {\n      last = e;\n      if (attempt < attempts.length - 1) await wait(200);\n    }\n  }\n  throw last || new Error('Unable to generate this quiz batch.');\n}\n\nexport async function generateQuiz`;
-if (!batch.test(lib)) throw new Error('generateBatch block not found');
-lib = lib.replace(batch, batchReplacement);
-lib = lib.replace('while (accepted.length < requested && failures < 12)', 'while (accepted.length < requested && failures < 6)');
-lib = lib.replace('const batchSize = Math.min(8, remaining);', 'const batchSize = Math.min(10, remaining);');
-lib = lib.replace('while (contentCount < targetContent && repairAttempts < 6)', 'while (contentCount < targetContent && repairAttempts < 2)');
+lib = lib.replace('attempt <= 2 ? 80000 : 60000', 'attempt <= 2 ? 30000 : 25000');
+lib = lib.replace('failures < 12', 'failures < 6');
+lib = lib.replace('Math.min(8, remaining)', 'Math.min(10, remaining)');
+lib = lib.replace('repairAttempts < 6', 'repairAttempts < 2');
+lib = lib.replace(/const CACHE = '[^']+';/, "const CACHE = 'v17-multiprovider-functional';");
+
 fs.writeFileSync(libPath, lib);
-
-console.log('EDUWILLS quiz runtime: fast research, low-thinking Gemini generation, bounded retries, rotating progress UI.');
+console.log('EDUWILLS quiz runtime: cache-first, secure Groq/OpenRouter router, bounded Gemini fallback, rotating progress UI.');
