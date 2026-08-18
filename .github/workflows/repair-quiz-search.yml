@@ -1,0 +1,141 @@
+name: Repair quiz content and book search
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch quiz AI and search logic
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('lib/quizAiClient.ts')
+          text = path.read_text(encoding='utf-8')
+
+          start = text.index("export async function searchBookAuthors")
+          end = text.index("function pushUnique", start)
+          search_fn = r'''export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
+            const query = value.trim();
+            if (!query) return [];
+            const key = normalize(query);
+            const cache = storageGet<BookSearchResult[]>(cacheKey('search', { kind, key }));
+            if (cache) return cache;
+            const results: BookSearchResult[] = [];
+            const seen = new Set<string>();
+
+            // Verified identity mappings for Nigerian books that are commonly missed by broad catalogues.
+            const verified: Array<{ title: string; authors: string[]; aliases: string[] }> = [
+              {
+                title: "SCARS: Nigeria's Journey and the Boko Haram Conundrum",
+                authors: ['Gen. Lucky Irabor'],
+                aliases: ['scars', 'scars nigeria', 'irabor', 'lucky irabor', 'gen lucky irabor', 'general lucky irabor', 'gen. lucky irabor']
+              },
+              {
+                title: 'Sànyà',
+                authors: ['Oyin Olugbile'],
+                aliases: ['sanya', 'sanya oyin olugbile', 'oyin olugbile']
+              }
+            ];
+            for (const item of verified) {
+              const matches = item.aliases.some(alias => key === normalize(alias) || key.includes(normalize(alias)) || normalize(alias).includes(key));
+              if (matches) addResult(results, seen, kind, key, item.title, item.authors, 'EDUWILLS verified catalogue');
+            }
+
+            // Also use the curated catalogue, but extract author facts from the complete entry rather than
+            // requiring the search phrase to be present in the title.
+            for (const [title, facts] of Object.entries(curated)) {
+              const authorMatches = facts.flatMap(x => {
+                const m = x.match(/(?:written by|by|associated with)\\s+(.+?)(?:\\.|$)/i);
+                return m ? [m[1].trim()] : [];
+              });
+              const titleMatch = title.includes(key) || key.includes(title);
+              const authorMatch = authorMatches.some(a => normalize(a).includes(key) || key.includes(normalize(a)));
+              if ((kind === 'title' && titleMatch) || (kind === 'author' && authorMatch)) {
+                addResult(results, seen, kind, key, title, authorMatches, 'EDUWILLS catalogue');
+              }
+            }
+
+            const t = encodeURIComponent(query);
+            const endpoints: [string,string][] = kind === 'title' ? [
+              ['Open Library', `https://openlibrary.org/search.json?title=${t}&limit=80&fields=title,author_name,first_publish_year,key`],
+              ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}&maxResults=40`],
+              ['Internet Archive', `https://archive.org/advancedsearch.php?q=title:%28${t}%29&fl[]=title&fl[]=creator&rows=60&page=1&output=json`],
+              ['Library of Congress', `https://www.loc.gov/books/?q=${t}&fo=json&c=50`]
+            ] : [
+              ['Open Library', `https://openlibrary.org/search.json?author=${t}&limit=80&fields=title,author_name,first_publish_year,key`],
+              ['Google Books', `https://www.googleapis.com/books/v1/volumes?q=inauthor:${t}&maxResults=40`],
+              ['Library of Congress', `https://www.loc.gov/books/?q=${t}&fo=json&c=50`],
+              ['Internet Archive', `https://archive.org/advancedsearch.php?q=creator:%28${t}%29&fl[]=title&fl[]=creator&rows=60&page=1&output=json`]
+            ];
+            const responses = await Promise.allSettled(endpoints.map(([source,url]) => json(url).then(data => ({source,data}))));
+            for (const r of responses) if (r.status === 'fulfilled') {
+              const {source,data}=r.value;
+              for (const x of data.docs || []) addResult(results,seen,kind,key,x.title,x.author_name,source);
+              for (const x of data.items || []) addResult(results,seen,kind,key,x.volumeInfo?.title,x.volumeInfo?.authors,source);
+              for (const x of data.response?.docs || []) addResult(results,seen,kind,key,x.title || x.heading,x.creator || x.contributor,source);
+            }
+            const final = results.slice(0,160);
+            storageSet(cacheKey('search',{kind,key}),final,SEARCH_TTL);
+            return final;
+          }
+
+          '''
+          text = text[:start] + search_fn + text[end:]
+
+          # Force a content-first question mix and make the short learner prompt a hard constraint.
+          base_pattern = re.compile(r"const base=`You are EDUWILLS Book Intelligence AI.*?\$\{research\}`;", re.S)
+          new_base = r'''const base=`You are EDUWILLS Book Intelligence AI, a careful academic quiz writer. Generate up to ${batchSize} original multiple-choice questions about these exact books: ${books.map(b=>`${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}. ${instructions?`Learner's short instruction (MANDATORY; every question must obey it): ${instructions}.`:''}
+
+Question composition is mandatory: at least 80% of the questions must test the CONTENT of the book itself — plot events, characters, relationships, motivations, conflicts, chronology, setting, themes, symbols, important details, consequences, and evidence-based literary inference. At most 20% may test the author's name, title, publication or other bibliographic facts. Never make a quiz that is mainly about the author or title.
+
+Accuracy rules: use the supplied research dossier as evidence and prefer facts supported by multiple independent sources. Never invent chapters, quotations, characters, events, settings, dates or plot details. Never substitute information about a similarly named book, place, person or topic. For ambiguous titles, the exact title AND author are the identity boundary. If the dossier does not contain enough reliable content evidence for a question, do not ask that question. Do not use generic knowledge about a topic as a substitute for the selected book.
+
+Learner instruction rules: interpret the short instruction as a hard constraint on question scope, emphasis, difficulty, or topic. If the instruction says to focus on a character, chapter, theme, event, section, or type of reasoning, prioritize that request throughout the generated batch.
+
+Question-quality rules: vary question forms and cover different parts of the book. Use plausible distractors that are also grounded in the book. Avoid trivia, vague wording, author-only questions, title-only questions, and repeated question patterns. Each question must have exactly four distinct options, exactly one correct answer indexed 0-3, and an evidence field containing the specific research fact supporting the answer. Do not repeat or closely paraphrase an existing question.
+
+Existing questions: ${pool.map(q=>q.question).join(' | ')||'none'}
+
+Research dossier:
+${research}`;'''
+          text2, n = base_pattern.subn(new_base, text, count=1)
+          if n != 1:
+              raise SystemExit('Could not locate quiz generation prompt; refusing unsafe edit.')
+          text = text2
+
+          # Bump cache version so old author-only/metadata-heavy quiz pools are not reused.
+          text = text.replace("const CACHE_VERSION = 'v5';", "const CACHE_VERSION = 'v6-content-first';", 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify repairs
+        run: |
+          grep -q "SCARS: Nigeria's Journey and the Boko Haram Conundrum" lib/quizAiClient.ts
+          grep -q "at least 80% of the questions must test the CONTENT" lib/quizAiClient.ts
+          grep -q "Learner's short instruction (MANDATORY" lib/quizAiClient.ts
+          grep -q "v6-content-first" lib/quizAiClient.ts
+
+      - name: Commit repairs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/quizAiClient.ts
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Fix book-content quiz generation and SCARS search"
+          git push origin HEAD:main
