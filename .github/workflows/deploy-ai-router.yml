@@ -2,6 +2,13 @@ name: Deploy EDUWILLS AI Router
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/deploy-ai-router.yml'
 
 permissions:
   contents: read
