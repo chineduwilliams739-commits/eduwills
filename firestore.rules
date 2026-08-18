@@ -3,8 +3,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    function isOwnerAdmin() { return signedIn() && request.auth.uid == 'A45uD8Cu27dI0y0iSWla4CZJBhn1'; }
     function isAdmin() {
-      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return signedIn() && (isOwnerAdmin() || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
     function currentUsername() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username;
@@ -12,7 +13,7 @@ service cloud.firestore {
 
     match /admins/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && (request.auth.uid == uid) && (isOwnerAdmin() || request.auth.uid == uid);
       allow update, delete: if isAdmin();
     }
     match /users/{uid} {
