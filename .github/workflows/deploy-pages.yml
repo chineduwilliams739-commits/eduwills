@@ -30,30 +30,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Verify application source
         run: |
+          set -e
           test -f app/dashboard/quiz/page.tsx
           test -f app/admin/page.tsx
           test -f lib/quizAiClient.ts
           test -f firestore.rules
-          grep -q "Gen. Lucky Irabor" lib/quizAiClient.ts
-          grep -q "Oyin Olugbile" lib/quizAiClient.ts
-          grep -q "CACHE='v11-diverse-content'" lib/quizAiClient.ts
-          grep -q "for(let attempt=1;attempt<=5;attempt++)" lib/quizAiClient.ts
-          grep -q "deleteDoc" app/admin/page.tsx
-          grep -q "allow delete: if isAdmin();" firestore.rules
+          grep -Fq "Gen. Lucky Irabor" lib/quizAiClient.ts
+          grep -Fq "Oyin Olugbile" lib/quizAiClient.ts
+          grep -Fq "CACHE='v11-diverse-content'" lib/quizAiClient.ts
+          grep -Fq "for(let attempt=1;attempt<=5;attempt++)" lib/quizAiClient.ts
+          grep -Fq "deleteDoc" app/admin/page.tsx
+          grep -Fq "allow delete: if isAdmin();" firestore.rules
           echo "Direct application changes verified."
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build static site
         run: npm run build
 
       - name: Verify Pages artifact
         run: |
+          set -e
           test -d out
           test -f out/index.html
           echo "Static Pages artifact created successfully."
