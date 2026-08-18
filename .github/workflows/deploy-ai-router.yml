@@ -41,8 +41,6 @@ jobs:
           test -n "$GROQ_API_KEY" || { echo "Missing GROQ_API_KEY"; exit 1; }
           test -n "$OPENROUTER_API_KEY" || { echo "Missing OPENROUTER_API_KEY"; exit 1; }
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
-          printf '%s' "$GROQ_API_KEY" > "$RUNNER_TEMP/groq-api-key.txt"
-          printf '%s' "$OPENROUTER_API_KEY" > "$RUNNER_TEMP/openrouter-api-key.txt"
           node -e "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/firebase-service-account.json','utf8')); console.log('Firebase service-account JSON is valid.');"
 
       - name: Authenticate to Google Cloud
@@ -56,21 +54,16 @@ jobs:
       - name: Verify Firebase project access
         run: firebase projects:list --project eduwills --non-interactive >/dev/null
 
-      - name: Set Groq secret
+      - name: Create deployment-only environment file
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        working-directory: functions
         run: |
-          firebase functions:secrets:set GROQ_API_KEY \
-            --data-file "$RUNNER_TEMP/groq-api-key.txt" \
-            --force \
-            --project eduwills \
-            --non-interactive
-
-      - name: Set OpenRouter secret
-        run: |
-          firebase functions:secrets:set OPENROUTER_API_KEY \
-            --data-file "$RUNNER_TEMP/openrouter-api-key.txt" \
-            --force \
-            --project eduwills \
-            --non-interactive
+          set -euo pipefail
+          umask 077
+          printf 'GROQ_API_KEY=%s\n' "$GROQ_API_KEY" > .env.eduwills
+          printf 'OPENROUTER_API_KEY=%s\n' "$OPENROUTER_API_KEY" >> .env.eduwills
 
       - name: Deploy quiz AI router only
         run: |
@@ -79,6 +72,6 @@ jobs:
             --project eduwills \
             --non-interactive
 
-      - name: Remove temporary credential files
+      - name: Remove temporary credential and environment files
         if: always()
-        run: rm -f "$RUNNER_TEMP/firebase-service-account.json" "$RUNNER_TEMP/groq-api-key.txt" "$RUNNER_TEMP/openrouter-api-key.txt"
+        run: rm -f "$RUNNER_TEMP/firebase-service-account.json" functions/.env.eduwills
