@@ -32,6 +32,9 @@ service cloud.firestore {
       allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
     }
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
     match /quizHistory/{historyId} {
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
