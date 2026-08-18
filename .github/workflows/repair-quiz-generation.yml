@@ -1,0 +1,90 @@
+name: One-time EduWills quiz research repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore robust book research fallback
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('lib/quizAiClient.ts')
+          text = path.read_text()
+          text = text.replace("const CACHE='v11-diverse-content';", "const CACHE='v12-diverse-content-research-fallback';")
+
+          replacement = r'''export async function researchBooks(books:QuizBook[]):Promise<string>{
+ const fixed=books.map(b=>scars(b.title)?SCARS:sanya(b)?SANYA:b),k=`eduwills:${CACHE}:research:${fixed.map(b=>norm(b.title+'|'+b.author)).join(';')}`,old=getCache<string>(k);if(old)return old;const all:string[]=[];
+ const add=(s:string)=>{const t=clean(s);if(t&&t.length>20&&!all.some(x=>norm(x)===norm(t)))all.push(t)};
+ const fetchJson=async(url:string)=>{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);try{const r=await fetch(url,{cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});if(!r.ok)throw new Error(String(r.status));return await r.json()}finally{clearTimeout(timer)}};
+ for(const b of fixed){
+  const guard=sanya(b)?'This is the Nigerian novel Sànyà by Oyin Olugbile. Ignore Sanya Mountain, Sanya Bay, Sanya Island and every geography/travel result.':scars(b.title)?'This is SCARS: Nigeria’s Journey and the Boko Haram Conundrum by Gen. Lucky Irabor. Ignore unrelated books or places named Scars.':'';
+  const p=`Research the exact book "${b.title}" by ${b.author}. ${guard} Build a factual study dossier for quiz generation. Prioritize actual book CONTENT: named people or characters, exact dates and years, chronology, specific events/incidents, places, organizations, decisions, actions, causes, consequences, conflicts, chapter-specific facts, numbers and documented details. Broad themes and title/author/publication metadata are secondary. Never invent facts. Use Google Search grounding to identify reliable book-specific sources and distinguish similarly named works.`;
+  try{const r=await aiCall(grounded,p);const t=clean(r.response.text());if(t)add(`${b.title}: ${t}`)}catch{try{const r=await aiCall(fallback,p);const t=clean(r.response.text());if(t)add(`${b.title}: ${t}`)}catch{}}
+  for(const fact of (scars(b.title)?[
+    'SCARS: Nigeria’s Journey and the Boko Haram Conundrum is authored by Gen. Lucky Irabor.',
+    'SCARS is Gen. Lucky Irabor’s book about Nigeria’s journey and the Boko Haram conundrum.'
+  ]:sanya(b)?[
+    'Sànyà is a Nigerian literary work by Oyin Olugbile.'
+  ]:[]))add(`EDUWILLS verified catalogue: ${fact}`);
+  const t=encodeURIComponent(b.title),a=encodeURIComponent(b.author);
+  const urls=[
+   `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}+inauthor:${a}&maxResults=20`,
+   `https://openlibrary.org/search.json?title=${t}&author=${a}&limit=40&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,
+   `https://archive.org/advancedsearch.php?q=title:%28${t}%29+AND+creator:%28${a}%29&fl[]=title&fl[]=creator&fl[]=description&fl[]=subject&rows=30&page=1&output=json`,
+   `https://www.loc.gov/books/?q=${t}&fo=json&c=30`
+  ];
+  const results=await Promise.allSettled(urls.map(fetchJson));
+  for(const r of results)if(r.status==='fulfilled'){
+   const d=r.value;
+   for(const item of d.items||[]){const v=item.volumeInfo||{};if(v.title&&v.description)add(`Google Books (${b.title}): ${v.description}`);if(v.categories)add(`Google Books categories: ${v.categories.join(', ')}`);if(v.publishedDate)add(`Google Books publication: ${v.publishedDate}; publisher: ${v.publisher||'unknown'}.`)}
+   for(const item of d.docs||[]){const identity=norm(`${item.title||''} ${(item.author_name||[]).join(' ')}`);const words=norm(b.title).split(' ').filter(w=>w.length>3);const hits=words.filter(w=>identity.includes(w)).length;if(hits>=Math.max(1,Math.ceil(words.length*.45))||identity.includes(norm(b.author))){if(item.first_sentence)add(`Open Library first sentence: ${(item.first_sentence||[]).join(' ')}`);if(item.subject)add(`Open Library subjects: ${(item.subject||[]).slice(0,80).join(', ')}`);if(item.description)add(`Open Library description: ${typeof item.description==='string'?item.description:JSON.stringify(item.description)}`);if(item.first_publish_year)add(`Open Library first publication year: ${item.first_publish_year}.`)}}
+   for(const item of d.results||[])if(item.description||item.subject)add(`Internet Archive: ${item.description||''} Subjects: ${(item.subject||[]).join(', ')}`);
+   for(const item of d.response?.docs||[])if(item.title||item.description)add(`Library of Congress: ${item.title||''}. ${item.description||''}`);
+  }
+ }
+ const result=[...new Set(all)].join('\n\n').slice(0,120000);
+ setCache(k,result,86400000);
+ return result;
+}
+'''
+
+          pattern = re.compile(r"export async function researchBooks\(books:QuizBook\[\]\):Promise<string>\{.*?\n\}\n(?=function focus)", re.S)
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Could not locate researchBooks() for repair')
+          path.write_text(updated)
+
+          deploy = Path('.github/workflows/deploy-pages.yml')
+          d = deploy.read_text().replace("CACHE='v11-diverse-content'", "CACHE='v12-diverse-content-research-fallback'")
+          deploy.write_text(d)
+
+      - name: Validate repaired source
+        run: |
+          grep -Fq "v12-diverse-content-research-fallback" lib/quizAiClient.ts
+          grep -Fq "Google Books" lib/quizAiClient.ts
+          grep -Fq "Open Library" lib/quizAiClient.ts
+          grep -Fq "Promise.allSettled" lib/quizAiClient.ts
+          grep -Fq "v12-diverse-content-research-fallback" .github/workflows/deploy-pages.yml
+          echo "Quiz research fallback repair verified."
+
+      - name: Commit repair and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/quizAiClient.ts .github/workflows/deploy-pages.yml
+          git rm .github/workflows/repair-quiz-generation.yml
+          git commit -m "fix: restore reliable quiz generation research fallback"
+          git push
