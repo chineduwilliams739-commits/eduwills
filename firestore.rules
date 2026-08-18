@@ -15,73 +15,43 @@ service cloud.firestore {
       allow create: if signedIn() && request.auth.uid == uid;
       allow update, delete: if isAdmin();
     }
-
     match /users/{uid} {
       allow create: if signedIn() && request.auth.uid == uid;
       allow read, update: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow delete: if isAdmin();
     }
-
     match /phoneIndex/{phone} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin());
       allow delete: if isAdmin();
     }
-
     match /williTokens/{tokenId} {
-      // Only authenticated admins can generate activation tokens.
-      // Do not require a particular token payload here: the Admin console
-      // already writes the token ID and all activation metadata.
       allow create: if isAdmin();
-
-      // Admins can manage tokens. A learner can read/redeem a token assigned
-      // to their username or UID.
-      allow read: if signedIn() && (
-        isAdmin()
-        || resource.data.userId == request.auth.uid
-        || resource.data.username == currentUsername()
-      );
-
-      allow update: if isAdmin() || (
-        signedIn()
-        && resource.data.used == false
-        && resource.data.username == currentUsername()
-        && request.resource.data.token == resource.data.token
-        && request.resource.data.used == true
-        && request.resource.data.username == currentUsername()
-        && request.resource.data.userId == request.auth.uid
-      );
-
+      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
+      allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.userId == request.auth.uid);
       allow delete: if isAdmin();
     }
-
     match /quizHistory/{historyId} {
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow update: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid) && request.resource.data.userId == resource.data.userId;
       allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
-
     match /books/{bookId} {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
-
     match /bookSlots/{slotId} {
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow create, update: if signedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
-      allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create, update: if signedIn() && (isAdmin() || request.resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
     }
-
     match /supportMessages/{messageId} {
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow update, delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
     }
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }
