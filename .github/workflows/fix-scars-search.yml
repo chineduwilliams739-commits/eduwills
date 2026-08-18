@@ -13,32 +13,56 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Add explicit SCARS author mapping
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Repair SCARS catalogue and author matching
+        shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
+
           p = Path('lib/quizAiClient.ts')
-          s = p.read_text()
+          s = p.read_text(encoding='utf-8')
+
+          # Ensure the curated SCARS entry contains an explicit author identity.
           old = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.'],"
           new = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.','SCARS: Nigeria’s Journey and the Boko Haram Conundrum was written by Gen. Lucky Irabor.'],"
           if old in s:
               s = s.replace(old, new, 1)
-          marker = "  const results: BookSearchResult[] = []; const seen = new Set<string>();\n"
-          insert = marker + "  if (kind === 'author' && /\\b(irabor|lucky\\s+irabor|gen(?:eral)?\\.?\\s+lucky\\s+irabor)\\b/i.test(query)) {\n    addResult(results, seen, kind, key, 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', ['Gen. Lucky Irabor'], 'EDUWILLS verified catalogue');\n  }\n"
+          elif "'scars':" not in s:
+              raise SystemExit('SCARS catalogue entry was not found; refusing an unsafe edit.')
+
+          # Add a deterministic author-search override immediately after the results set.
+          marker = "const results: BookSearchResult[] = []; const seen = new Set<string>();"
           if marker not in s:
-              raise SystemExit('Expected search results marker was not found; refusing to modify the file.')
-          if insert not in s:
-              s = s.replace(marker, insert, 1)
-          if s == p.read_text():
-              print('SCARS search mapping already present')
-          else:
-              p.write_text(s)
+              raise SystemExit('Search results marker was not found; refusing an unsafe edit.')
+
+          override = '''const results: BookSearchResult[] = []; const seen = new Set<string>();
+          if (kind === 'author' && /\\b(irabor|lucky\\s+irabor|gen(?:eral)?\\.?\\s+lucky\\s+irabor)\\b/i.test(query)) {
+            addResult(results, seen, kind, key, 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', ['Gen. Lucky Irabor'], 'EDUWILLS verified catalogue');
+          }'''
+          if "EDUWILLS verified catalogue" not in s or "lucky\\s+irabor" not in s:
+              s = s.replace(marker, override, 1)
+
+          p.write_text(s, encoding='utf-8')
           PY
-      - name: Commit and push
+
+      - name: Verify SCARS search mapping
+        run: |
+          grep -q "SCARS: Nigeria’s Journey and the Boko Haram Conundrum was written by Gen. Lucky Irabor" lib/quizAiClient.ts
+          grep -q "lucky\\s+irabor" lib/quizAiClient.ts
+
+      - name: Commit and push repair
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add lib/quizAiClient.ts
-          git diff --cached --quiet && exit 0
+          if git diff --cached --quiet; then
+            echo "SCARS search mapping is already present."
+            exit 0
+          fi
           git commit -m "fix: improve SCARS author search"
-          git push
+          git push origin HEAD:main
