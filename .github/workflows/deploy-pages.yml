@@ -31,6 +31,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Apply quiz runtime repair
+        run: node scripts/repair-quiz-runtime.mjs
+
       - name: Verify application source
         run: |
           set -e
@@ -40,12 +43,14 @@ jobs:
           test -f firestore.rules
           grep -Fq "Gen. Lucky Irabor" lib/quizAiClient.ts
           grep -Fq "Oyin Olugbile" lib/quizAiClient.ts
-          grep -Fq "CACHE = 'v14-resilient-instruction-first'" lib/quizAiClient.ts
+          grep -Fq "CACHE = 'v15-resilient-generation'" lib/quizAiClient.ts
           grep -Fq "while (accepted.length < requested" lib/quizAiClient.ts
           grep -Fq "instructionSatisfied" lib/quizAiClient.ts
+          grep -Fq "generationTicker" app/dashboard/quiz/page.tsx
+          grep -Fq "plainQuiz" lib/quizAiClient.ts
           grep -Fq "deleteDoc" app/admin/page.tsx
           grep -Fq "allow delete: if isAdmin();" firestore.rules
-          echo "Direct application changes verified."
+          echo "Direct application changes and quiz resilience repair verified."
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
