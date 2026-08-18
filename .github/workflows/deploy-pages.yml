@@ -31,6 +31,16 @@ jobs:
         with:
           node-version: 22
 
+      - name: Prepare quiz runtime repair script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/repair-quiz-runtime.mjs')
+          s = p.read_text()
+          s = s.replace('${', r'\${')
+          p.write_text(s)
+          PY
+
       - name: Apply quiz runtime repair
         run: node scripts/repair-quiz-runtime.mjs
 
