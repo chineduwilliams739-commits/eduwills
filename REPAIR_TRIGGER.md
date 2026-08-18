@@ -1,1 +1,2 @@
-This file triggers the repair workflow added for the quiz content mix and SCARS author search fix.
+This file triggers the EduWills repair workflow.
+Quiz research fallback repair trigger: 2026-08-18T18:29:00Z
