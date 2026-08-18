@@ -49,8 +49,10 @@ export default function TakeQuiz() {
   const allowNavigationRef = useRef(false);
   const leaveAttemptsRef = useRef(0);
   const quizReadyRef = useRef(false);
+  const quizUrlRef = useRef('');
 
   useEffect(() => {
+    quizUrlRef.current = window.location.href;
     try {
       const raw = sessionStorage.getItem('eduwills_pending_quiz');
       if (!raw) {
@@ -151,50 +153,56 @@ export default function TakeQuiz() {
     setSubmitting(false);
   }
 
-  // Three exit attempts are allowed: the first two are blocked with warnings;
-  // the third immediately submits the current answers before navigation.
   async function attemptLeave(destination?: string) {
     if (!quizReadyRef.current || done || allowNavigationRef.current) {
       if (destination) window.location.assign(destination);
       return;
     }
+
     const next = leaveAttemptsRef.current + 1;
     leaveAttemptsRef.current = next;
     setLeaveAttempts(next);
+
     if (next < 3) {
-      window.alert(`Warning ${next} of 2: You are currently taking a test. Leaving this page will not be allowed yet. On the third attempt, your test will be submitted and scored with unanswered questions counted as incorrect.`);
+      // Keep the quiz URL in the history stack. The previous implementation
+      // accidentally pushed the dashboard URL after a browser-back event,
+      // allowing the user to leave despite the warning.
+      window.history.pushState({ eduwillsQuiz: true }, '', quizUrlRef.current);
+      window.alert(
+        `Warning ${next} of 2: You are currently taking a test. Leaving this page will not be allowed yet. On the third attempt, your test will be submitted and scored with unanswered questions counted as incorrect.`,
+      );
       return;
     }
+
+    window.history.pushState({ eduwillsQuiz: true }, '', quizUrlRef.current);
     window.alert('Third leave attempt detected. Your test will be submitted and scored now.');
     await finish(answersRef.current);
     if (destination) window.location.assign(destination);
   }
 
   useEffect(() => {
+    const quizUrl = quizUrlRef.current || window.location.href;
+    // Add a dedicated history entry for the active quiz. Browser-back now
+    // reliably produces a popstate event that we can intercept.
+    window.history.pushState({ eduwillsQuiz: true }, '', quizUrl);
+
     const onPopState = () => {
       if (allowNavigationRef.current || done) return;
-      // Restore the quiz URL so the first two back attempts cannot leave.
-      window.history.pushState({ eduwillsQuiz: true }, '', window.location.href);
+      // Immediately restore the exact quiz URL, not window.location.href
+      // (which is already the previous page at this point).
+      window.history.pushState({ eduwillsQuiz: true }, '', quizUrlRef.current || quizUrl);
       void attemptLeave(`${BASE}/dashboard/quiz/`);
     };
-    window.history.pushState({ eduwillsQuiz: true }, '', window.location.href);
     window.addEventListener('popstate', onPopState);
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (allowNavigationRef.current || done || !quizReadyRef.current) return;
-      const next = leaveAttemptsRef.current + 1;
-      leaveAttemptsRef.current = next;
-      setLeaveAttempts(next);
-      if (next < 3) {
-        event.preventDefault();
-        event.returnValue = 'You are in an active test. Leaving may submit your test.';
-      } else {
-        // Browsers do not allow reliable async Firestore writes during unload.
-        // The next internal navigation is handled by attemptLeave, while this
-        // native warning protects refresh/close attempts.
-        event.preventDefault();
-        event.returnValue = 'Your test will be submitted because you attempted to leave three times.';
-      }
+      // Native browser dialogs are the only reliable protection for refresh,
+      // closing a tab, or leaving the site. Browsers do not permit reliable
+      // asynchronous Firestore writes during beforeunload, so actual scoring
+      // is performed by our in-app/back/link interception instead.
+      event.preventDefault();
+      event.returnValue = 'You are in an active test. Leaving may submit your test.';
     };
     window.addEventListener('beforeunload', onBeforeUnload);
 
@@ -205,6 +213,8 @@ export default function TakeQuiz() {
       if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
       const href = link.href;
       if (!href || href.startsWith('javascript:')) return;
+      // Same-page hash links are not an attempt to leave the quiz.
+      if (new URL(href, window.location.href).href === window.location.href) return;
       event.preventDefault();
       void attemptLeave(href);
     };
