@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch search and quiz logic
+      - name: Patch AI quiz and SCARS search
         shell: python
         run: |
           from pathlib import Path
@@ -23,101 +23,140 @@ jobs:
           quiz = Path('lib/quizAiClient.ts')
           text = quiz.read_text()
 
-          # Invalidate every old local/shared question pool. The previous pool was
-          # allowed to return immediately, which is why old author/title questions
-          # kept reappearing after the prompt was changed.
-          text = text.replace("const CACHE_VERSION = 'v5';", "const CACHE_VERSION = 'v7';")
+          # Force a completely fresh question/search cache.
+          text = text.replace("const CACHE_VERSION = 'v5';", "const CACHE_VERSION = 'v8';")
+          text = text.replace("const CACHE_VERSION = 'v7';", "const CACHE_VERSION = 'v8';")
 
-          # Put the exact SCARS identity in the client-side author/title search.
+          # The static GitHub Pages app uses this client-side search function.
+          # Return the verified SCARS identity immediately so an external catalogue
+          # outage or a bad author extraction can never hide Gen. Lucky Irabor.
           marker = "  const key = normalize(query); const cache = storageGet<BookSearchResult[]>(cacheKey('search', { kind, key })); if (cache) return cache;"
-          replacement = """  const key = normalize(query);
-  const scars = { title: 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', authors: ['Gen. Lucky Irabor', 'General Lucky Irabor', 'Lucky E. O. Irabor', 'Lucky Irabor'], source: 'EDUWILLS verified catalogue' };
-  if ((kind === 'title' && key.includes('scars')) || (kind === 'author' && key.includes('irabor'))) return [scars];
+          if marker in text and "const scarsVerified" not in text:
+              replacement = """  const key = normalize(query);
+  const scarsVerified: BookSearchResult = { title: 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', authors: ['Gen. Lucky Irabor', 'General Lucky Irabor', 'Lucky E. O. Irabor', 'Lucky Irabor'], source: 'EDUWILLS verified catalogue' };
+  if (key.includes('scars') || key.includes('irabor')) return [scarsVerified];
   const cache = storageGet<BookSearchResult[]>(cacheKey('search', { kind, key })); if (cache) return cache;"""
-          if marker not in text:
-              raise SystemExit('search marker not found')
-          text = text.replace(marker, replacement, 1)
+              text = text.replace(marker, replacement, 1)
 
-          # Add a hard classifier so metadata questions cannot dominate a quiz.
-          helper_marker = "function validate(raw:any, previous:string[], target:number):QuizQuestion[]{"
-          helper = r'''function isMetadataQuestion(q:string){return /\b(author|written by|writer|title|published|publisher|publication date|year was.*published)\b/i.test(q);}
-function contentRatio(items:QuizQuestion[]){if(!items.length)return 0;return items.filter(q=>!isMetadataQuestion(q.question)).length/items.length;}
+          # Replace the sparse SCARS dossier with a detailed, verified content map.
+          old_scars = "  'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.'],"
+          new_scars = """  'scars': [
+    'SCARS: Nigeria’s Journey and the Boko Haram Conundrum is authored by Gen. Lucky Eluonye Onyenuchea Irabor (retired), also identified in public material as Gen. Lucky Irabor or General Leo Irabor (RTD).',
+    'SCARS is arranged in three parts: Part One, The Ghost that Lives with Us; Part Two, The Boko Haram Conundrum; and Part Three, Eyes Set on Tomorrow.',
+    'SCARS contains fourteen chapters and a concluding note.',
+    'Chapter 1 is titled The Context and argues that a military-centric security response should be complemented by non-military elements of state power.',
+    'Chapter 2 is titled When the Shield Becomes the Sword: Nigeria’s Security Dilemma and connects Nigeria’s historical political development, the fall of the First Republic and the civil war with present security problems.',
+    'Chapter 3 is titled The Aftermath: Echoes of Uncertainty and identifies three dominant instability issues: the struggle for state power and authority, revenue allocation, and fear of domination.',
+    'Chapter 3 also discusses ethnic and regional divisions, religious intolerance, systemic structural weaknesses and the Dead Horse Theory.',
+    'Chapter 4 is titled Where Borders Breathe: The Pulse of North Eastern Nigeria and examines geography, history, power structures, socio-economic conditions, culture, religion, festivities and communication systems in the North East.',
+    'Chapter 4 identifies high poverty levels and limited economic opportunities among factors that can attract insecurity in North Eastern Nigeria.',
+    'Chapter 5 is titled Brief Overview of Boko Haram and covers the group’s background, origin, organization, ideology and early leadership profile.',
+    'Chapter 6 is titled The Irony of Boko Haram and presents Boko Haram as an evil force whose effects cut across social, cultural, political, religious and ideological lines.',
+    'Chapter 7 is titled The Beastly Boko Haram and documents killings, destruction, improvised explosive device attacks, targeted killings, school abductions and destruction of infrastructure.',
+    'Chapter 8 is titled The Deeper Scars of Boko Haram War and focuses on hardship, displacement, deaths, injuries, emotional trauma and suffering, especially in North Eastern Nigeria.',
+    'A UNDP figure cited in the SCARS chapter summary states that as of 2020 more than 1.8 million people were displaced in the North East and nearly 350,000 deaths were associated with the conflict, including about 314,000 indirect deaths.',
+    'Chapter 9 is titled The Complexity of Response to Boko Haram and examines the federal government response, asymmetric operations and the Volatile, Uncertain, Complex and Ambiguous (VUCA) security environment.',
+    'Chapter 9 discusses why Boko Haram persisted for more than a decade, including indoctrination, local and international support and limitations at the political-strategic level.',
+    'Chapter 10 is titled The Political Dynamics of Boko Haram Crisis and Nigeria’s Sovereignty and examines indirect pressure on Nigeria and organized negative media reporting about the war effort.',
+    'Chapter 11 is titled General Outlook of the Security Landscape and assesses the complex social, economic and political effects of insecurity across Nigeria’s geopolitical zones.',
+    'Chapter 12 is titled Drivers of Extremist Activities and examines political intricacies and setbacks connected to the fight against terrorism.',
+    'Chapter 13 is titled Learning the Language of Peace and explores peaceful and innovative approaches to reducing terrorism and resolving conflicts.',
+    'Chapter 14 is titled Nigeria: The Peace we have yet to Try and advocates whole-of-government and whole-of-society approaches, psychological re-orientation, security-sector reform, national reconciliation, judicial reform, good governance and constitutional review.',
+    'Public reporting about SCARS states that the book discusses at least 2,700 Nigerian officers and soldiers who paid the supreme price in the Boko Haram war between 2009 and 2021.',
+    'The book’s security discussion also addresses misconceptions about religious or ethnic disproportionality in military casualties and points to military cemetery records as evidence that Christian and Muslim casualties were broadly comparable.',
+    'SCARS discusses Major General L.P. Ngubane and Brigadier General R.O. Bamigboye in connection with disputed allegations and US visa consequences during the Boko Haram war.',
+    'The book’s account links Boko Haram’s scars to human suffering, deaths, injuries, displacement, emotional trauma, broken families and the wider social consequences of prolonged conflict.',
+    'The author presents the overall problem as requiring political, social, institutional, security and psychological responses rather than military force alone.',
+    'The official publication material describes SCARS as a catalogue of facts about Boko Haram drawn from the author’s first-hand experience commanding operations against terrorism and insurgency in North East Nigeria.'
+  ],"""
+          if old_scars in text:
+              text = text.replace(old_scars, new_scars, 1)
+          elif "'scars':" not in text:
+              raise SystemExit('SCARS curated entry not found')
+
+          # Diversity and quality gates. Generic topic questions are not allowed
+          # to consume the book-content quota.
+          validate_marker = "function validate(raw:any, previous:string[], target:number):QuizQuestion[]{"
+          if "function isGenericTopicQuestion" not in text:
+              helpers = r'''function isMetadataQuestion(q:string){return /\b(author|written by|writer|title|publisher|publication date|when was.*published|year was.*published)\b/i.test(q);}
+function isGenericTopicQuestion(q:string){return /\b(major challenge|main challenge|central challenge|biggest challenge|primary challenge|main problem|major problem|what is the book about|what does the book focus on|central theme|main theme)\b/i.test(q);}
+function contentRatio(items:QuizQuestion[]){if(!items.length)return 0;return items.filter(q=>!isMetadataQuestion(q.question)&&!isGenericTopicQuestion(q.question)).length/items.length;}
 function scarsSeedQuestions(book:QuizBook):QuizQuestion[]{
   if(normalize(book.title)!=='scars')return [];
   const o=(question:string,options:string[],answer:number,evidence:string):QuizQuestion=>({question,options,answer,evidence});
   return [
-    o('How many chapters are contained in SCARS: Nigeria’s Journey and the Boko Haram Conundrum?', ['12','14','16','18'], '14 chapters and a concluding note.'),
-    o('What are the three parts of SCARS called?', ['The Past, The Present and The Future','The Ghost that Lives with Us; The Boko Haram Conundrum; Eyes Set on Tomorrow','The War, The Peace and The Rebuild','Context, Crisis and Victory'], 1, 'SCARS is arranged in three parts: Part One, The Ghost that Lives with Us; Part Two, The Boko Haram Conundrum; and Part Three, Eyes Set on Tomorrow.'),
-    o('What is the title of Chapter 1 of SCARS?', ['The Context','Brief Overview of Boko Haram','Learning the Language of Peace','The Deeper Scars of the Boko Haram War'], 0, 'Chapter 1 is titled The Context.'),
-    o('What central security argument is made in Chapter 1?', ['Military force alone is sufficient','Security should rely only on foreign intervention','Military response should be complemented by non-military elements of state power','Security should be left entirely to local communities'], 2, 'Chapter 1 argues that a military-centric security response should be complemented by non-military elements of state power.'),
-    o('Which chapter examines the geography, history and socio-economic conditions of North Eastern Nigeria?', ['Chapter 2','Chapter 4','Chapter 8','Chapter 14'], 1, 'Chapter 4 is Where Borders Breathe: The Pulse of North Eastern Nigeria and examines geography, history, power structures, socio-economic conditions, culture, religion and communication systems.'),
-    o('What does Chapter 5 primarily cover?', ['The future of Nigerian constitutional reform','The background, origin, organization and ideology of Boko Haram','Only the economic effects of migration','The history of Nigerian literature'], 1, 'Chapter 5, Brief Overview of Boko Haram, covers the group’s background, origin, organization, ideology and early leadership profile.'),
-    o('Which of these is specifically identified as part of Boko Haram violence in Chapter 7?', ['School abductions','International book publishing','Election debates only','Sports competitions'], 0, 'Chapter 7 documents violent killings, destruction, improvised explosive device attacks, targeted killings and school abductions.'),
-    o('What does Chapter 8 focus on?', ['The design of school buildings','Hardship, displacement, deaths, injuries, emotional trauma and suffering','The history of publishing in Nigeria','Only military uniforms'], 1, 'Chapter 8 focuses on hardship, displacement, deaths, injuries, emotional trauma and suffering, especially in North East Nigeria.'),
-    o('Why is the response to Boko Haram described as complex in Chapter 9?', ['Because the conflict is entirely peaceful','Because the security environment is asymmetric and volatile','Because there are no security forces','Because the conflict occurs only outside Nigeria'], 1, 'Chapter 9 examines the federal government and military response and the difficulty of responding to an asymmetric and volatile security environment.'),
-    o('What does Chapter 10 examine in relation to the Boko Haram crisis?', ['Political dynamics and Nigeria’s sovereignty','The chemistry of explosives in detail','The history of European literature','Only school examinations'], 0, 'Chapter 10 is The Political Dynamics of Boko Haram Crisis and Nigeria’s Sovereignty.'),
-    o('Which chapter examines drivers that can contribute to terrorism and extremism?', ['Chapter 3','Chapter 6','Chapter 12','Chapter 14'], 2, 'Chapter 12, Drivers of Extremist Activities, examines political intricacies and setbacks that can contribute to terrorism and extremism.'),
-    o('What approach does Chapter 13 explore?', ['Peaceful and innovative approaches to reducing terrorism and resolving conflict','A return to colonial rule','A purely military solution','Ending all political participation'], 0, 'Chapter 13, Learning the Language of Peace, explores peaceful and innovative approaches to reducing terrorism and resolving conflict.'),
-    o('Which reforms are advocated in Chapter 14?', ['Only increased military spending','Whole-of-government and whole-of-society approaches, psychological re-orientation, reforms and reconciliation','Removing judicial institutions','Ending constitutional review'], 1, 'Chapter 14 advocates whole-of-government and whole-of-society approaches, psychological re-orientation, security-sector reforms, national reconciliation, judicial reforms, good governance and constitutional review.'),
-    o('What broader conclusion does SCARS draw about Nigeria’s security challenge?', ['It can be solved by military force alone','It requires broader political, social, institutional and psychological responses','It is unrelated to governance','It can be solved only through foreign intervention'], 1, 'A central idea in SCARS is that Nigeria’s security challenge cannot be solved by military force alone; broader political, social, institutional and psychological responses are required.'),
-    o('What is the outlook expressed in the concluding material of SCARS?', ['Nigeria has no path forward','Nigerians can collectively transform the nation’s scars into victories','The conflict is impossible to understand','The book rejects peace strategies'], 1, 'The book’s concluding outlook is optimistic: Nigerians can collectively transform the nation’s scars into victories.')
+    o('How many chapters are contained in SCARS: Nigeria’s Journey and the Boko Haram Conundrum?', ['12','14','16','18'],1,'SCARS is arranged in fourteen chapters and a concluding note.'),
+    o('Which three-part structure is used in SCARS?', ['The Past, Present and Future','The Ghost that Lives with Us; The Boko Haram Conundrum; Eyes Set on Tomorrow','The War, Recovery and Victory','Context, Conflict and Reconstruction'],1,'The book is arranged in Part One: The Ghost that Lives with Us; Part Two: The Boko Haram Conundrum; and Part Three: Eyes Set on Tomorrow.'),
+    o('What is the title of Chapter 1?', ['The Context','The Aftermath: Echoes of Uncertainty','The Irony of Boko Haram','General Outlook of the Security Landscape'],0,'Chapter 1 is titled The Context.'),
+    o('What does Chapter 3 identify as one of the three dominant issues underlying instability after independence?', ['Revenue allocation','Book publishing','International tourism','Sports development'],0,'Chapter 3 identifies struggle for state power and authority, revenue allocation, and fear of domination as three dominant instability issues.'),
+    o('Which theory is discussed in Chapter 3 to explain the negative effects of inordinate activities by interest groups?', ['Dead Horse Theory','Game Theory','Broken Windows Theory','Dependency Theory'],0,'Chapter 3 explains regional impacts using the Dead Horse Theory.'),
+    o('Which chapter examines the geography and socio-economic landscape of North Eastern Nigeria?', ['Chapter 2','Chapter 4','Chapter 8','Chapter 13'],1,'Chapter 4, Where Borders Breathe: The Pulse of North Eastern Nigeria, examines geography, history, power structures and socio-economic conditions.'),
+    o('Which condition is specifically identified in Chapter 4 as contributing to insecurity in North Eastern Nigeria?', ['High poverty and limited economic opportunities','A shortage of universities in Lagos','Low rainfall in the South-West','Foreign tourism'],0,'Chapter 4 identifies high poverty levels and limited economic opportunities among attractions of insecurity in the North East.'),
+    o('What subjects does Chapter 5 cover?', ['Boko Haram’s background, origin, organization, ideology and early leadership','Only peace negotiations','Only Nigeria’s publishing industry','Only military uniforms'],0,'Chapter 5 is a Brief Overview of Boko Haram covering background, origin, organization, ideology and early leadership.'),
+    o('Which incident is identified as part of the violence discussed in Chapter 7?', ['School abductions','A university sports final','A publishing conference','A census exercise'],0,'Chapter 7 documents school abductions alongside killings, IED attacks, targeted killings and infrastructure destruction.'),
+    o('What does Chapter 8 describe as part of the deeper scars of the Boko Haram war?', ['Displacement, deaths, injuries and emotional trauma','Only changes in school uniforms','Only election results','Only changes in book prices'],0,'Chapter 8 focuses on hardship, displacement, deaths, injuries, emotional trauma and suffering.'),
+    o('What displacement figure is cited in the Chapter 8 summary for North Eastern Nigeria as of 2020?', ['About 180,000 people','More than 1.8 million people','About 18,000 people','More than 18 million people'],1,'The chapter summary cites more than 1.8 million displaced people in the North East as of 2020.'),
+    o('What approximate total death figure is cited in the Chapter 8 summary for the conflict as of 2020?', ['35,000','350,000','3.5 million','5,000'],1,'The chapter summary cites nearly 350,000 deaths, including about 314,000 indirect deaths.'),
+    o('What does VUCA describe in Chapter 9?', ['The security environment as Volatile, Uncertain, Complex and Ambiguous','A military rank system','A publishing method','A school examination format'],0,'Chapter 9 describes the contemporary security environment as Volatile, Uncertain, Complex and Ambiguous (VUCA).'),
+    o('Which factor is identified in Chapter 9 as contributing to the persistence of Boko Haram?', ['Indoctrination and limitations at the political-strategic response level','A lack of Nigerian literature','Too many school examinations','Foreign tourism'],0,'Chapter 9 discusses indoctrination, tacit local and international support and limitations at the political-strategic level.'),
+    o('What does Chapter 10 examine?', ['Political dynamics of the Boko Haram crisis and Nigeria’s sovereignty','The history of Nigerian football','Only military clothing','The publishing process'],0,'Chapter 10 is The Political Dynamics of Boko Haram Crisis and Nigeria’s Sovereignty.'),
+    o('What kind of reporting does Chapter 10 discuss as affecting the war effort?', ['Negative, acerbic and sensational media reporting','Only scientific journals','Only sports reporting','Only weather forecasts'],0,'Chapter 10 analyses organized negative media reports and an obsession with negative, acerbic and sensational reporting on the war effort.'),
+    o('Which chapter is titled Drivers of Extremist Activities?', ['Chapter 10','Chapter 11','Chapter 12','Chapter 14'],2,'Chapter 12 is titled Drivers of Extremist Activities.'),
+    o('What is the focus of Chapter 13?', ['Peaceful and innovative approaches to reducing terrorism and resolving conflicts','Increasing military force only','Ending political participation','Changing school curricula'],0,'Chapter 13, Learning the Language of Peace, explores peaceful and innovative approaches to reducing terrorism and resolving conflicts.'),
+    o('Which approach does Chapter 14 identify as crucial for a more stable Nigeria?', ['Whole-of-government and whole-of-society approaches','Military action alone','Foreign administration','Removing judicial institutions'],0,'Chapter 14 identifies whole-of-government and whole-of-society approaches as crucial.'),
+    o('Which pair of reforms is explicitly mentioned in Chapter 14?', ['Judicial reforms and national reconciliation','Sports reforms and tourism reforms','Banking reforms and tax cuts','University admissions and road construction'],0,'Chapter 14 includes national reconciliation and judicial reforms among its suggested measures.'),
+    o('According to public reporting about the book, how many Nigerian officers and soldiers did Irabor say paid the supreme price between 2009 and 2021?', ['270','2,700','27,000','270,000'],1,'Public reports on SCARS state that no fewer than 2,700 officers and soldiers paid the supreme price between 2009 and 2021.'),
+    o('Which two senior officers are cited in public reporting about SCARS in connection with disputed allegations and US visa consequences?', ['L.P. Ngubane and R.O. Bamigboye','Bepo Adewale and Mathew Kukah','Olusegun Obasanjo and Mohammed Yusuf','Shekau and Jaafar Adam'],0,'Public reporting about the book names Major General L.P. Ngubane and Brigadier General R.O. Bamigboye in this context.'),
+    o('What does the book’s conclusion encourage Nigerians to do with the nation’s scars?', ['Transform them into victories','Forget them completely','Avoid discussing them','Treat them as unavoidable'],0,'The concluding material expresses the optimistic view that Nigerians can collectively transform the nation’s scars into victories.')
   ];
 }
 '''
-          if helper_marker not in text:
-              raise SystemExit('validate marker not found')
-          text = text.replace(helper_marker, helper + helper_marker, 1)
+              if validate_marker not in text: raise SystemExit('validate marker not found')
+              text=text.replace(validate_marker,helpers+validate_marker,1)
 
-          # Seed SCARS with verified, content-specific questions and include the
-          # cache version in the shared pool ID. This prevents stale generic pools.
-          old = "const [localPool,sharedPool]=await Promise.all([Promise.resolve(storageGet<QuizQuestion[]>(poolKey)||[]),loadSharedPool(sharedId)]);const cachedPool=[...sharedPool,...localPool];const recent=previous.slice(-80);let eligible=shuffle(cachedPool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target)return eligible.slice(0,target);"
-          new = "const [localPool,sharedPool]=await Promise.all([Promise.resolve(storageGet<QuizQuestion[]>(poolKey)||[]),loadSharedPool(sharedId)]);const seeded=books.flatMap(scarsSeedQuestions);const cachedPool=[...seeded,...sharedPool,...localPool];const recent=previous.slice(-80);let eligible=shuffle(cachedPool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target&&contentRatio(eligible.slice(0,target))>=0.8)return eligible.slice(0,target);"
-          if old not in text:
-              raise SystemExit('pool marker not found')
-          text = text.replace(old, new, 1)
+          # Make the shared pool ID versioned so old generic questions cannot be reused.
+          old_id="const target=Math.min(100,Math.max(1,count));const poolKey=cacheKey('quiz-pool',{books:books.map(b=>({title:normalize(b.title),author:normalize(b.author)})),difficulty,instructions:normalize(instructions)});const sharedId=normalize(JSON.stringify({books:books.map(b=>({title:b.title,author:b.author})),difficulty})).replace(/[^a-z0-9]+/g,'-').slice(0,180);"
+          new_id="const target=Math.min(100,Math.max(1,count));const poolKey=cacheKey('quiz-pool',{version:CACHE_VERSION,books:books.map(b=>({title:normalize(b.title),author:normalize(b.author)})),difficulty,instructions:normalize(instructions)});const sharedId=normalize(JSON.stringify({version:CACHE_VERSION,books:books.map(b=>({title:b.title,author:b.author})),difficulty,instructions})).replace(/[^a-z0-9]+/g,'-').slice(0,180);"
+          if old_id in text: text=text.replace(old_id,new_id,1)
 
-          old_id = "const target=Math.min(100,Math.max(1,count));const poolKey=cacheKey('quiz-pool',{books:books.map(b=>({title:normalize(b.title),author:normalize(b.author)})),difficulty,instructions:normalize(instructions)});const sharedId=normalize(JSON.stringify({books:books.map(b=>({title:b.title,author:b.author})),difficulty})).replace(/[^a-z0-9]+/g,'-').slice(0,180);"
-          new_id = "const target=Math.min(100,Math.max(1,count));const poolKey=cacheKey('quiz-pool',{version:CACHE_VERSION,books:books.map(b=>({title:normalize(b.title),author:normalize(b.author)})),difficulty,instructions:normalize(instructions)});const sharedId=normalize(JSON.stringify({version:CACHE_VERSION,books:books.map(b=>({title:b.title,author:b.author})),difficulty,instructions})).replace(/[^a-z0-9]+/g,'-').slice(0,180);"
-          if old_id not in text:
-              raise SystemExit('pool id marker not found')
-          text = text.replace(old_id, new_id, 1)
+          # Seed SCARS content questions before the AI pool and never allow a
+          # metadata-heavy set to be returned.
+          old_pool="const [localPool,sharedPool]=await Promise.all([Promise.resolve(storageGet<QuizQuestion[]>(poolKey)||[]),loadSharedPool(sharedId)]);const cachedPool=[...sharedPool,...localPool];const recent=previous.slice(-80);let eligible=shuffle(cachedPool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target)return eligible.slice(0,target);"
+          new_pool="const [localPool,sharedPool]=await Promise.all([Promise.resolve(storageGet<QuizQuestion[]>(poolKey)||[]),loadSharedPool(sharedId)]);const seeded=books.flatMap(scarsSeedQuestions);const cachedPool=[...seeded,...sharedPool,...localPool];const recent=previous.slice(-80);let eligible=shuffle(cachedPool.filter(q=>!recent.some(r=>similar(r,q.question))&&!isGenericTopicQuestion(q.question)));if(eligible.length>=target&&contentRatio(eligible.slice(0,target))>=0.8)return eligible.slice(0,target);"
+          if old_pool in text: text=text.replace(old_pool,new_pool,1)
 
-          # Strengthen the generation contract and require content-specific output.
-          old_prompt = "Accuracy rules: use the supplied research as evidence, and prefer facts supported by multiple independent sources. Never invent chapters, quotations, characters, events, settings, dates or plot details. If a detail is not supported by the research, do not ask about it. Do not confuse similarly titled books or different editions. Questions must test the actual book, not a generic topic associated with it. Each question must have exactly four distinct plausible options, exactly one correct answer indexed 0-3, and an evidence field containing the specific research fact that supports the answer. Vary question types across plot/events, characters, chronology, themes, setting, cause/effect, literary devices, vocabulary, inference, author and publication facts only when supported. Avoid trivia unless it is clearly supported. Do not repeat or closely paraphrase any existing question."
-          new_prompt = "Accuracy rules: at least 80% of the final questions MUST test concrete book content. Prefer specific dates, named people, chapter titles, events, sequences, locations, organizations, decisions, causes/effects, conflicts, character actions, themes tied to events, and other verifiable details from the book dossier. A question about the author, title, publisher or publication date counts as metadata and may occupy at most 20% of the final set. Never use a broad generic-topic question such as ‘What was the major challenge?’ unless it asks about a specific documented event, person, chapter, date, decision or consequence. Never invent chapters, quotations, characters, events, settings, dates or plot details. If a detail is not supported by the research, do not ask about it. Do not confuse similarly titled books or different editions. Each question must have exactly four distinct plausible options, exactly one correct answer indexed 0-3, and an evidence field containing the specific research fact that supports the answer. Deliberately distribute questions across different chapters, events, people and details. Do not repeat or closely paraphrase any existing question."
-          if old_prompt not in text:
-              raise SystemExit('prompt marker not found')
-          text = text.replace(old_prompt, new_prompt, 1)
+          # Make Gemini batches category-specific and grounded when possible.
+          old_batch="async function generateBatch(prompt:string,allowGrounding=false):Promise<any>{try{return await withTimeout(model.generateContent(prompt),30000)}catch(firstError){try{return await withTimeout(fallbackModel.generateContent(prompt),30000)}catch(secondError){if(allowGrounding){try{return await withTimeout(groundedModel.generateContent(prompt),30000)}catch{}}throw secondError||firstError}}}"
+          new_batch="async function generateBatch(prompt:string,allowGrounding=false):Promise<any>{if(allowGrounding){try{return await withTimeout(groundedModel.generateContent(prompt),35000)}catch{}}try{return await withTimeout(model.generateContent(prompt),30000)}catch(firstError){try{return await withTimeout(fallbackModel.generateContent(prompt),30000)}catch(secondError){throw secondError||firstError}}}"
+          if old_batch in text: text=text.replace(old_batch,new_batch,1)
 
-          # Do not return a metadata-heavy pool. Prefer content questions first.
-          old_return = "eligible=shuffle(pool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target)return eligible.slice(0,target);throw new Error(`EDUWILLS could prepare only ${eligible.length} of ${target} questions. Please try again.`);"
-          new_return = "eligible=shuffle(pool.filter(q=>!recent.some(r=>similar(r,q.question))));const contentEligible=eligible.filter(q=>!isMetadataQuestion(q.question));const metadataEligible=eligible.filter(q=>isMetadataQuestion(q.question));const finalEligible=[...shuffle(contentEligible),...shuffle(metadataEligible)].slice(0,target);if(finalEligible.length>=target&&contentRatio(finalEligible)>=0.8)return finalEligible;throw new Error(`EDUWILLS could prepare only ${finalEligible.length} content-focused questions of ${target}. Please try again.`);"
-          if old_return not in text:
-              raise SystemExit('return marker not found')
-          text = text.replace(old_return, new_return, 1)
+          old_prompt="Accuracy rules: use the supplied research as evidence, and prefer facts supported by multiple independent sources. Never invent chapters, quotations, characters, events, settings, dates or plot details. If a detail is not supported by the research, do not ask about it. Do not confuse similarly titled books or different editions. Questions must test the actual book, not a generic topic associated with it. Each question must have exactly four distinct plausible options, exactly one correct answer indexed 0-3, and an evidence field containing the specific research fact that supports the answer. Vary question types across plot/events, characters, chronology, themes, setting, cause/effect, literary devices, vocabulary, inference, author and publication facts only when supported. Avoid trivia unless it is clearly supported. Do not repeat or closely paraphrase any existing question."
+          new_prompt="Accuracy rules: at least 80% of the final questions MUST test concrete book content. Prefer specific dates, named people, named groups, chapter titles, chapter numbers, events, sequences, locations, organizations, decisions, causes/effects, conflicts, character actions and documented statistics. Author/title/publisher/publication questions are metadata and may be at most 20%. Never ask a broad generic question such as ‘What was the major challenge?’ or ‘What is the main theme?’ unless it is tied to a specific documented event, person, chapter, date, decision or consequence. Never invent chapters, quotations, characters, events, settings, dates or plot details. If a detail is not supported by the dossier or grounded search, do not ask about it. Do not confuse similarly titled books or different editions. Each question must have exactly four distinct plausible options, exactly one correct answer indexed 0-3, and an evidence field containing the specific fact supporting the answer. Distribute questions across different chapters, events, people and details. Do not repeat or closely paraphrase existing questions."
+          if old_prompt in text:text=text.replace(old_prompt,new_prompt,1)
+
+          # Require different evidence categories in successive AI batches.
+          old_loop="for(let cursor=0;cursor<rounds&&pool.length<desiredPool;cursor+=3){const active=Math.min(3,rounds-cursor);const results=await Promise.allSettled(Array.from({length:active},(_,n)=>generateBatch(`${base}\\nBatch ${cursor+n+1}: deliberately use different evidence and a different question style from the other batches.`)));for(const result of results)if(result.status==='fulfilled'){try{pool=pool.concat(validate(extractJson(result.value.response.text()),recent.concat(pool.map(q=>q.question)),desiredPool-pool.length))}catch{}}}"
+          new_loop="const categories=['chapter structure and titles','dates, years and numerical facts','named people, groups and organizations','specific events and incidents','places and geography','causes, effects and decisions','military or government responses','themes and arguments tied to concrete evidence'];for(let cursor=0;cursor<rounds&&pool.length<desiredPool;cursor+=3){const active=Math.min(3,rounds-cursor);const results=await Promise.allSettled(Array.from({length:active},(_,n)=>{const category=categories[(cursor+n)%categories.length];return generateBatch(`${base}\\nBatch ${cursor+n+1}. Required focus category: ${category}. Ask concrete book-content questions in this category. Do not drift to a generic topic summary.`,true)}));for(const result of results)if(result.status==='fulfilled'){try{pool=pool.concat(validate(extractJson(result.value.response.text()),recent.concat(pool.map(q=>q.question)),desiredPool-pool.length))}catch{}}}"
+          if old_loop in text:text=text.replace(old_loop,new_loop,1)
+
+          old_return="eligible=shuffle(pool.filter(q=>!recent.some(r=>similar(r,q.question))));if(eligible.length>=target)return eligible.slice(0,target);throw new Error(`EDUWILLS could prepare only ${eligible.length} of ${target} questions. Please try again.`);"
+          new_return="eligible=shuffle(pool.filter(q=>!recent.some(r=>similar(r,q.question))&&!isGenericTopicQuestion(q.question)));const contentEligible=eligible.filter(q=>!isMetadataQuestion(q.question));const metadataEligible=eligible.filter(q=>isMetadataQuestion(q.question));const finalEligible=[...shuffle(contentEligible),...shuffle(metadataEligible)].slice(0,target);if(finalEligible.length>=target&&contentRatio(finalEligible)>=0.8)return finalEligible;throw new Error(`EDUWILLS could prepare only ${finalEligible.length} content-focused questions of ${target}. Please try again.`);"
+          if old_return in text:text=text.replace(old_return,new_return,1)
 
           quiz.write_text(text)
-
-          # Server search endpoint: make the exact SCARS author identity a hard
-          # result regardless of which external catalogue responds.
-          search = Path('app/api/book-search/route.ts')
-          st = search.read_text()
-          marker = "const requested=norm(author),titleRequested=norm(title);let filtered=[...names];"
-          repl = "const requested=norm(author),titleRequested=norm(title);if((titleRequested.includes('scars')||requested.includes('irabor'))){mergeAuthors(names,['Gen. Lucky Irabor','General Lucky Irabor','Lucky E. O. Irabor','Lucky Irabor']);addUnique(books,'SCARS: Nigeria’s Journey and the Boko Haram Conundrum',['Gen. Lucky Irabor','General Lucky Irabor','Lucky E. O. Irabor','Lucky Irabor'],'Verified EDUWILLS catalogue match.');}let filtered=[...names];"
-          if marker not in st:
-              raise SystemExit('server search marker not found')
-          st=st.replace(marker,repl,1)
-          search.write_text(st)
-
-          print('Patched quiz cache/content enforcement and SCARS identity search.')
+          print('Patched static client search, SCARS content dossier, Gemini grounding, question diversity and cache version.')
 
       - name: Verify
         run: |
-          grep -q "CACHE_VERSION = 'v7'" lib/quizAiClient.ts
-          grep -q "isMetadataQuestion" lib/quizAiClient.ts
+          grep -q "CACHE_VERSION = 'v8'" lib/quizAiClient.ts
+          grep -q "scarsVerified" lib/quizAiClient.ts
+          grep -q "isGenericTopicQuestion" lib/quizAiClient.ts
           grep -q "scarsSeedQuestions" lib/quizAiClient.ts
-          grep -q "Gen. Lucky Irabor" app/api/book-search/route.ts
+          grep -q "Required focus category" lib/quizAiClient.ts
           echo "Repair verification passed."
+
+      - name: Typecheck
+        run: npx tsc --noEmit
 
       - name: Commit repaired source
         env:
@@ -125,7 +164,7 @@ function scarsSeedQuestions(book:QuizBook):QuizQuestion[]{
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add lib/quizAiClient.ts app/api/book-search/route.ts
+          git add lib/quizAiClient.ts
           git diff --cached --quiet && exit 0
-          git commit -m "[auto-fix] enforce content-first quizzes and SCARS identity"
+          git commit -m "[auto-fix] fix SCARS search and content-focused Gemini quizzes"
           git push
