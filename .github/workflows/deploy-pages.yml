@@ -44,6 +44,9 @@ jobs:
       - name: Apply quiz runtime repair
         run: node scripts/repair-quiz-runtime.mjs
 
+      - name: Apply cross-device quiz cache and quota repair
+        run: node scripts/repair-quiz-cache.mjs
+
       - name: Verify application source
         run: |
           set -e
@@ -51,17 +54,22 @@ jobs:
           test -f app/admin/page.tsx
           test -f lib/quizAiClient.ts
           test -f firestore.rules
+          test -f scripts/repair-quiz-cache.mjs
           grep -Fq "Gen. Lucky Irabor" lib/quizAiClient.ts
           grep -Fq "Oyin Olugbile" lib/quizAiClient.ts
           grep -Fq "CACHE = 'v16-fast-functional-quiz'" lib/quizAiClient.ts
           grep -Fq "while (accepted.length < requested" lib/quizAiClient.ts
           grep -Fq "instructionSatisfied" lib/quizAiClient.ts
+          grep -Fq "QUIZ_POOL_TTL_MS" app/dashboard/quiz/page.tsx
+          grep -Fq "DAILY_AI_GENERATIONS" app/dashboard/quiz/page.tsx
+          grep -Fq "quizQuestionCache" app/dashboard/quiz/page.tsx
+          grep -Fq "quizAiQuota" app/dashboard/quiz/page.tsx
           grep -Fq "generationTicker" app/dashboard/quiz/page.tsx
           grep -Fq "plainQuiz" lib/quizAiClient.ts
           grep -Fq "ThinkingLevel" lib/quizAiClient.ts
           grep -Fq "deleteDoc" app/admin/page.tsx
           grep -Fq "allow delete: if isAdmin();" firestore.rules
-          echo "Direct application changes and fast quiz resilience repair verified."
+          echo "Direct application changes, fast quiz resilience, cache rotation and quota controls verified."
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
