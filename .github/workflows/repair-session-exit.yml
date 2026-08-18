@@ -7,6 +7,7 @@ on:
       - 'app/dashboard/quiz/page.tsx'
       - 'app/dashboard/quiz/take/page.tsx'
       - 'app/dashboard/page.tsx'
+      - 'app/dashboard/layout.tsx'
       - '.github/workflows/repair-session-exit.yml'
   workflow_dispatch:
 
@@ -21,29 +22,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Apply session and exit fixes
+      - name: Apply robust session and exit fixes
         shell: python
         run: |
           from pathlib import Path
 
-          quiz = Path('app/dashboard/quiz/page.tsx')
           take = Path('app/dashboard/quiz/take/page.tsx')
-          dash = Path('app/dashboard/page.tsx')
-
-          q = quiz.read_text(encoding='utf-8')
+          layout = Path('app/dashboard/layout.tsx')
           t = take.read_text(encoding='utf-8')
-          d = dash.read_text(encoding='utf-8')
+          l = layout.read_text(encoding='utf-8')
 
-          # The quiz-studio Exit button is an intentional in-app action, not a
-          # page-leave attempt. Ask first, then return to Quiz Studio without
-          # scoring the current attempt.
-          old_q_exit = 'onClick={reset} className="font-bold text-slate-600"'
-          new_q_exit = 'onClick={()=>{if(window.confirm("Do you want to end this quiz? Your current progress will be discarded and you will return to Quiz Studio.")){reset()}}} className="font-bold text-slate-600"'
-          if old_q_exit in q and 'Do you want to end this quiz?' not in q:
-              q = q.replace(old_q_exit, new_q_exit, 1)
-
-          # The dedicated /quiz/take route must use the same intentional-exit
-          # behavior. It must NOT consume one of the three page-leave attempts.
+          # The dedicated take route's Exit button is an intentional in-app
+          # action. It must ask for confirmation and return to Quiz Studio,
+          # without consuming the page-leave warning counter.
           if 'function endQuiz()' not in t:
               marker = '  async function attemptLeave(destination?: string) {'
               addition = '''  function endQuiz() {
@@ -59,70 +50,69 @@ jobs:
               if marker in t:
                   t = t.replace(marker, addition + marker, 1)
 
-          old_t_exit = 'onClick={() => void attemptLeave(`${BASE}/dashboard/quiz/`)}'
-          new_t_exit = 'onClick={endQuiz}'
-          if old_t_exit in t:
-              t = t.replace(old_t_exit, new_t_exit, 1)
+          t = t.replace(
+              'onClick={() => void attemptLeave(`${BASE}/dashboard/quiz/`)}',
+              'onClick={endQuiz}',
+              1,
+          )
 
-          # A valid signed-in user must have a real profile name. Falling back
-          # to "Learner" hides broken/stale sessions, so force a fresh login
-          # when the profile cannot identify the user.
-          old_dash = "const s=await getDoc(doc(db,'users',u.uid)),d=s.data()||{};setActive(d.activated===true&&expiry(d.activationExpiresAt)>Date.now());await load(u)"
-          new_dash = "const s=await getDoc(doc(db,'users',u.uid));if(!s.exists()){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}const d=s.data()||{},fullName=String(d.fullName||'').trim();if(!fullName){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}setName(fullName.split(' ')[0]);setActive(d.activated===true&&expiry(d.activationExpiresAt)>Date.now());await load(u)"
-          if old_dash in d:
-              d = d.replace(old_dash, new_dash, 1)
-
-          # Re-check identity when the dashboard is backgrounded for a while.
-          # This catches expired/stale sessions when the user returns later.
-          if 'eduwillsIdentityVisibilityGuard' not in d:
-              marker = " useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{"
+          # Dashboard layout is the common parent of the dashboard, quiz,
+          # history and AI pages. Revalidate the Firebase identity when the
+          # user returns after being away for at least one minute.
+          if 'eduwillsIdentityVisibilityGuard' not in l:
+              marker = '\n  if (!ready) {'
               guard = '''
- useEffect(()=>{
-  let hiddenAt=0;
-  const eduwillsIdentityVisibilityGuard=async()=>{
-   if(document.visibilityState==='hidden'){hiddenAt=Date.now();return;}
-   if(!hiddenAt||Date.now()-hiddenAt<60000)return;
-   hiddenAt=0;
-   const u=auth.currentUser;
-   if(!u){window.location.replace(`${BASE}/login/`);return;}
-   try{
-    const s=await getDoc(doc(db,'users',u.uid));
-    const d=s.data()||{};
-    const fullName=String(d.fullName||'').trim();
-    if(!s.exists()||!fullName){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}
-    setName(fullName.split(' ')[0]);
-   }catch{await signOut(auth);window.location.replace(`${BASE}/login/`);}
-  };
-  document.addEventListener('visibilitychange',eduwillsIdentityVisibilityGuard);
-  return()=>document.removeEventListener('visibilitychange',eduwillsIdentityVisibilityGuard);
- },[]);
+  useEffect(() => {
+    let hiddenAt = 0;
+    const eduwillsIdentityVisibilityGuard = async () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (!hiddenAt || Date.now() - hiddenAt < 60000) return;
+      hiddenAt = 0;
+      const user = auth.currentUser;
+      if (!user) {
+        window.location.replace(`${BASE}/login/`);
+        return;
+      }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const data = snap.data() || {};
+        const identity = String(data.fullName || data.username || user.displayName || '').trim();
+        if (!snap.exists() || !identity) {
+          await signOut(auth);
+          window.location.replace(`${BASE}/login/`);
+        }
+      } catch (error) {
+        console.error('EDUWILLS resume identity validation failed:', error);
+        await signOut(auth).catch(() => undefined);
+        window.location.replace(`${BASE}/login/`);
+      }
+    };
+    document.addEventListener('visibilitychange', eduwillsIdentityVisibilityGuard);
+    return () => document.removeEventListener('visibilitychange', eduwillsIdentityVisibilityGuard);
+  }, []);
 '''
-              # Insert immediately after the existing auth-state effect.
-              needle = " useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{"
-              pos = d.find(needle)
-              if pos != -1:
-                  # Find the end of the first effect by locating the next '),[]);'
-                  end = d.find('),[]);', pos)
-                  if end != -1:
-                      end += len('),[]);')
-                      d = d[:end] + guard + d[end:]
+              if marker in l:
+                  l = l.replace(marker, guard + marker, 1)
 
-          quiz.write_text(q, encoding='utf-8')
           take.write_text(t, encoding='utf-8')
-          dash.write_text(d, encoding='utf-8')
+          layout.write_text(l, encoding='utf-8')
 
-          print('Quiz exit fix present:', 'Do you want to end this quiz?' in q)
-          print('Take-route exit fix present:', 'function endQuiz()' in t and 'onClick={endQuiz}' in t)
-          print('Dashboard profile guard present:', 'if(!s.exists())' in d and 'fullName=String(d.fullName||\'\').trim()' in d)
+          assert 'function endQuiz()' in t
+          assert 'onClick={endQuiz}' in t
+          assert 'eduwillsIdentityVisibilityGuard' in l
+          print('Session/exit repair source checks passed.')
 
-      - name: Verify changes
+      - name: Verify repaired source
         shell: bash
         run: |
-          grep -Fq 'Do you want to end this quiz?' app/dashboard/quiz/page.tsx
           grep -Fq 'function endQuiz()' app/dashboard/quiz/take/page.tsx
           grep -Fq 'onClick={endQuiz}' app/dashboard/quiz/take/page.tsx
-          grep -Fq "fullName=String(d.fullName||'').trim()" app/dashboard/page.tsx
-          grep -Fq 'eduwillsIdentityVisibilityGuard' app/dashboard/page.tsx
+          grep -Fq 'eduwillsIdentityVisibilityGuard' app/dashboard/layout.tsx
+          grep -Fq 'Do you want to end this quiz?' app/dashboard/quiz/take/page.tsx
+          grep -Fq 'leaveAttempts' app/dashboard/quiz/take/page.tsx
 
       - name: Commit and push repair
         shell: bash
@@ -133,6 +123,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/dashboard/quiz/page.tsx app/dashboard/quiz/take/page.tsx app/dashboard/page.tsx
+          git add app/dashboard/quiz/take/page.tsx app/dashboard/layout.tsx
           git commit -m 'fix: separate quiz exit and stale session handling [session-repair]'
           git push
