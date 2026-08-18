@@ -48,10 +48,7 @@ jobs:
           echo "Direct application changes verified."
 
       - name: Install dependencies
-        uses: npm/install@v1
-        with:
-          npm: npm
-          node: 22
+        run: npm install --no-audit --no-fund
 
       - name: Build static site
         run: npm run build
