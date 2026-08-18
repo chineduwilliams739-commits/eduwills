@@ -28,12 +28,13 @@ jobs:
   const statuses=['Researching the selected book(s)…','Checking book-specific sources and facts…','Gemini is generating questions…','Gemini is checking the questions for accuracy…','Balancing dates, events, names, places and other details…','Almost ready — Gemini is completing the question set…'];
   let lastError:any=null;
   for(let attempt=0;attempt<5;attempt++){
-   setGenerationStatus(statuses[Math.min(attempt+2,statuses.length-1)]);
+   let ticker:any; let statusIndex=2;
    try{
+    ticker=setInterval(()=>{statusIndex=(statusIndex+1)%statuses.length;setGenerationStatus(statuses[statusIndex])},8000);
     const generated=await generateQuiz(setupData.books,setupData.questions,setupData.difficulty,setupData.instructions,recent,research);
     if(Array.isArray(generated)&&generated.length>=setupData.questions&&generated.every((q:any)=>q?.question&&Array.isArray(q.options)&&q.options.length===4&&Number.isInteger(q.answer)&&q.answer>=0&&q.answer<=3))return generated;
     lastError=new Error(`Gemini returned ${Array.isArray(generated)?generated.length:0} usable questions; ${setupData.questions} are required.`);
-   }catch(e){lastError=e}
+   }catch(e){lastError=e}finally{if(ticker)clearInterval(ticker)}
    setGenerationStatus(attempt===4?'Gemini is making one final automatic attempt…':`Gemini is refining the question set (automatic retry ${attempt+1}/4)…`);
    await new Promise(r=>setTimeout(r,700));
   }
