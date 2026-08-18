@@ -1,0 +1,44 @@
+name: Deploy EDUWILLS AI Router
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUWILLS }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Set Groq secret
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          if [ -z "$GROQ_API_KEY" ]; then echo "GROQ_API_KEY GitHub secret is required"; exit 1; fi
+          printf '%s' "$GROQ_API_KEY" | firebase functions:secrets:set GROQ_API_KEY --project eduwills --token "$FIREBASE_TOKEN" --force
+
+      - name: Set OpenRouter secret
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -z "$OPENROUTER_API_KEY" ]; then echo "OPENROUTER_API_KEY GitHub secret is required"; exit 1; fi
+          printf '%s' "$OPENROUTER_API_KEY" | firebase functions:secrets:set OPENROUTER_API_KEY --project eduwills --token "$FIREBASE_TOKEN" --force
+
+      - name: Deploy quiz AI router
+        run: firebase deploy --only functions:quizAiRouter --project eduwills --token "$FIREBASE_TOKEN"
