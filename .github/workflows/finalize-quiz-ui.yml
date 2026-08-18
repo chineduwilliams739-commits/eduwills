@@ -1,0 +1,49 @@
+name: Finalize quiz generation UI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+auth:
+  permissions: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch quiz failure UI and generation status
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/dashboard/quiz/page.tsx')
+          s=p.read_text()
+          old="setGenerationError(e?.message||'Quiz generation failed.');setGenerationStatus('');setQs([]);setSetup(null)"
+          new="setGenerationError('');setGenerationStatus('');setMessage('Gemini could not complete this quiz automatically. Please return to Quiz Studio and start it again.');setQs([]);setSetup(null)"
+          if old in s:
+              s=s.replace(old,new,1)
+          else:
+              print('failure UI pattern already patched or changed')
+          p.write_text(s)
+          PY
+      - name: Verify
+        run: |
+          grep -q "Gemini could not complete this quiz automatically" app/dashboard/quiz/page.tsx
+          ! grep -q "Quiz generation needs another try" app/dashboard/quiz/page.tsx
+      - name: Commit source patch
+        run: |
+          git config user.name "chineduwilliams739-commits"
+          git config user.email "chineduwilliams739@gmail.com"
+          if git diff --quiet; then
+            echo "No source changes needed."
+          else
+            git add app/dashboard/quiz/page.tsx
+            git commit -m "fix: remove user retry controls from quiz generation"
+            git push origin main
+          fi
