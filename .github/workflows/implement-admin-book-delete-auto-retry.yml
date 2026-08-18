@@ -1,0 +1,114 @@
+name: Implement admin book deletion and automatic quiz retries
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch quiz UX and automatic retries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/dashboard/quiz/page.tsx')
+          s=p.read_text()
+          marker=' async function start(){'
+          if 'async function generateQuizWithRetries' not in s:
+            helper=r''' async function generateQuizWithRetries(setupData:any,recent:string[],research:string){
+  const statuses=['Researching the selected book(s)…','Checking book-specific sources and facts…','Gemini is generating questions…','Gemini is checking the questions for accuracy…','Balancing dates, events, names, places and other details…','Almost ready — Gemini is completing the question set…'];
+  let lastError:any=null;
+  for(let attempt=0;attempt<5;attempt++){
+   setGenerationStatus(statuses[Math.min(attempt+2,statuses.length-1)]);
+   try{
+    const generated=await generateQuiz(setupData.books,setupData.questions,setupData.difficulty,setupData.instructions,recent,research);
+    if(Array.isArray(generated)&&generated.length>=setupData.questions&&generated.every((q:any)=>q?.question&&Array.isArray(q.options)&&q.options.length===4&&Number.isInteger(q.answer)&&q.answer>=0&&q.answer<=3))return generated;
+    lastError=new Error(`Gemini returned ${Array.isArray(generated)?generated.length:0} usable questions; ${setupData.questions} are required.`);
+   }catch(e){lastError=e}
+   setGenerationStatus(attempt===4?'Gemini is making one final automatic attempt…':`Gemini is refining the question set (automatic retry ${attempt+1}/4)…`);
+   await new Promise(r=>setTimeout(r,700));
+  }
+  throw lastError||new Error('EDUWILLS could not generate the complete quiz automatically.');
+ }
+
+'''
+            s=s.replace(marker,helper+marker,1)
+          old="""   setGenerationStatus('Researching your selected books from multiple sources…');
+   const [research,recent]=await Promise.all([researchBooks(setupData.books),recentQuestions()]);
+   if(!research.trim())throw new Error('No reliable book information was found. Please try another saved book.');
+   setGenerationStatus('Generating questions with Gemini…');
+   const generated=await generateQuiz(setupData.books,questions,difficulty,instructions,recent,research);
+   if(!Array.isArray(generated)||generated.length<questions)throw new Error(`EDUWILLS generated only ${Array.isArray(generated)?generated.length:0} usable questions. Please try again.`);
+   if(generated.some(q=>!q.question||!Array.isArray(q.options)||q.options.length!==4||!Number.isInteger(q.answer)||q.answer<0||q.answer>3))throw new Error('The AI returned an incomplete question set. Please try again.');"""
+          new="""   setGenerationStatus('Researching the selected book(s)…');
+   const [research,recent]=await Promise.all([researchBooks(setupData.books),recentQuestions()]);
+   if(!research.trim())throw new Error('No reliable book information was found.');
+   const generated=await generateQuizWithRetries(setupData,recent,research);"""
+          if old not in s: raise SystemExit('quiz generation block not found')
+          s=s.replace(old,new,1)
+          old_ui=""" if((busy||generationStatus||generationError)&&!setup)return <main className=\"grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-cyan-50 p-6\"><section className=\"w-full max-w-md rounded-[2rem] border border-slate-100 bg-white p-8 text-center shadow-2xl\"><div className=\"mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 text-white shadow-lg\">{generationError?<Sparkles size={30}/>:<Loader2 className=\"animate-spin\" size={30}/>}</div><h1 className=\"mt-5 text-2xl font-black text-slate-900\">{generationError?'Quiz generation needs another try':'Building your quiz…'}</h1><p className=\"mt-3 text-sm leading-6 text-slate-500\">{generationError||generationStatus||'EDUWILLS is preparing your questions.'}</p>{generationError?<div className=\"mt-6 flex gap-3\"><button onClick={reset} className=\"flex-1 rounded-xl border border-slate-200 py-3 font-black text-slate-700\">Back</button><button onClick={()=>{reset();setTimeout(start,50)}} className=\"flex-1 rounded-xl bg-ink py-3 font-black text-white\">Try again</button></div>:<><div className=\"mt-6 h-2 overflow-hidden rounded-full bg-slate-100\"><div className=\"h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400\"/></div><p className=\"mt-4 text-xs font-bold text-slate-400\">Please keep this page open while EDUWILLS researches the book and builds your questions.</p></>}</section></main>;"""
+          new_ui=""" if((busy||generationStatus||generationError)&&!setup)return <main className=\"grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-cyan-50 p-6\"><section className=\"w-full max-w-md rounded-[2rem] border border-slate-100 bg-white p-8 text-center shadow-2xl\"><div className=\"mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-400 text-white shadow-lg\"><Loader2 className=\"animate-spin\" size={30}/></div><h1 className=\"mt-5 text-2xl font-black text-slate-900\">Building your quiz…</h1><p className=\"mt-3 text-sm leading-6 text-slate-500\">{generationStatus||'EDUWILLS is preparing your questions.'}</p><div className=\"mt-6 h-2 overflow-hidden rounded-full bg-slate-100\"><div className=\"h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400\"/></div><p className=\"mt-4 text-xs font-bold text-slate-400\">Please keep this page open. If Gemini needs more time, EDUWILLS will retry automatically.</p></section></main>;"""
+          if old_ui not in s: raise SystemExit('quiz generation UI block not found')
+          s=s.replace(old_ui,new_ui,1)
+          old_c="""  }catch(e:any){console.error(e);setGenerationError(e?.message||'Quiz generation failed.');setGenerationStatus('');setQs([]);setSetup(null)}"""
+          new_c="""  }catch(e:any){console.error(e);setGenerationError('');setGenerationStatus('Gemini could not complete the quiz yet. EDUWILLS will return you to Quiz Studio automatically.');setQs([]);setSetup(null);setTimeout(()=>{setGenerationStatus('');setGenerationError('')},2500)}"""
+          if old_c not in s: raise SystemExit('quiz catch block not found')
+          s=s.replace(old_c,new_c,1)
+          p.write_text(s)
+          PY
+      - name: Patch admin console with book management
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/admin/page.tsx')
+          s=p.read_text()
+          s=s.replace("import { collection, getDocs, setDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';", "import { collection, getDocs, setDoc, doc, serverTimestamp, getDoc, deleteDoc } from 'firebase/firestore';")
+          s=s.replace("type User = { id: string; uid?: string; fullName?: string; username: string; phone?: string; activated?: boolean; activationExpiresAt?: string | null };", "type User = { id: string; uid?: string; fullName?: string; username: string; phone?: string; activated?: boolean; activationExpiresAt?: string | null };\ntype BookSlot = { id:string; userId:string; slot:number; title:string; author:string };" )
+          s=s.replace("const [users, setUsers] = useState<User[]>([]); const [selectedUser, setSelectedUser] = useState('');", "const [users, setUsers] = useState<User[]>([]); const [books, setBooks] = useState<BookSlot[]>([]); const [selectedUser, setSelectedUser] = useState('');")
+          s=s.replace("const snap = await getDocs(collection(db, 'users'));\n        setUsers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<User, 'id'>) })));", "const snap = await getDocs(collection(db, 'users'));\n        setUsers(snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<User, 'id'>) })));\n        const bookSnap = await getDocs(collection(db, 'bookSlots'));\n        setBooks(bookSnap.docs.map(d => ({ id:d.id, ...(d.data() as Omit<BookSlot,'id'>) })).sort((a,b)=>a.slot-b.slot));")
+          marker="  const createToken = async () => {"
+          helper="""  const deleteBook = async (book:BookSlot) => {\n    const owner=users.find(u=>(u.uid||u.id)===book.userId);\n    if(!window.confirm(`Delete \"${book.title}\" from ${owner?.fullName||owner?.username||'this user'}'s slot ${book.slot}?`)) return;\n    try { await deleteDoc(doc(db,'bookSlots',book.id)); setBooks(v=>v.filter(x=>x.id!==book.id)); alert('Book removed. The slot is now available again.'); }\n    catch { alert('Could not delete this book. Firebase Admin permissions may need to be refreshed.'); }\n  };\n\n"""
+          s=s.replace(marker,helper+marker,1)
+          needle='  <div className="mt-7 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">'
+          section="""  <section className=\"mt-5 rounded-3xl border border-amber-300/20 bg-amber-400/5 p-5 sm:p-6\"><div className=\"flex items-center justify-between gap-3\"><div><h2 className=\"font-black\">Book slot management</h2><p className=\"text-xs text-slate-400\">Admin-only: remove a saved book when a user needs to free a slot.</p></div><span className=\"rounded-full bg-amber-400/10 px-3 py-1 text-[10px] font-black uppercase text-amber-200\">Admin only</span></div><div className=\"mt-4 grid gap-2\">{books.length?books.map(b=>{const owner=users.find(u=>(u.uid||u.id)===b.userId);return <div key={b.id} className=\"flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/10 p-4\"><div className=\"min-w-0\"><p className=\"text-[10px] font-black uppercase text-slate-500\">Slot {b.slot} · {owner?.fullName||owner?.username||'User'}</p><p className=\"truncate font-black\">{b.title}</p><p className=\"text-xs text-slate-400\">{b.author}</p></div><button type=\"button\" onClick={()=>deleteBook(b)} className=\"shrink-0 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200\">Delete book</button></div>}) : <p className=\"rounded-2xl border border-dashed border-white/10 p-5 text-center text-sm text-slate-500\">No saved books found.</p>}</div></section>\n"""
+          if 'Book slot management' not in s:
+            s=s.replace(needle,section+needle,1)
+          p.write_text(s)
+          PY
+      - name: Restrict book deletion to admins
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('firestore.rules')
+          s=p.read_text()
+          old="allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);"
+          if old in s:
+            s=s.replace(old,"allow delete: if isAdmin();",1)
+          p.write_text(s)
+          PY
+      - name: Verify changes and build
+        run: |
+          grep -q "generateQuizWithRetries" app/dashboard/quiz/page.tsx
+          grep -q "Delete book" app/admin/page.tsx
+          grep -q "allow delete: if isAdmin();" firestore.rules
+          if grep -q "Quiz generation needs another try" app/dashboard/quiz/page.tsx; then exit 1; fi
+          if grep -q ">Try again</button>" app/dashboard/quiz/page.tsx; then exit 1; fi
+          npm ci
+          npm run build
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/dashboard/quiz/page.tsx app/admin/page.tsx firestore.rules
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "feat: admin book deletion and automatic quiz retries"
+          git push
