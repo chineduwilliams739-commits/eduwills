@@ -1,0 +1,164 @@
+name: Repair quiz instruction fidelity and canonical book identity
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/quizAiClient.ts'
+      - '.github/workflows/repair-quiz-instruction-fidelity.yml'
+      - 'app/dashboard/quiz/page.tsx'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !startsWith(github.event.head_commit.message, 'repair: quiz instruction fidelity') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch quiz engine
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('lib/quizAiClient.ts')
+          s = p.read_text()
+          anchor = "const scarsAliases = new Set(['scars','irabor','lucky irabor','gen lucky irabor','general lucky irabor','lucky e o irabor','lucky e irabor','gen e o irabor','gen irabor']);"
+          canonical = anchor + r'''
+const canonicalizeBook = (book: QuizBook): QuizBook => {
+  const title = book.title.trim();
+  const n = normalize(title);
+  if (n === 'scars' || n.startsWith('scars ')) return { ...book, title: 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', author: 'Gen. Lucky Irabor' };
+  return { ...book, title, author: book.author.trim() };
+};
+'''
+          if 'const canonicalizeBook = (book: QuizBook)' not in s:
+              s = s.replace(anchor, canonical)
+
+          old = "const normalizedBooks=books.map(b=>({title:b.title.trim(),author:b.author.trim()})),key=cacheKey('research',normalizedBooks),cached=storageGet<string>(key);"
+          new = "const normalizedBooks=books.map(canonicalizeBook).map(b=>({title:b.title.trim(),author:b.author.trim()})),key=cacheKey('research',normalizedBooks),cached=storageGet<string>(key);"
+          s = s.replace(old, new)
+          s = s.replace("for(const book of books)for(const fact", "for(const book of normalizedBooks)for(const fact")
+          s = s.replace("for(const book of books){ try { const prompt=", "for(const book of normalizedBooks){ try { const prompt=")
+          s = s.replace("const requests=books.flatMap(book=>", "const requests=normalizedBooks.flatMap(book=>")
+
+          sig = "export async function generateQuiz(books:QuizBook[],count:number,difficulty:string,instructions:string,previous:string[],research:string):Promise<QuizQuestion[]>{"
+          if sig not in s:
+              raise SystemExit('generateQuiz signature not found')
+          start = s.index(sig)
+          depth = 0; end = None; in_str = None; esc = False
+          for i in range(start, len(s)):
+              ch = s[i]
+              if in_str:
+                  if esc: esc=False
+                  elif ch=='\\': esc=True
+                  elif ch==in_str: in_str=None
+              else:
+                  if ch in "'\"`": in_str=ch
+                  elif ch=='{': depth += 1
+                  elif ch=='}':
+                      depth -= 1
+                      if depth==0:
+                          end=i+1; break
+          if end is None: raise SystemExit('generateQuiz block end not found')
+
+          replacement = r'''export async function generateQuiz(books:QuizBook[],count:number,difficulty:string,instructions:string,previous:string[],research:string):Promise<QuizQuestion[]>{
+  const canonicalBooks=books.map(canonicalizeBook);
+  const target=Math.min(100,Math.max(1,count));
+  const cleanInstruction=String(instructions||'').trim().slice(0,800);
+  const instructionNorm=normalize(cleanInstruction);
+  const wantsDates=/\b(date|dates|year|years|when|chronolog|timeline|time period)\b/.test(instructionNorm);
+  const wantsEvents=/\b(event|events|incident|incidents|happened|occurred|occurrence|story|plot)\b/.test(instructionNorm);
+  const wantsPeople=/\b(name|names|person|people|character|characters|leader|leaders|who)\b/.test(instructionNorm);
+  const wantsPlaces=/\b(place|places|location|locations|where|setting|geograph)\b/.test(instructionNorm);
+  const wantsNumbers=/\b(number|numbers|statistic|statistics|percentage|amount|figure|figures|quantity)\b/.test(instructionNorm);
+  const requestedFocus:string[]=[];
+  if(wantsDates)requestedFocus.push('dates, years and chronology');
+  if(wantsEvents)requestedFocus.push('specific events and incidents');
+  if(wantsPeople)requestedFocus.push('named people, groups and relationships');
+  if(wantsPlaces)requestedFocus.push('places and settings');
+  if(wantsNumbers)requestedFocus.push('numbers, statistics and quantities');
+  const focused=requestedFocus.length>0;
+  const focusPattern = (q:string) => {
+    const n=normalize(q);
+    return (wantsDates && /\b(date|year|when|before|after|during|between|timeline|chronolog)\b/.test(n)) ||
+      (wantsEvents && /\b(event|incident|attack|battle|meeting|decision|occurred|happened|abduct|death|appointment|response)\b/.test(n)) ||
+      (wantsPeople && /\b(who|named|leader|character|person|group|relationship)\b/.test(n)) ||
+      (wantsPlaces && /\b(where|place|location|setting|region|city|state|country)\b/.test(n)) ||
+      (wantsNumbers && /\b(number|percentage|percent|million|thousand|amount|how many|how much)\b/.test(n));
+  };
+  const poolKey=cacheKey('quiz-pool-v10',{books:canonicalBooks.map(b=>({title:normalize(b.title),author:normalize(b.author)})),difficulty,instructions:normalize(cleanInstruction)});
+  const sharedId=normalize(JSON.stringify({books:canonicalBooks.map(b=>({title:b.title,author:b.author})),difficulty})).replace(/[^a-z0-9]+/g,'-').slice(0,180);
+  const [localPool,sharedPool]=await Promise.all([Promise.resolve(storageGet<QuizQuestion[]>(poolKey)||[]),loadSharedPool(sharedId)]);
+  const recent=previous.slice(-80);
+  const usableSeed=[...sharedPool,...localPool];
+  let pool=validate({questions:usableSeed},recent,Math.min(MAX_POOL,Math.max(target*3,40)));
+  const base=`You are EDUWILLS Book Intelligence AI. Generate factual multiple-choice questions from the ACTUAL CONTENT of these exact books: ${canonicalBooks.map(b=>`${b.title} by ${b.author}`).join('; ')}. Difficulty: ${difficulty}.
+  USER INSTRUCTION — THIS IS MANDATORY: ${cleanInstruction||'Generate a diverse content-based quiz covering the actual book.'}
+  ${focused?`The user explicitly requested these focus areas: ${requestedFocus.join(', ')}. At least 70% of the final questions MUST directly match those requested focus areas.`:''}
+  Never substitute the title, author, genre, publication information or a broad theme for the requested content. Never ask a generic question such as the book's main challenge/theme/topic unless the user explicitly asks for themes. Prefer concrete, verifiable details: exact events/incidents, dates/years, chronology, named people/groups, places, chapter events, decisions, relationships, causes/consequences, numbers/statistics and documented responses. Author/title/publication questions are allowed only as a small minority and only when the user asks for them. Do not invent facts. Every question must have four distinct options, one correct answer, and evidence containing the supporting fact. Use DIFFERENT evidence for each question. Do not repeat or paraphrase an existing question.
+  Research dossier:
+  ${research.slice(0,100000)}
+  Existing questions to avoid: ${pool.map(q=>q.question).join(' | ')||'none'}`;
+  const categories=focused?requestedFocus:['specific events and incidents','dates, years and chronology','named people and groups','places and settings','chapters and concrete details','causes, consequences and responses','numbers/statistics where verified','author/title/publication context (maximum 10 percent)'];
+  const desiredPool=Math.min(MAX_POOL,Math.max(target*3,target<=20?36:target*2));
+  let rounds=Math.max(6,Math.ceil((desiredPool-pool.length)/6));
+  for(let i=0;i<rounds&&pool.length<desiredPool;i++){
+    const category=categories[i%categories.length];
+    const prompt=`${base}\nBatch ${i+1}. Write 6 NEW questions. Focus on: ${category}. If the user requested specific focus areas, do not drift to author/title questions. For dates/events, ask about exact dates/years and what happened; for events, ask who did what, where, why, sequence or consequence. Return JSON matching the schema only.`;
+    try{const r=await generateBatch(prompt,true);pool=pool.concat(validate(extractJson(r.response.text()),recent.concat(pool.map(q=>q.question)),desiredPool-pool.length))}catch{}
+  }
+  let merged=shuffle(pool.filter((q,i,a)=>a.findIndex(x=>fingerprint(x.question)===fingerprint(q.question))===i));
+  let content=merged.filter(q=>isSubstantiveQuestion(q.question,q.evidence||''));
+  if(focused){
+    const focusedQuestions=merged.filter(q=>focusPattern(q.question));
+    if(focusedQuestions.length<Math.ceil(target*0.7)){
+      try{
+        const rescue=await generateBatch(`${base}\nURGENT FOCUS REPAIR: Generate 12 questions ONLY about ${requestedFocus.join(' and ')}. Do not ask about author/title/publication. Make them concrete and evidence-backed.`,true);
+        pool=pool.concat(validate(extractJson(rescue.response.text()),recent.concat(pool.map(q=>q.question)),24));
+      }catch{}
+      merged=shuffle(pool.filter((q,i,a)=>a.findIndex(x=>fingerprint(x.question)===fingerprint(q.question))===i));
+      content=merged.filter(q=>isSubstantiveQuestion(q.question,q.evidence||''));
+    }
+  }
+  const focusedFinal=focused?merged.filter(q=>focusPattern(q.question)):[];
+  if(content.length<Math.ceil(target*0.8))throw new Error(`EDUWILLS rejected the generated set because it contained only ${content.length} specific content questions out of ${target}.`);
+  if(focused&&focusedFinal.length<Math.ceil(target*0.7))throw new Error(`EDUWILLS could not satisfy the requested focus (${requestedFocus.join(', ')}). Please try again so Gemini can research more book-specific evidence.`);
+  if(merged.length<target)throw new Error(`EDUWILLS could prepare only ${merged.length} of ${target} questions. Please try again.`);
+  const ordered=focused?[...shuffle(focusedFinal),...shuffle(merged.filter(q=>!focusPattern(q.question)))]:[...shuffle(content),...shuffle(merged.filter(q=>!isSubstantiveQuestion(q.question,q.evidence||'')))];
+  const final=ordered.slice(0,target);
+  storageSet(poolKey,final,QUIZ_TTL);await saveSharedPool(sharedId,final);
+  return final;
+}'''
+          s = s[:start] + replacement + s[end:]
+          s = s.replace("const CACHE_VERSION = 'v7-direct-content-engine';", "const CACHE_VERSION = 'v10-instruction-fidelity-canonical-books';")
+          p.write_text(s)
+
+          q = Path('app/dashboard/quiz/page.tsx')
+          qs = q.read_text()
+          qs = qs.replace("import {addDoc,collection,doc,getDoc,getDocs,query,serverTimestamp,updateDoc,where} from 'firebase/firestore';", "import {addDoc,collection,deleteDoc,doc,getDoc,getDocs,query,serverTimestamp,updateDoc,where} from 'firebase/firestore';")
+          oldload = "setBooks(snap.docs.map(x=>({id:x.id,...x.data()} as Book)).sort((a,b)=>a.slot-b.slot));"
+          newload = r'''const loaded=snap.docs.map(x=>({id:x.id,...x.data()} as Book));
+   for(const b of loaded){if(norm(b.title)==='scars'||norm(b.title).startsWith('scars ')){if(b.author!=='Gen. Lucky Irabor'){await updateDoc(doc(db,'bookSlots',b.id),{author:'Gen. Lucky Irabor'});b.author='Gen. Lucky Irabor';}}}
+   setBooks(loaded.sort((a,b)=>a.slot-b.slot));'''
+          if oldload in qs: qs=qs.replace(oldload,newload)
+          q.write_text(qs)
+      - name: Verify repair
+        run: |
+          grep -q "v10-instruction-fidelity-canonical-books" lib/quizAiClient.ts
+          grep -q "canonicalizeBook" lib/quizAiClient.ts
+          grep -q "USER INSTRUCTION — THIS IS MANDATORY" lib/quizAiClient.ts
+          grep -q "At least 70% of the final questions" lib/quizAiClient.ts
+          grep -q "Gen. Lucky Irabor" lib/quizAiClient.ts
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/quizAiClient.ts app/dashboard/quiz/page.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "repair: quiz instruction fidelity and canonical book identity"
+          git push
