@@ -4,56 +4,28 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isOwnerAdmin() { return signedIn() && request.auth.uid == 'A45uD8Cu27dI0y0iSWla4CZJBhn1'; }
-    function isAdmin() {
-      return signedIn() && (isOwnerAdmin() || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
-    }
-    function currentUsername() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username;
-    }
-
-    match /admins/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create, update, delete: if isAdmin();
-    }
-    match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid;
-      allow read, update: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow delete: if isAdmin();
-    }
-    match /phoneIndex/{phone} {
-      allow read: if true;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin());
-      allow delete: if isAdmin();
-    }
-    match /williTokens/{tokenId} {
-      allow create: if isAdmin();
-      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
-      allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.userId == request.auth.uid);
-      allow delete: if isAdmin();
-    }
-    match /settings/{settingId} {
-      allow read, write: if isAdmin();
-    }
-    match /quizHistory/{historyId} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow update: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
-    }
-    match /books/{bookId} {
+    function isAdmin() { return signedIn() && (isOwnerAdmin() || exists(/databases/$(database)/documents/admins/$(request.auth.uid))); }
+    function currentUsername() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.username; }
+    match /admins/{uid} { allow read: if signedIn() && (request.auth.uid == uid || isAdmin()); allow create, update, delete: if isAdmin(); }
+    match /users/{uid} { allow create: if signedIn() && request.auth.uid == uid; allow read, update: if signedIn() && (request.auth.uid == uid || isAdmin()); allow delete: if isAdmin(); }
+    match /phoneIndex/{phone} { allow read: if true; allow create: if signedIn() && request.resource.data.uid == request.auth.uid; allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin()); allow delete: if isAdmin(); }
+    match /williTokens/{tokenId} { allow create: if isAdmin(); allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername()); allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.userId == request.auth.uid); allow delete: if isAdmin(); }
+    match /settings/{settingId} { allow read, write: if isAdmin(); }
+    match /quizHistory/{historyId} { allow create: if signedIn() && request.resource.data.userId == request.auth.uid; allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid); allow update: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid) && request.resource.data.userId == resource.data.userId; allow delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid); }
+    match /books/{bookId} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /bookSlots/{slotId} { allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid); allow create, update: if signedIn() && (isAdmin() || request.resource.data.userId == request.auth.uid); allow delete: if isAdmin(); }
+    match /supportMessages/{messageId} { allow create: if signedIn() && request.resource.data.userId == request.auth.uid; allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid); allow update, delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid); }
+    match /quizQuestionCache/{poolId} {
       allow read: if signedIn();
-      allow write: if isAdmin();
-    }
-    match /bookSlots/{slotId} {
-      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow create, update: if signedIn() && (isAdmin() || request.resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.cacheKey is string && request.resource.data.questions is list && request.resource.data.questions.size() >= 1 && request.resource.data.questions.size() <= 100 && request.resource.data.expiresAtMs is number;
+      allow update: if signedIn() && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastUsedAtMs', 'usageCount']) || (request.resource.data.cacheKey == resource.data.cacheKey && request.resource.data.questions is list && request.resource.data.questions.size() >= 1 && request.resource.data.questions.size() <= 100 && request.resource.data.expiresAtMs > resource.data.expiresAtMs));
       allow delete: if isAdmin();
     }
-    match /supportMessages/{messageId} {
-      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
-      allow update, delete: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+    match /quizAiQuota/{quotaId} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.generated == 1;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid && request.resource.data.day == resource.data.day && request.resource.data.generated == resource.data.generated + 1 && request.resource.data.generated <= 5;
+      allow delete: if isAdmin();
     }
     match /{document=**} { allow read, write: if false; }
   }
