@@ -15,6 +15,7 @@ const durations = [
 ] as const;
 const token = () => Array.from({ length: 10 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
 const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary'] as const;
+const LEGACY_EXPIRY_MARKER = 'legacyActiveTokensExpiredV1';
 
 type User = {
   id: string; uid?: string; fullName?: string; username?: string; phone?: string;
@@ -98,6 +99,24 @@ export default function AdminPage() {
         getDocs(collection(db, 'williTokens')),
         getDoc(doc(db, 'settings', 'williTokenPolicies')),
       ]);
+
+      const policyData = p.exists() ? p.data() : {};
+      const tokenDocs = t.docs;
+
+      // One-time migration: every WilliToken that existed before this change
+      // and is currently active is immediately expired. Future tokens are untouched.
+      if (policyData[LEGACY_EXPIRY_MARKER] !== true) {
+        const expiredAt = new Date(Date.now() - 1000);
+        const legacyActive = tokenDocs.filter(d => {
+          const data = d.data() as WilliToken;
+          if (data.used === true) return false;
+          const exp = tokenExpiry(data);
+          return !!exp && exp.getTime() > Date.now();
+        });
+        await Promise.all(legacyActive.map(d => setDoc(d.ref, { expiresAt: expiredAt, used: true }, { merge: true })));
+        await setDoc(doc(db, 'settings', 'williTokenPolicies'), { [LEGACY_EXPIRY_MARKER]: true }, { merge: true });
+      }
+
       setUsers(u.docs.map(d => ({ id: d.id, ...d.data() } as User)));
       setSlots(s.docs.map(d => ({ id: d.id, ...d.data() } as Slot)).sort((a, b) => a.slot - b.slot));
       setTokens(t.docs.map(d => ({ id: d.id, ...d.data() } as WilliToken)));
