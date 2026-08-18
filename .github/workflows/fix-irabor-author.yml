@@ -1,0 +1,67 @@
+name: Fix SCARS author search
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/quizAiClient.ts'
+      - '.github/workflows/fix-irabor-author.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply manual SCARS author priority
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('lib/quizAiClient.ts')
+          text = path.read_text(encoding='utf-8')
+
+          old_version = "const CACHE_VERSION = 'v5';"
+          if old_version in text:
+              text = text.replace(old_version, "const CACHE_VERSION = 'v6';", 1)
+
+          old_scars = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','SCARS is associated with Gen. Lucky Irabor.'],"
+          new_scars = "'scars': ['SCARS: Nigeria’s Journey and the Boko Haram Conundrum was written by Gen. Lucky Irabor.','Gen. Lucky Irabor is the author of SCARS: Nigeria’s Journey and the Boko Haram Conundrum.','SCARS: Nigeria’s Journey and the Boko Haram Conundrum examines Nigeria’s journey and the Boko Haram conundrum.','Author aliases: Gen. Lucky Irabor; General Lucky Irabor; Lucky Irabor; Lucky E. O. Irabor.'],"
+          if old_scars in text:
+              text = text.replace(old_scars, new_scars, 1)
+
+          marker = "const results: BookSearchResult[] = []; const seen = new Set<string>();"
+          injection = """const results: BookSearchResult[] = []; const seen = new Set<string>();
+  // Manual verified identity: always place Gen. Lucky Irabor first when SCARS is searched.
+  if (kind === 'title' && (key === 'scars' || key.includes('scars'))) {
+    results.push({ title: 'SCARS: Nigeria’s Journey and the Boko Haram Conundrum', authors: ['Gen. Lucky Irabor'], source: 'EDUWILLS verified catalogue' });
+    seen.add('scars:gen lucky irabor');
+  }
+"""
+          if marker in text and "Manual verified identity: always place Gen. Lucky Irabor first" not in text:
+              text = text.replace(marker, injection, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Verify fix
+        run: |
+          grep -q "Gen. Lucky Irabor" lib/quizAiClient.ts
+          grep -q "Manual verified identity: always place Gen. Lucky Irabor first" lib/quizAiClient.ts
+          grep -q "CACHE_VERSION = 'v6'" lib/quizAiClient.ts
+
+      - name: Commit repaired source
+        shell: bash
+        run: |
+          if git diff --quiet -- lib/quizAiClient.ts; then
+            echo "SCARS author fix already present."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/quizAiClient.ts
+          git commit -m "fix: manually prioritize Gen. Lucky Irabor for SCARS search"
+          git push
