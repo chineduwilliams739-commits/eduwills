@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 const BASE='/eduwills';
+const FORCED_INACTIVE_USERNAMES = new Set(['scottx', 'favor']);
 const nav=[
  {name:'QUIZ',icon:Sparkles,href:`${BASE}/dashboard/quiz/`},
  {name:'HISTORY',icon:Clock3,href:`${BASE}/dashboard/history/`},
@@ -14,10 +15,11 @@ const nav=[
  {name:'PERSONAL',icon:UserRound,href:`${BASE}/dashboard/personal/`}
 ];
 function expiryMs(v:any){if(!v)return 0;if(typeof v.toMillis==='function')return v.toMillis();if(v.seconds)return v.seconds*1000;const n=Date.parse(String(v));return Number.isFinite(n)?n:0;}
+function isForcedInactive(username?:string){return FORCED_INACTIVE_USERNAMES.has(String(username||'').trim().replace(/^@/,'').toLowerCase());}
 
 export default function DashboardPage(){
  const [mobileOpen,setMobileOpen]=useState(false),[name,setName]=useState(''),[activated,setActivated]=useState(false),[loading,setLoading]=useState(true),[expiry,setExpiry]=useState(''),[lockedSection,setLockedSection]=useState('');
- useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{const s=await getDoc(doc(db,'users',u.uid));if(!s.exists()){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}const d=s.data();const identity=String(d.fullName?.split(' ')[0]||d.username||u.displayName||'').trim();if(!identity){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}setName(identity);const ms=expiryMs(d.activationExpiresAt);setActivated(d.activated===true&&ms>Date.now());if(ms)setExpiry(new Date(ms).toLocaleDateString());}catch(e){console.error(e);await signOut(auth).catch(()=>undefined);window.location.replace(`${BASE}/login/`);}finally{setLoading(false)}}),[]);
+ useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{const s=await getDoc(doc(db,'users',u.uid));if(!s.exists()){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}const d=s.data();const identity=String(d.fullName?.split(' ')[0]||d.username||u.displayName||'').trim();if(!identity){await signOut(auth);window.location.replace(`${BASE}/login/`);return;}setName(identity);const ms=expiryMs(d.activationExpiresAt);const blocked=isForcedInactive(d.username);setActivated(!blocked&&d.activated===true&&ms>Date.now());if(!blocked&&ms)setExpiry(new Date(ms).toLocaleDateString());else setExpiry('');}catch(e){console.error(e);await signOut(auth).catch(()=>undefined);window.location.replace(`${BASE}/login/`);}finally{setLoading(false)}}),[]);
  async function logout(){await signOut(auth);window.location.replace(`${BASE}/`)}
  const locked=(n:string)=>!activated&&(n==='QUIZ'||n==='HISTORY'||n==='EDUWILLS AI');
  const go=(href:string,n:string)=>{if(locked(n)){setMobileOpen(false);setLockedSection(n);return;}setMobileOpen(false);window.location.assign(href);};
