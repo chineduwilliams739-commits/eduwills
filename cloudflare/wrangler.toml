@@ -1,0 +1,9 @@
+name = "eduwills-ai"
+main = "worker.js"
+compatibility_date = "2026-08-19"
+
+[vars]
+FIREBASE_PROJECT_ID = "eduwills"
+
+[observability]
+enabled = true
