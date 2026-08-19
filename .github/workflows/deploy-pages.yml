@@ -24,7 +24,7 @@ jobs:
       name: github-pages
     steps:
       - name: Checkout
-        uses: actions/checkout@5
+        uses: actions/checkout@v5
 
       - name: Setup Node
         uses: actions/setup-node@v5
