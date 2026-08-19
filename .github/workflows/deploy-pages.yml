@@ -47,8 +47,7 @@ jobs:
       - name: Apply cross-device quiz cache and quota repair
         run: node scripts/repair-quiz-cache.mjs
 
-      - name: Apply multi-provider AI router repair
-        run: node scripts/repair-multi-provider-quiz.mjs
+     
 
       - name: Verify application source
         run: |
