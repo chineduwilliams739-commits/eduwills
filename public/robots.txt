@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Sitemap: https://chineduwilliams739-commits.github.io/eduwills/sitemap.xml
