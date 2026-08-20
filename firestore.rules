@@ -22,7 +22,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     match /quizAiQuota/{quotaId} {
-      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      // A signed-in learner may read today's quota even when the document does not exist yet.
+      allow read: if signedIn() && (!exists(/databases/$(database)/documents/quizAiQuota/$(quotaId)) || resource.data.uid == request.auth.uid);
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.generated == 1;
       allow update: if signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid && request.resource.data.day == resource.data.day && request.resource.data.generated == resource.data.generated + 1 && request.resource.data.generated <= 5;
       allow delete: if isAdmin();
