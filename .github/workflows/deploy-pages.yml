@@ -32,7 +32,6 @@ jobs:
         shell: bash
         run: |
           set -e
-
           test -f app/dashboard/quiz/page.tsx
           test -f app/admin/page.tsx
           test -f lib/quizAiClient.ts
@@ -41,7 +40,7 @@ jobs:
           test -f cloudflare/wrangler.toml
           test -f scripts/repair-quiz-cache.mjs
           test -f scripts/repair-homepage-seo.mjs
-
+          test -f scripts/repair-unactivated-quiz.mjs
           echo "Required EduWills files verified."
 
       - name: Install dependencies
@@ -51,6 +50,7 @@ jobs:
         run: |
           node scripts/repair-quiz-cache.mjs
           node scripts/repair-homepage-seo.mjs
+          node scripts/repair-unactivated-quiz.mjs
 
       - name: Build application
         env:
