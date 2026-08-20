@@ -25,24 +25,14 @@ function Menu({label,value,options,onChange}:{label:string;value:string|number;o
   s = s.replace(marker, marker + menu);
 }
 
-// Replace the old native selects directly. Avoid nested template literals so this repair
-// script itself cannot accidentally evaluate React/JSX interpolation while running in CI.
 s = s.replace(/<label className="mt-4 block text-sm font-black">Save to slot[\s\S]*?<\/label>/, '<Menu label="Save to slot" value={slot} options={slots.map((b,i)=>({value:String(i+1),label:`Slot ${i+1}`})).filter((_,i)=>!slots[i])} onChange={(v)=>setSlot(v ? Number(v) : "")}/>');
-s = s.replace(/<label className="text-sm font-black">Duration[\s\S]*?<\/label>/, '<Menu label="Duration" value={duration} options={[{value:"10",label:"10 minutes"},{value:"20",label:"20 minutes"},{value:"30",label:"30 minutes"},{value:"45",label:"45 minutes"},{value:"60",label:"60 minutes"},{value:"none",label:"No time limit"}]} onChange={(v)=>setDuration(String(v))}/>');
+s = s.replace(/<label className="text-sm font-black">Duration[\s\S]*?<\/label>/, '<Menu label="Duration" value={duration} options={[{value:"5",label:"5 minutes"},{value:"10",label:"10 minutes"},{value:"15",label:"15 minutes"},{value:"20",label:"20 minutes"},{value:"30",label:"30 minutes"},{value:"45",label:"45 minutes"},{value:"60",label:"60 minutes"},{value:"none",label:"No time limit"}]} onChange={(v)=>setDuration(String(v))}/>');
 s = s.replace(/<label className="text-sm font-black">Difficulty[\s\S]*?<\/label>/, '<Menu label="Difficulty" value={difficulty} options={[{value:"Easy",label:"Easy"},{value:"Medium",label:"Medium"},{value:"Hard",label:"Hard"},{value:"Mixed",label:"Mixed"}]} onChange={(v)=>setDifficulty(String(v))}/>');
 
-// The exit warning must show a number, not the array itself.
 s = s.replace(/You have \{answers\.filter\(\(x\) => x !== undefined\)\} answered questions\./g, 'You have {answers.filter((x) => x !== undefined).length} answered questions.');
 
-// Keep the navigator below the answer options and horizontally scrollable.
-if (!s.includes('Swipe sideways to navigate questions')) {
-  throw new Error('Question navigator marker missing');
-}
-
-// Required final overview and timer behavior markers.
-if (!s.includes('Every question') || !s.includes('EDUWILLS AI Review') || !s.includes('Explain why I failed this')) {
-  throw new Error('Final overview markers missing');
-}
+if (!s.includes('Swipe sideways to navigate questions')) throw new Error('Question navigator marker missing');
+if (!s.includes('Every question') || !s.includes('EDUWILLS AI Review') || !s.includes('Explain why I failed this')) throw new Error('Final overview markers missing');
 
 fs.writeFileSync(file, s);
 console.log('Quiz Studio final polish applied: styled menus, compact exit warning, horizontal navigator and preserved overview layout.');
