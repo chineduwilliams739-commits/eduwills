@@ -3,26 +3,18 @@ import fs from 'node:fs';
 const pagePath='app/dashboard/quiz/page.tsx';
 let page=fs.readFileSync(pagePath,'utf8');
 
-// Keep the original Quiz Studio structure/design, but route generation through
-// the working multi-provider client and keep free users out of History writes.
 if(!page.includes("from '@/lib/quizAiClient'")){
   page=page.replace("import { auth, db } from '@/lib/firebase';", "import { auth, db } from '@/lib/firebase';\nimport { generateQuiz } from '@/lib/quizAiClient';");
   page=page.replace("import {auth,db} from '@/lib/firebase';", "import {auth,db} from '@/lib/firebase';\nimport {generateQuiz} from '@/lib/quizAiClient';");
 }
 
-// The original page locked the whole Studio for unactivated users. Keep the
-// Studio UI available and enforce the free-tier limit only when generating.
+// Restore the original Studio access: unactivated learners can use the Studio,
+// but their generation is capped at 20 and their free quiz is not persisted.
 page=page.replace(/\n\s*if\(!active\) return <main[\s\S]*?<\/main>;\n/, '\n');
 
-// The repaired flow needs to remember whether a History document exists.
-page=page.replace(
-  /type Setup=\{id:string;books:\{title:string;author:string\}\[\];questions:number;duration:number\|null;difficulty:string;instructions:string\};/,
-  'type Setup={id:string;books:{title:string;author:string}[];questions:number;duration:number|null;difficulty:string;instructions:string;persisted:boolean};'
-);
-page=page.replace(
-  /type Setup = \{ id: string; books: \{ title: string; author: string \}\[\]; questions: number; duration: number \| null; difficulty: string; instructions: string \};/,
-  'type Setup = { id: string; books: { title: string; author: string }[]; questions: number; duration: number | null; difficulty: string; instructions: string; persisted: boolean };'
-);
+// The free/paid generation flow needs a persisted flag for History writes.
+page=page.replace(/type Setup=\{id:string;books:\{title:string;author:string\}\[\];questions:number;duration:number\|null;difficulty:string;instructions:string\};/, 'type Setup={id:string;books:{title:string;author:string}[];questions:number;duration:number|null;difficulty:string;instructions:string;persisted:boolean};');
+page=page.replace(/type Setup = \{ id: string; books: \{ title: string; author: string \}\[\]; questions: number; duration: number \| null; difficulty: string; instructions: string \};/, 'type Setup = { id: string; books: { title: string; author: string }[]; questions: number; duration: number | null; difficulty: string; instructions: string; persisted: boolean };');
 
 const startQuizRe=/async function startQuiz\(\)\{[\s\S]*?\n\s*async function generate/;
 if(startQuizRe.test(page)){
@@ -50,24 +42,32 @@ if(startQuizRe.test(page)){
  page=page.replace(startQuizRe,replacement);
 }
 
-// Enforce 20 questions for unactivated users in the visible control too.
-page=page.replace(
-  "max={100} value={questions} onChange={e=>setQuestions(Math.min(100,Math.max(1,Number(e.target.value)||1)))}",
-  "max={active?100:20} value={questions} onChange={e=>setQuestions(Math.min(active?100:20,Math.max(1,Number(e.target.value)||1)))}"
-);
+page=page.replace("max={100} value={questions} onChange={e=>setQuestions(Math.min(100,Math.max(1,Number(e.target.value)||1)))}", "max={active?100:20} value={questions} onChange={e=>setQuestions(Math.min(active?100:20,Math.max(1,Number(e.target.value)||1)))}");
 
-// Prevent free users from attempting a quizHistory update at submission time.
-page=page.replace(
-  /try\{await updateDoc\(doc\(db,'quizHistory',setup\.id\),\{status:'completed',questionsData:qs,answers,score:correct,total:qs\.length,percentage,elapsedSeconds:elapsed,completedAt:serverTimestamp\(\)\}\);\} catch\{\}/,
-  "if(setup.persisted){try{await updateDoc(doc(db,'quizHistory',setup.id),{status:'completed',questionsData:qs,answers,score:correct,total:qs.length,percentage,elapsedSeconds:elapsed,completedAt:serverTimestamp()});}catch{}}"
-);
+// Avoid History writes for free quizzes while keeping the original result UI.
+page=page.replace(/try\{await updateDoc\(doc\(db,'quizHistory',setup\.id\),\{status:'completed',questionsData:qs,answers,score:correct,total:qs\.length,percentage,elapsedSeconds:elapsed,completedAt:serverTimestamp\(\)\}\);\} catch\{\}/, "if(setup.persisted){try{await updateDoc(doc(db,'quizHistory',setup.id),{status:'completed',questionsData:qs,answers,score:correct,total:qs.length,percentage,elapsedSeconds:elapsed,completedAt:serverTimestamp()});}catch{}}");
 
-// If AI generation fails, keep the original loading/Studio design but expose a
-// clear retry state instead of silently returning to the builder.
+// Preserve the original AI-loading screen. Only add a retry screen if the
+// generation itself fails before questions are available.
 const renderAnchor='if(setup&&quizLoading)return';
 if(!page.includes('if(quizError&&!setup)return')&&page.includes(renderAnchor)){
-  page=page.replace(renderAnchor, "if(quizError&&!setup)return <main className=\"grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-cyan-50 p-6\"><section className=\"w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-2xl\"><div className=\"mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 text-eduBlue\">!</div><h1 className=\"mt-5 text-2xl font-black\">Quiz generation needs another try</h1><p className=\"mt-3 text-sm leading-6 text-slate-500\">{quizError}</p><div className=\"mt-6 flex gap-3\"><button type=\"button\" onClick={()=>setQuizError('')} className=\"flex-1 rounded-xl border border-slate-200 py-3 font-black\">Back to Studio</button><button type=\"button\" onClick={()=>{setQuizError('');setTimeout(startQuiz,50)}} className=\"flex-1 rounded-xl bg-ink py-3 font-black text-white\">Try again</button></div></section></main>;\n "+renderAnchor);
+ page=page.replace(renderAnchor, "if(quizError&&!setup)return <main className=\"grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-cyan-50 p-6\"><section className=\"w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-2xl\"><div className=\"mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 text-eduBlue\">!</div><h1 className=\"mt-5 text-2xl font-black\">Quiz generation needs another try</h1><p className=\"mt-3 text-sm leading-6 text-slate-500\">{quizError}</p><div className=\"mt-6 flex gap-3\"><button type=\"button\" onClick={()=>setQuizError('')} className=\"flex-1 rounded-xl border border-slate-200 py-3 font-black\">Back to Studio</button><button type=\"button\" onClick={()=>{setQuizError('');setTimeout(startQuiz,50)}} className=\"flex-1 rounded-xl bg-ink py-3 font-black text-white\">Try again</button></div></section></main>;\n "+renderAnchor);
+}
+
+// The original runner should have explicit navigation rather than advancing
+// immediately when an option is selected.
+if(!page.includes('Quiz navigation controls')){
+ const runnerMarker='if(setup&&qs.length){';
+ const runnerPos=page.indexOf(runnerMarker);
+ if(runnerPos>=0){
+   const close='</section></div></main>; }';
+   const closePos=page.indexOf(close,runnerPos);
+   if(closePos>=0){
+     const nav='<div className="mt-5 flex gap-3" data-quiz-nav="true"><button type="button" onClick={()=>setIdx((v)=>Math.max(0,v-1))} disabled={idx===0} className="flex-1 rounded-2xl border border-slate-200 bg-white px-5 py-4 font-black disabled:opacity-40">← Back</button>{idx===qs.length-1?<button type="button" onClick={()=>finish(answers)} disabled={answers[idx]===undefined} className="flex-1 rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-40">Submit ✓</button>:<button type="button" onClick={()=>setIdx((v)=>Math.min(qs.length-1,v+1))} disabled={answers[idx]===undefined} className="flex-1 rounded-2xl bg-ink px-5 py-4 font-black text-white disabled:opacity-40">Next →</button>}</div>';
+     page=page.slice(0,closePos)+nav+page.slice(closePos);
+   }
+ }
 }
 
 fs.writeFileSync(pagePath,page);
-console.log('EDUWILLS Quiz Studio original UI restored; AI routing and free-tier safeguards applied.');
+console.log('EDUWILLS Quiz Studio restored: original design, loading state, runner navigation, book/instruction AI routing and 20-question free cap.');
