@@ -7,8 +7,6 @@ if(!page.includes("from '@/lib/quizAiClient'")){
   page=page.replace("import {auth,db} from '@/lib/firebase';", "import {auth,db} from '@/lib/firebase';\nimport {generateQuiz} from '@/lib/quizAiClient';");
 }
 
-// Keep the previous Quiz Studio layout, but route generation through the working
-// multi-provider client instead of the old direct Pollinations call.
 const startQuizRe=/async function startQuiz\(\)\{[\s\S]*?\n\s*async function generate/;
 if(startQuizRe.test(page)){
  const replacement=`async function startQuiz(){
@@ -22,7 +20,7 @@ if(startQuizRe.test(page)){
    if(!active&&Number(questions)>20)setMessage('Unactivated accounts are limited to 20 questions per quiz. Your request was capped at 20.');
    const setupData={books:chosen.map(b=>({title:b.title,author:b.author})),questions:requested,duration:duration==='none'?null:Number(duration),difficulty,instructions};
    const recent=active?await getDocs(query(collection(db,'quizHistory'),where('userId','==',auth.currentUser.uid))).then(s=>s.docs.flatMap(d=>Array.isArray(d.data().questionsData)?d.data().questionsData.map((q:any)=>String(q.question||'')):[]).slice(-60)):[];
-   const generated=await generateQuiz(setupData.books,requested,difficulty,instructions,recent,`Use the exact selected books and follow the learner's instructions. Generate factual questions from the books. Do not invent quotations or unsupported details.`);
+   const generated=await generateQuiz(setupData.books,requested,difficulty,instructions,recent,"Use the exact selected books and follow the learner's instructions. Generate factual questions from the books. Do not invent quotations or unsupported details.");
    if(!Array.isArray(generated)||generated.length<requested)throw new Error('The AI generated only '+(Array.isArray(generated)?generated.length:0)+' of '+requested+' verified questions. Please try again.');
    const ref=active?await addDoc(collection(db,'quizHistory'),{userId:auth.currentUser.uid,...setupData,status:'ready',score:null,percentage:null,questionsData:generated,total:generated.length,generationMode:'multi-provider',createdAt:serverTimestamp()}):null;
    const s:Setup={id:ref?.id||'free-'+Date.now(),...setupData,persisted:Boolean(ref)};
@@ -36,14 +34,11 @@ if(startQuizRe.test(page)){
  console.log('Replaced the old direct AI startQuiz flow.');
 }
 
-// Enforce the 20-question maximum in the visible control as well as in startQuiz.
 page=page.replace(
   "max={100} value={questions} onChange={e=>setQuestions(Math.min(100,Math.max(1,Number(e.target.value)||1)))}",
   "max={active?100:20} value={questions} onChange={e=>setQuestions(Math.min(active?100:20,Math.max(1,Number(e.target.value)||1)))}"
 );
 
-// The old implementation returned to Quiz Studio after an AI failure because it
-// had no error-state render. Keep the user on a clear retry screen instead.
 const renderAnchor="if(setup&&quizLoading)return";
 if(!page.includes("if(quizError&&!setup)return")&&page.includes(renderAnchor)){
  page=page.replace(renderAnchor, "if(quizError&&!setup)return <main className=\"grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-cyan-50 p-6\"><section className=\"w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-2xl\"><div className=\"mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 text-eduBlue\">!</div><h1 className=\"mt-5 text-2xl font-black\">Quiz generation needs another try</h1><p className=\"mt-3 text-sm leading-6 text-slate-500\">{quizError}</p><div className=\"mt-6 flex gap-3\"><button type=\"button\" onClick={()=>setQuizError('')} className=\"flex-1 rounded-xl border border-slate-200 py-3 font-black\">Back to Studio</button><button type=\"button\" onClick={()=>{setQuizError('');setTimeout(startQuiz,50)}} className=\"flex-1 rounded-xl bg-ink py-3 font-black text-white\">Try again</button></div></section></main>;\n "+renderAnchor);
