@@ -1,0 +1,38 @@
+name: Apply final EduWills fixes
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'Apply final EduWills fixes')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Apply fixes
+        run: node scripts/apply-final-eduwills-fixes.mjs
+
+      - name: Commit fixes
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes were necessary."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx app/dashboard/quiz/page.tsx app/dashboard/history/page.tsx lib/quizAiClient.ts
+          git commit -m "Apply final EduWills fixes"
+          git push
