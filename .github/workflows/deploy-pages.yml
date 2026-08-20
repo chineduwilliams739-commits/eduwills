@@ -37,14 +37,20 @@ jobs:
           test -f app/admin/page.tsx
           test -f lib/quizAiClient.ts
           test -f firestore.rules
-
           test -f cloudflare/worker.js
           test -f cloudflare/wrangler.toml
+          test -f scripts/repair-quiz-cache.mjs
+          test -f scripts/repair-homepage-seo.mjs
 
           echo "Required EduWills files verified."
 
       - name: Install dependencies
         run: npm install
+
+      - name: Apply EduWILLS runtime repairs
+        run: |
+          node scripts/repair-quiz-cache.mjs
+          node scripts/repair-homepage-seo.mjs
 
       - name: Build application
         env:
