@@ -46,10 +46,12 @@ jobs:
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/repair-quiz-grounding.mjs
           test -f scripts/repair-quiz-final-polish.mjs
+          test -f scripts/repair-quiz-final-behavior.mjs
           test -f scripts/repair-ui-script-syntax.mjs
           node --check scripts/repair-homepage-seo.mjs
           node --check scripts/repair-quiz-grounding.mjs
           node --check scripts/repair-quiz-final-polish.mjs
+          node --check scripts/repair-quiz-final-behavior.mjs
           node --check scripts/repair-ui-script-syntax.mjs
 
       - name: Apply EDUWILLS final implementation
@@ -60,6 +62,7 @@ jobs:
           node scripts/repair-quiz-grounding.mjs
           node scripts/repair-ui-script-syntax.mjs
           node scripts/repair-quiz-final-polish.mjs
+          node scripts/repair-quiz-final-behavior.mjs
 
       - name: Verify final implementation before build
         shell: bash
@@ -73,9 +76,10 @@ jobs:
           grep -Fq "Explain why I failed this" app/dashboard/quiz/page.tsx
           grep -Fq "Every question" app/dashboard/quiz/page.tsx
           grep -Fq "EDUWILLS AI Review" app/dashboard/quiz/page.tsx
+          grep -Fq "setTimeout(() => submitQuiz(true), 0)" app/dashboard/quiz/page.tsx
           grep -Fq "VERIFIED_BOOK_RESEARCH" lib/quizAiClient.ts
           grep -Fq "groundedForBooks" lib/quizAiClient.ts
-          echo "EduWills final UI, SEO and exact-book grounding are present in the build source."
+          echo "EduWills final UI, SEO, exact-book grounding and persistent timer are present in the build source."
 
       - name: Build application
         env:
