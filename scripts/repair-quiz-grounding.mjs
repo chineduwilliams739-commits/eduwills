@@ -32,6 +32,23 @@ function verifiedResearch(books:QuizBook[]){return books.map(b=>VERIFIED_BOOK_RE
   s = s.replace(marker, verified + marker);
 }
 
+if (!s.includes('function groundedForBooks(')) {
+  const guard = String.raw`
+function groundedForBooks(books:QuizBook[],q:QuizQuestion){
+  const sanya=books.some(b=>norm(b.title)==='sanya'&&norm(b.author)==='oyin olugbile');
+  if(!sanya)return true;
+  const question=String(q.question||'');
+  const badPronoun=/\b(?:sanya|the protagonist|the main character)\b[\s\S]{0,180}\b(?:he|him|his|boy|male)\b/i.test(question)||/\b(?:he|him|his|boy|male)\b[\s\S]{0,180}\b(?:sanya|the protagonist|the main character)\b/i.test(question);
+  if(badPronoun)return false;
+  const text=norm([q.question,...q.options].join(' '));
+  if(/\b(?:medical doctor|journalist|journalism|military officer|architect|architecture|rural clinic|modern housing estates)\b/.test(text))return false;
+  return true;
+}
+
+`;
+  s = s.replace(marker, guard + marker);
+}
+
 const old = "const chunks:string[]=[];for(const b of books){";
 const replacement = "const verified=verifiedResearch(books);const chunks:string[]=verified?[verified]:[];for(const b of books){";
 if (!s.includes(replacement)) {
@@ -39,5 +56,12 @@ if (!s.includes(replacement)) {
   s = s.replace(old, replacement);
 }
 
+const oldAccept = "if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q))continue;";
+const newAccept = "if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks(books,q))continue;";
+if (!s.includes(newAccept)) {
+  if (!s.includes(oldAccept)) throw new Error('Quiz acceptance guard insertion point not found.');
+  s = s.replace(oldAccept, newAccept);
+}
+
 fs.writeFileSync(file, s);
-console.log('Quiz research now includes verified exact-book grounding for supported titles.');
+console.log('Quiz research and Sànyà grounding now include verified exact-book constraints.');
