@@ -7,7 +7,7 @@ const marker = "const isMetadata=(q:QuizQuestion)=>";
 if (!s.includes(marker)) throw new Error('Quiz AI metadata marker not found.');
 
 if (!s.includes('VERIFIED_BOOK_RESEARCH')) {
-  const verified = String.raw`
+  const verified = `
 const VERIFIED_BOOK_RESEARCH:Record<string,string>={
   'sanya|oyin olugbile':[
     'VERIFIED BOOK: Sànyà (2022), by Oyin Olugbile, published by Masobe Books.',
@@ -26,22 +26,22 @@ const VERIFIED_BOOK_RESEARCH:Record<string,string>={
     'Use the exact book title and author selected by the learner. Do not substitute another book with a similar title.'
   ].join('\\n')
 };
-function verifiedResearch(books:QuizBook[]){return books.map(b=>VERIFIED_BOOK_RESEARCH[\`${norm(b.title)}|\${norm(b.author)}\`]||'').filter(Boolean).join('\\n');}
+function verifiedResearch(books:QuizBook[]){return books.map(b=>VERIFIED_BOOK_RESEARCH[norm(b.title)+'|'+norm(b.author)]||'').filter(Boolean).join('\\n');}
 
 `;
   s = s.replace(marker, verified + marker);
 }
 
 if (!s.includes('function groundedForBooks(')) {
-  const guard = String.raw`
+  const guard = `
 function groundedForBooks(books:QuizBook[],q:QuizQuestion){
   const sanya=books.some(b=>norm(b.title)==='sanya'&&norm(b.author)==='oyin olugbile');
   if(!sanya)return true;
   const question=String(q.question||'');
-  const badPronoun=/\b(?:sanya|the protagonist|the main character)\b[\s\S]{0,180}\b(?:he|him|his|boy|male)\b/i.test(question)||/\b(?:he|him|his|boy|male)\b[\s\S]{0,180}\b(?:sanya|the protagonist|the main character)\b/i.test(question);
+  const badPronoun=/\\b(?:sanya|the protagonist|the main character)\\b[\\s\\S]{0,180}\\b(?:he|him|his|boy|male)\\b/i.test(question)||/\\b(?:he|him|his|boy|male)\\b[\\s\\S]{0,180}\\b(?:sanya|the protagonist|the main character)\\b/i.test(question);
   if(badPronoun)return false;
   const text=norm([q.question,...q.options].join(' '));
-  if(/\b(?:medical doctor|journalist|journalism|military officer|architect|architecture|rural clinic|modern housing estates)\b/.test(text))return false;
+  if(/\\b(?:medical doctor|journalist|journalism|military officer|architect|architecture|rural clinic|modern housing estates)\\b/.test(text))return false;
   return true;
 }
 
