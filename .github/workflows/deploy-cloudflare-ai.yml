@@ -18,13 +18,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: cloudflare/package.json
 
       - name: Install dependencies
         working-directory: cloudflare
@@ -51,8 +51,10 @@ jobs:
 
           npx wrangler deploy --config wrangler.toml --secrets-file .env.production 2>&1 | tee deploy.log
 
-          WORKER_URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' deploy.log | tail -1 | sed 's/[[:punct:]]*$//')"
-          test -n "$WORKER_URL" || { echo 'Could not determine deployed Worker URL'; exit 1; }
+          # Wrangler has already successfully deployed the Worker at this point.
+          # Extract its workers.dev URL without an over-escaped regex.
+          WORKER_URL="$(grep -Eo 'https://[^[:space:]]+workers\.dev' deploy.log | tail -1 | sed 's/[[:punct:]]*$//')"
+          test -n "$WORKER_URL" || { echo 'Could not determine deployed Worker URL'; cat deploy.log; exit 1; }
           echo "Worker deployed at $WORKER_URL"
 
           CONTENT="$(printf '{\"url\":\"%s\"}\n' "$WORKER_URL" | base64 -w0)"
