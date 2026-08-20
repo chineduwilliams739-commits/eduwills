@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
@@ -39,22 +41,16 @@ jobs:
           test -f cloudflare/worker.js
           test -f cloudflare/wrangler.toml
           test -f scripts/repair-homepage-seo.mjs
-          test -f scripts/repair-unactivated-quiz.mjs
-          test -f scripts/repair-free-quiz-access.mjs
-          test -f scripts/repair-free-quiz-gate-final.mjs
-          test -f scripts/repair-remove-unactivated-quiz-page-gate.mjs
+          test -f scripts/restore-quiz-original-ui.mjs
           echo "Required EduWills files verified."
 
       - name: Install dependencies
         run: npm install
 
-      - name: Apply safe runtime repairs
+      - name: Preserve homepage SEO and restore original Quiz Studio UI
         run: |
           node scripts/repair-homepage-seo.mjs
-          node scripts/repair-unactivated-quiz.mjs
-          node scripts/repair-free-quiz-access.mjs
-          node scripts/repair-free-quiz-gate-final.mjs
-          node scripts/repair-remove-unactivated-quiz-page-gate.mjs
+          node scripts/restore-quiz-original-ui.mjs
 
       - name: Build application
         env:
