@@ -28,10 +28,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
+          # The repository currently has no package-lock.json. Do not enable
+          # setup-node's npm cache until a lockfile is committed.
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
 
       - name: Clean previous build output
         run: rm -rf .next out
