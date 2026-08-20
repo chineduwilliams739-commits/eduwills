@@ -40,19 +40,19 @@ jobs:
           test -f lib/quizAiClient.ts
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/repair-quiz-grounding.mjs
-          test -f scripts/repair-quiz-ui-free-count.mjs
+          test -f scripts/repair-quiz-final-polish.mjs
           test -f scripts/repair-ui-script-syntax.mjs
           node --check scripts/repair-homepage-seo.mjs
           node --check scripts/repair-quiz-grounding.mjs
+          node --check scripts/repair-quiz-final-polish.mjs
           node scripts/repair-ui-script-syntax.mjs
-          node --check scripts/repair-quiz-ui-free-count.mjs
           echo "Required EduWills files verified."
 
-      - name: Apply final Quiz Studio repair
+      - name: Apply final repairs
         run: |
           node scripts/repair-homepage-seo.mjs
           node scripts/repair-quiz-grounding.mjs
-          node scripts/repair-quiz-ui-free-count.mjs
+          node scripts/repair-quiz-final-polish.mjs
 
       - name: Build application
         env:
