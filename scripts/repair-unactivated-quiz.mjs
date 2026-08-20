@@ -5,26 +5,26 @@ const ai='lib/quizAiClient.ts';
 let p=fs.readFileSync(page,'utf8');
 let a=fs.readFileSync(ai,'utf8');
 
-// Unactivated learners may enter Quiz Studio and receive five free generations.
-p=p.replace(/setActive\(d\.activated===true&&expiry\(d\.activationExpiresAt\)>Date\.now\(\)\);/,'setActive(true);');
-p=p.replace(/\n\s*if\(!active\)return <main className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-cyan-900 p-6 text-white">[\s\S]*?<\/main>;\n/,'\n');
+// Keep the original Quiz Studio interface and runner intact. Unactivated users are
+// allowed into the studio; the page already persists History only when active.
+// Only cap the question selector for unactivated learners.
+const originalMax="max={100} value={questions} onChange={e=>setQuestions(Math.min(100,Math.max(1,Number(e.target.value)||1)))}";
+const cappedMax="max={active?100:20} value={questions} onChange={e=>setQuestions(Math.min(active?100:20,Math.max(1,Number(e.target.value)||1)))}";
+if(p.includes(originalMax)) p=p.replace(originalMax,cappedMax);
 
-// Never write an unactivated learner's quiz into the activated-only History workflow.
-const historyCreate=/const ref=await addDoc\(collection\(db,'quizHistory'\),\{userId:auth\.currentUser\.uid,\.\.\.setupData,status:'ready',score:null,percentage:null,questionsData:generated,total:generated\.length,generationMode:'firebase-gemini-research',createdAt:serverTimestamp\(\)\}\);/;
-if(historyCreate.test(p)){
- p=p.replace(historyCreate,"const ref=active?await addDoc(collection(db,'quizHistory'),{userId:auth.currentUser.uid,...setupData,status:'ready',score:null,percentage:null,questionsData:generated,total:generated.length,generationMode:'firebase-gemini-research',createdAt:serverTimestamp()}):null;");
+// Enforce the same cap immediately before generation, so changing the input
+// through browser tools cannot bypass the 20-question limit.
+const startMarker="const setupData={books:chosen.map(b=>({title:b.title,author:b.author})),questions,duration:duration==='none'?null:Number(duration),difficulty,instructions};";
+if(p.includes(startMarker)&&!p.includes("const requested=active?Math.min(100,Math.max(1,questions)):Math.min(20,Math.max(1,questions));")){
+  p=p.replace(startMarker,"const requested=active?Math.min(100,Math.max(1,questions)):Math.min(20,Math.max(1,questions));const setupData={books:chosen.map(b=>({title:b.title,author:b.author})),questions:requested,duration:duration==='none'?null:Number(duration),difficulty,instructions};");
 }
-p=p.replace(/const s:Setup=\{id:ref\.id,\.\.\.setupData\};/,'const s:Setup={id:ref?.id||`local-${Date.now()}`,...setupData};');
 
-// Completion/history writes are activated-user only.
-p=p.replace(/try\{await updateDoc\(doc\(db,'quizHistory',setup\.id\),\{status:'completed',/,'try{if(active)await updateDoc(doc(db,\'quizHistory\',setup.id),{status:\'completed\',');
-p=p.replace("setRemarks(text);await updateDoc(doc(db,'quizHistory',setup.id),{aiRemarks:text})","setRemarks(text);if(active)await updateDoc(doc(db,'quizHistory',setup.id),{aiRemarks:text})");
-
-// Keep the five-generation limit before any provider call.
-const requested="const requested=Math.min(100,Math.max(1,Number(count)||10));";
+// Preserve the existing five-generation daily quota in quizAiClient.
 if(!a.includes("if(await quotaUsed()>=5)throw new Error('AI_QUOTA_EXHAUSTED');")){
- a=a.replace(requested,`${requested}if(await quotaUsed()>=5)throw new Error('AI_QUOTA_EXHAUSTED');`);
+  const marker="const requested=Math.min(100,Math.max(1,Number(count)||10));";
+  if(a.includes(marker)) a=a.replace(marker,marker+"if(await quotaUsed()>=5)throw new Error('AI_QUOTA_EXHAUSTED');");
 }
 
-fs.writeFileSync(page,p);fs.writeFileSync(ai,a);
-console.log('EduWILLS: unactivated Quiz Studio enabled with five daily generations and no History writes.');
+fs.writeFileSync(page,p);
+fs.writeFileSync(ai,a);
+console.log('EduWILLS: original Quiz Studio preserved; unactivated question limit capped at 20.');
