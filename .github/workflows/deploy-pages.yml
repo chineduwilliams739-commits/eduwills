@@ -38,7 +38,6 @@ jobs:
           test -f firestore.rules
           test -f cloudflare/worker.js
           test -f cloudflare/wrangler.toml
-          test -f scripts/repair-quiz-cache.mjs
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/repair-unactivated-quiz.mjs
           echo "Required EduWills files verified."
@@ -46,9 +45,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Apply EduWILLS runtime repairs
+      - name: Apply safe runtime repairs
         run: |
-          node scripts/repair-quiz-cache.mjs
           node scripts/repair-homepage-seo.mjs
           node scripts/repair-unactivated-quiz.mjs
 
