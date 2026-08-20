@@ -42,6 +42,7 @@ jobs:
           test -f scripts/repair-unactivated-quiz.mjs
           test -f scripts/repair-free-quiz-access.mjs
           test -f scripts/repair-free-quiz-gate-final.mjs
+          test -f scripts/repair-remove-unactivated-quiz-page-gate.mjs
           echo "Required EduWills files verified."
 
       - name: Install dependencies
@@ -53,6 +54,7 @@ jobs:
           node scripts/repair-unactivated-quiz.mjs
           node scripts/repair-free-quiz-access.mjs
           node scripts/repair-free-quiz-gate-final.mjs
+          node scripts/repair-remove-unactivated-quiz-page-gate.mjs
 
       - name: Build application
         env:
