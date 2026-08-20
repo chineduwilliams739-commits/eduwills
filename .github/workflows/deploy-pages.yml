@@ -40,6 +40,7 @@ jobs:
           test -f cloudflare/wrangler.toml
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/repair-unactivated-quiz.mjs
+          test -f scripts/repair-free-quiz-access.mjs
           echo "Required EduWills files verified."
 
       - name: Install dependencies
@@ -49,6 +50,7 @@ jobs:
         run: |
           node scripts/repair-homepage-seo.mjs
           node scripts/repair-unactivated-quiz.mjs
+          node scripts/repair-free-quiz-access.mjs
 
       - name: Build application
         env:
