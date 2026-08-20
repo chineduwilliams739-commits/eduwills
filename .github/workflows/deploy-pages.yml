@@ -28,14 +28,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
 
       - name: Install dependencies
         run: npm install
 
-      - name: Verify required project files
+      - name: Clean previous build output
+        run: rm -rf .next out
+
+      - name: Verify repair scripts
         shell: bash
         run: |
           set -euo pipefail
+          test -f app/page.tsx
           test -f app/dashboard/quiz/page.tsx
           test -f lib/quizAiClient.ts
           test -f scripts/repair-homepage-seo.mjs
@@ -45,14 +50,32 @@ jobs:
           node --check scripts/repair-homepage-seo.mjs
           node --check scripts/repair-quiz-grounding.mjs
           node --check scripts/repair-quiz-final-polish.mjs
-          node scripts/repair-ui-script-syntax.mjs
-          echo "Required EduWills files verified."
+          node --check scripts/repair-ui-script-syntax.mjs
 
-      - name: Apply final repairs
+      - name: Apply EDUWILLS final implementation
+        shell: bash
         run: |
+          set -euo pipefail
           node scripts/repair-homepage-seo.mjs
           node scripts/repair-quiz-grounding.mjs
+          node scripts/repair-ui-script-syntax.mjs
           node scripts/repair-quiz-final-polish.mjs
+
+      - name: Verify final implementation before build
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "EDUWILLS_SEO_CONTENT_V1" app/page.tsx
+          grep -Fq "AI quiz generator for" app/page.tsx
+          grep -Fq "function Menu({" app/dashboard/quiz/page.tsx
+          grep -Fq "Swipe sideways to navigate questions" app/dashboard/quiz/page.tsx
+          grep -Fq "Leave this quiz?" app/dashboard/quiz/page.tsx
+          grep -Fq "Explain why I failed this" app/dashboard/quiz/page.tsx
+          grep -Fq "Every question" app/dashboard/quiz/page.tsx
+          grep -Fq "EDUWILLS AI Review" app/dashboard/quiz/page.tsx
+          grep -Fq "VERIFIED_BOOK_RESEARCH" lib/quizAiClient.ts
+          grep -Fq "groundedForBooks" lib/quizAiClient.ts
+          echo "EduWills final UI, SEO and exact-book grounding are present in the build source."
 
       - name: Build application
         env:
