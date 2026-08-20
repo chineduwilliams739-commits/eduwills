@@ -46,5 +46,10 @@ const startReplacement=` async function start(){
 
  async function submit`;
 page=page.replace(startRe,startReplacement);
+
+// Unactivated learners may use Quiz Studio within the existing 5-AI-generation daily quota.
+// History and EDUWILLS AI remain activation-only at the dashboard level.
+page=page.replace("if(!active)return <main", "if(false&& !active)return <main");
+
 fs.writeFileSync(pagePath,page);
-console.log('EDUWILLS quiz cache/quota: 7-day cross-device pools, rotation, recent-question avoidance, 5 AI generations/day per user, cache-first generation.');
+console.log('EDUWILLS quiz resilience: cache-first rotation, 7-day shared pools, recent-question avoidance, 5 AI generations/day, and free Quiz Studio access for unactivated users.');
