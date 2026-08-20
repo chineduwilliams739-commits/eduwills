@@ -41,16 +41,19 @@ jobs:
           set -euo pipefail
           test -f app/page.tsx
           test -f app/dashboard/quiz/page.tsx
+          test -f app/admin/page.tsx
           test -f lib/quizAiClient.ts
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/repair-quiz-grounding.mjs
           test -f scripts/repair-quiz-final-polish.mjs
           test -f scripts/repair-quiz-final-behavior.mjs
+          test -f scripts/repair-quiz-admin-latest.mjs
           test -f scripts/repair-ui-script-syntax.mjs
           node --check scripts/repair-homepage-seo.mjs
           node --check scripts/repair-quiz-grounding.mjs
           node --check scripts/repair-quiz-final-polish.mjs
           node --check scripts/repair-quiz-final-behavior.mjs
+          node --check scripts/repair-quiz-admin-latest.mjs
           node --check scripts/repair-ui-script-syntax.mjs
 
       - name: Apply EDUWILLS final implementation
@@ -62,6 +65,7 @@ jobs:
           node scripts/repair-ui-script-syntax.mjs
           node scripts/repair-quiz-final-polish.mjs
           node scripts/repair-quiz-final-behavior.mjs
+          node scripts/repair-quiz-admin-latest.mjs
 
       - name: Verify final implementation before build
         shell: bash
@@ -79,6 +83,10 @@ jobs:
           grep -Fq "setTimeout(() => submitQuiz(true), 0)" app/dashboard/quiz/page.tsx
           grep -Fq "VERIFIED_BOOK_RESEARCH" lib/quizAiClient.ts
           grep -Fq "groundedForBooks" lib/quizAiClient.ts
+          grep -Fq "Math.max(5, Number(duration) || 5)" app/dashboard/quiz/page.tsx
+          grep -Fq "Custom duration…" app/admin/page.tsx
+          grep -Fq "manualDurationMs" app/admin/page.tsx
+          grep -Fq "absolute left-5" app/dashboard/quiz/page.tsx
           if grep -Fq '<select value={duration}' app/dashboard/quiz/page.tsx; then
             echo "ERROR: old unstyled duration dropdown is still present"
             exit 1
@@ -87,7 +95,7 @@ jobs:
             echo "ERROR: old unstyled difficulty dropdown is still present"
             exit 1
           fi
-          echo "EduWills final UI, SEO, exact-book grounding and persistent timer are present in the build source."
+          echo "EduWILLS final UI, SEO, exact-book grounding, persistent timer, 5-minute minimum and manual WilliToken duration are present in the build source."
 
       - name: Build application
         env:
