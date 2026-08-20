@@ -1,0 +1,11 @@
+import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'NECO Exam Preparation & Study Tips | EDUWILLS',
+  description: 'A practical NECO revision plan with topic checklists, active recall and focused practice for Nigerian students.',
+};
+
+export default function NECOBlog() {
+  return <main className="min-h-screen bg-paper text-ink"><header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5"><Link href="/eduwills/" className="font-black">EDUWILLS</Link><Link href="/eduwills/study-guides/" className="font-black text-eduBlue">Study Guides</Link></div></header><article className="mx-auto max-w-4xl px-5 py-12"><p className="text-xs font-black uppercase tracking-[.2em] text-eduBlue">NECO preparation</p><h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">NECO Exam Preparation Guide for Nigerian Students</h1><p className="mt-6 text-lg leading-8 text-slate-600">Make NECO revision more manageable with a clear topic checklist, active recall and repeated practice.</p><section className="mt-10 space-y-8"><div><h2 className="text-2xl font-black">Make a topic checklist</h2><p className="mt-3 leading-7 text-slate-600">Break each subject into topics and mark what you understand, what needs revision and what still feels difficult.</p></div><div><h2 className="text-2xl font-black">Practise after every study block</h2><p className="mt-3 leading-7 text-slate-600">A short quiz after reading can expose gaps that passive rereading hides. Review the explanations and revisit difficult topics.</p></div><div><h2 className="text-2xl font-black">Keep reviewing older material</h2><p className="mt-3 leading-7 text-slate-600">Return to previous topics instead of studying only the newest chapter. Spaced review helps you remember more over time.</p></div></section><Link href="/eduwills/signup/" className="mt-12 inline-flex rounded-xl bg-ink px-6 py-3 font-black text-white">Practise with EDUWILLS →</Link></article><footer className="border-t border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">EDUWILLS is independent and is not affiliated with NECO.</footer></main>;
+}
