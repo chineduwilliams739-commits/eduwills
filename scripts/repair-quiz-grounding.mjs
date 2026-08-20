@@ -26,7 +26,7 @@ const VERIFIED_BOOK_RESEARCH:Record<string,string>={
     'Use the exact book title and author selected by the learner. Do not substitute another book with a similar title.'
   ].join('\\n')
 };
-function verifiedResearch(books:QuizBook[]){return books.map(b=>VERIFIED_BOOK_RESEARCH[`${norm(b.title)}|${norm(b.author)}`]||'').filter(Boolean).join('\\n');}
+function verifiedResearch(books:QuizBook[]){return books.map(b=>VERIFIED_BOOK_RESEARCH[\`${norm(b.title)}|\${norm(b.author)}\`]||'').filter(Boolean).join('\\n');}
 
 `;
   s = s.replace(marker, verified + marker);
