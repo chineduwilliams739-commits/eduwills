@@ -1,21 +1,26 @@
 # EDUWILLS — AI Quiz Generator for Nigerian Students
 
-EDUWILLS helps Nigerian students learn from books and practice with AI-powered quizzes.
+EDUWILLS helps Nigerian learners study smarter with AI-powered quizzes generated around books and learning goals.
 
 ## Key Features
-- AI-generated quizzes from books
-- Book-focused practice for Nigerian secondary students
-- Quiz history and progress tracking
-- Learning categories for Primary, Junior Secondary, Senior Secondary and Book Learner users
+- AI-generated multiple-choice quizzes from selected books
+- Support for WAEC, JAMB/UTME, NECO and general Nigerian exam preparation
+- Learner AI study assistant for books, characters, themes, vocabulary and study strategies
+- Cross-device quiz question caching and rotation
+- Progress tracking and quiz history
 
 ## How It Works
-1. Search for a book
-2. Choose your quiz instructions and number of questions
-3. Generate a book-focused quiz
-4. Review your score and history
+1. Search for a book title or author.
+2. Select a verified book and configure a quiz.
+3. EDUWILLS researches the selected book and generates questions.
+4. Take the quiz and review your performance.
+5. Ask EDUWILLS AI follow-up study questions when you need help.
 
 ## Exam Preparation
-EDUWILLS supports study and practice relevant to WAEC, JAMB/UTME and NECO preparation. It is a study tool and is not affiliated with WAEC, JAMB or NECO.
+EDUWILLS is an independent study tool and is not affiliated with WAEC, JAMB or NECO.
+
+## SEO Topics
+WAEC practice questions; JAMB CBT mock test; JAMB past questions; NECO exam preparation; Nigerian exam prep; AI quiz generator; book quiz generator; UTME practice online.
 
 ## Website
 https://chineduwilliams739-commits.github.io/eduwills/
