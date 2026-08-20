@@ -41,6 +41,8 @@ jobs:
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/repair-quiz-grounding.mjs
           test -f scripts/repair-quiz-ui-free-count.mjs
+          node --check scripts/repair-homepage-seo.mjs
+          node --check scripts/repair-quiz-grounding.mjs
           node --check scripts/repair-quiz-ui-free-count.mjs
           echo "Required EduWills files verified."
 
