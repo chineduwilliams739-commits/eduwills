@@ -5,8 +5,6 @@ let s = fs.readFileSync(file, 'utf8');
 const marker = 'const isMetadata=(q:QuizQuestion)=>';
 if (!s.includes(marker)) throw new Error('Quiz AI metadata marker not found.');
 
-// Keep verified research data as ordinary JavaScript data so this repair script
-// cannot break when book facts contain apostrophes, accents or other punctuation.
 const verifiedBookResearch = {
   'sanya|oyin olugbile': [
     'VERIFIED BOOK: Sànyà (2022), by Oyin Olugbile, published by Masobe Books.',
@@ -62,10 +60,7 @@ if (!s.includes(newAccept)) {
   s = s.replace(oldAccept, newAccept);
 }
 
-// Generate in smaller batches, but keep retrying until the requested total is
-// reached. This removes the old practical ceiling of about 12 questions while
-// retaining the 100-question product maximum.
-s = s.replace(/const batch=Math\\.min\\(12,remaining\\);/g, 'const batch=Math.min(10,remaining);');
+s = s.replace(/const batch=Math\.min\(12,remaining\);/g, 'const batch=Math.min(10,remaining);');
 s = s.replace(/attempts<12/g, 'attempts<20');
 
 fs.writeFileSync(file, s);
