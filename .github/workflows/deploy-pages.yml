@@ -43,16 +43,15 @@ jobs:
           test -f scripts/repair-homepage-seo.mjs
           test -f scripts/restore-quiz-original-ui.mjs
           test -f scripts/repair-quiz-grounding.mjs
+          test -f scripts/repair-quiz-ui-free-count.mjs
           echo "Required EduWills files verified."
-
-      - name: Install dependencies
-        run: npm install
 
       - name: Preserve homepage SEO, restore original Quiz Studio UI and ground AI
         run: |
           node scripts/repair-homepage-seo.mjs
           node scripts/restore-quiz-original-ui.mjs
           node scripts/repair-quiz-grounding.mjs
+          node scripts/repair-quiz-ui-free-count.mjs
 
       - name: Build application
         env:
