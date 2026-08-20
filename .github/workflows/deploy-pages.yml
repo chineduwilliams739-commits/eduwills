@@ -28,8 +28,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          # The repository currently has no package-lock.json. Do not enable
-          # setup-node's npm cache until a lockfile is committed.
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -74,12 +72,21 @@ jobs:
           grep -Fq "function Menu({" app/dashboard/quiz/page.tsx
           grep -Fq "Swipe sideways to navigate questions" app/dashboard/quiz/page.tsx
           grep -Fq "Leave this quiz?" app/dashboard/quiz/page.tsx
+          grep -Fq "answers.filter((x) => x !== undefined).length} answered questions" app/dashboard/quiz/page.tsx
           grep -Fq "Explain why I failed this" app/dashboard/quiz/page.tsx
           grep -Fq "Every question" app/dashboard/quiz/page.tsx
           grep -Fq "EDUWILLS AI Review" app/dashboard/quiz/page.tsx
           grep -Fq "setTimeout(() => submitQuiz(true), 0)" app/dashboard/quiz/page.tsx
           grep -Fq "VERIFIED_BOOK_RESEARCH" lib/quizAiClient.ts
           grep -Fq "groundedForBooks" lib/quizAiClient.ts
+          if grep -Fq '<select value={duration}' app/dashboard/quiz/page.tsx; then
+            echo "ERROR: old unstyled duration dropdown is still present"
+            exit 1
+          fi
+          if grep -Fq '<select value={difficulty}' app/dashboard/quiz/page.tsx; then
+            echo "ERROR: old unstyled difficulty dropdown is still present"
+            exit 1
+          fi
           echo "EduWills final UI, SEO, exact-book grounding and persistent timer are present in the build source."
 
       - name: Build application
