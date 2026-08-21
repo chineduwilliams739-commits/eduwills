@@ -91,7 +91,7 @@ jobs:
           grep -Fq "verifiedBookGrounding" lib/quizAiClient.ts
           grep -Fq "groundedForBooks" lib/quizAiClient.ts
           grep -Fq "verifiedResearch(books)" lib/quizAiClient.ts
-          grep -Fq "v21-hard-grounded-book-quiz" lib/quizAiClient.ts
+          grep -Fq "v22-strict-instructions-quiz" lib/quizAiClient.ts
           grep -Fq "STRICTLY MANDATORY" lib/quizAiClient.ts
           grep -Fq "resultFileName" app/dashboard/quiz/page.tsx
           grep -Fq "EDUWILLS-' + suffix" app/dashboard/quiz/page.tsx
