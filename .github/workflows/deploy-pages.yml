@@ -40,6 +40,7 @@ jobs:
           node --check scripts/repair-willi-token-lifecycle-v4.mjs
           node --check scripts/repair-willi-token-runtime-v5.mjs
           node --check scripts/repair-willi-token-final-v6.mjs
+          node --check scripts/repair-eduwills-multibook-ui-v1.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -64,6 +65,7 @@ jobs:
           run_repair scripts/repair-willi-token-admin-final.mjs
           run_repair scripts/repair-quiz-grounding.mjs
           run_repair scripts/repair-quiz-instructions-result.mjs
+          run_repair scripts/repair-eduwills-multibook-ui-v1.mjs
       - name: Verify final implementation before build
         shell: bash
         run: |
@@ -76,6 +78,8 @@ jobs:
           const ai = fs.readFileSync('app/dashboard/ai/page.tsx', 'utf8');
           const access = fs.readFileSync('lib/aiAccess.ts', 'utf8');
           const activation = fs.readFileSync('app/dashboard/activation/page.tsx', 'utf8');
+          const quizClient = fs.readFileSync('lib/quizAiClient.ts', 'utf8');
+          const dashboard = fs.readFileSync('app/dashboard/page.tsx', 'utf8');
           if (!admin.includes("const userTokens = (uid: string) =>")) throw new Error('Admin userTokens implementation missing');
           if (!admin.includes('getTime() > Date.now()')) throw new Error('Admin live expiry check missing');
           if (!admin.includes("deleteDoc(doc(db, 'williTokens'")) throw new Error('Admin expired-token deletion missing');
@@ -91,7 +95,10 @@ jobs:
           if (!activation.includes("activationStatus:'active'")) throw new Error('Activation status update missing');
           if (!activation.includes('activeWilliToken:clean')) throw new Error('Activation token linkage missing');
           if (!activation.includes('activationExpiresAt')) throw new Error('Activation expiry persistence missing');
-          console.log('EDUWILLS AI rebuild and WilliToken lifecycle verification passed');
+          if (!quizClient.includes('const allocations=books.map')) throw new Error('Multi-book quiz allocation missing');
+          if (!quizClient.includes('STRICT BOOK SCOPE')) throw new Error('Strict per-book quiz grounding missing');
+          if (!dashboard.includes('EDUWILLS feed')) throw new Error('Dashboard learning feed missing');
+          console.log('EDUWILLS AI, WilliToken, multi-book quiz grounding and dashboard verification passed');
           NODE
       - name: Build application
         env:
