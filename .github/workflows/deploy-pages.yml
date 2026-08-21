@@ -36,9 +36,8 @@ jobs:
         run: |
           set -euxo pipefail
           test -f app/admin/page.tsx
-          test -f scripts/repair-willi-token-lifecycle-v2.mjs
-          test -f scripts/repair-willi-token-lifecycle-v4.mjs
-          test -f scripts/repair-willi-token-runtime-v5.mjs
+          test -f scripts/repair-willi-token-admin-final.mjs
+          node --check scripts/repair-willi-token-admin-final.mjs
           node --check scripts/repair-willi-token-lifecycle-v2.mjs
           node --check scripts/repair-willi-token-lifecycle-v4.mjs
           node --check scripts/repair-willi-token-runtime-v5.mjs
@@ -62,15 +61,17 @@ jobs:
           run_repair scripts/repair-willi-token-lifecycle-v2.mjs
           run_repair scripts/repair-willi-token-lifecycle-v4.mjs
           run_repair scripts/repair-willi-token-runtime-v5.mjs
+          run_repair scripts/repair-willi-token-admin-final.mjs
           run_repair scripts/repair-quiz-grounding.mjs
           run_repair scripts/repair-quiz-instructions-result.mjs
       - name: Verify final implementation before build
         shell: bash
         run: |
           set -euxo pipefail
-          grep -Fq "activationStatus: 'active'" app/admin/page.tsx
-          grep -Fq "activationStatus: 'inactive'" app/admin/page.tsx
-          grep -Fq "WilliToken lifecycle v5 applied" scripts/repair-willi-token-runtime-v5.mjs
+          grep -Fq "const userTokens = (uid: string) => tokens.filter" app/admin/page.tsx
+          grep -Fq "t.getTime() > now" app/admin/page.tsx
+          grep -Fq "deleteDoc(doc(db, 'williTokens', x.id))" app/admin/page.tsx
+          grep -Fq "WilliToken Admin lifecycle finalized" scripts/repair-willi-token-admin-final.mjs
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
