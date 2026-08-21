@@ -10,18 +10,24 @@ const DAILY_AI_QUESTIONS=10;
 const THINKING_MESSAGES=['Reading your question…','Checking the learning context…','Thinking through the answer…','Building a clear explanation…','Double-checking the important details…','Almost ready — polishing the answer…'];
 function expiryMs(v:any){if(!v)return 0;if(typeof v.toMillis==='function')return v.toMillis();if(v.seconds)return v.seconds*1000;const n=Date.parse(String(v));return Number.isFinite(n)?n:0;}
 function activeFromRecord(d:any){
+ const now=Date.now();
  const expires=expiryMs(d.activationExpiresAt);
- const legacyActive=d.activated===true||d.isActivated===true||d.activationStatus==='active'||d.williTokenActive===true;
- if(legacyActive&&(!expires||expires>Date.now()))return true;
+ const explicitActive=d.activationStatus==='active'||d.williTokenActive===true||d.activationActive===true||d.isActive===true;
+ if(explicitActive&&(!expires||expires>now))return true;
+ if(d.activated===true&&(!expires||expires>now))return true;
  const lists=[d.activeWilliTokens,d.activeTokens,d.activations,d.williTokens];
- for(const list of lists){if(!Array.isArray(list))continue;for(const item of list){if(!item||item.active===false||item.used===false)continue;const e=expiryMs(item.expiresAt||item.activationExpiresAt||item.expiry);if(e>Date.now())return true;}}
+ for(const list of lists){if(!Array.isArray(list))continue;for(const item of list){
+   if(!item||item.active===false||item.revoked===true||item.cancelled===true)continue;
+   const e=expiryMs(item.expiresAt||item.activationExpiresAt||item.expiry);
+   if(e>now)return true;
+ }}
  return false;
 }
 type Msg={role:'ai'|'user';text:string};
 const welcome='Hello! I’m EDUWILLS AI. Ask me about a book, character, theme, vocabulary, difficult passage, or study strategy.';
 const dayKey=()=>new Date().toISOString().slice(0,10);
 export default function AIPage(){const [active,setActive]=useState(false),[loading,setLoading]=useState(true),[input,setInput]=useState(''),[sending,setSending]=useState(false),[used,setUsed]=useState(0),[thinking,setThinking]=useState(THINKING_MESSAGES[0]),[messages,setMessages]=useState<Msg[]>([{role:'ai',text:welcome}]);const end=useRef<HTMLDivElement>(null);
- useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{const s=await getDoc(doc(db,'users',u.uid));if(!s.exists()){window.location.replace(`${BASE}/login/`);return;}const d=s.data()||{};setActive(activeFromRecord(d));const q=await getDoc(doc(db,'learnerAiQuota',`${u.uid}_${dayKey()}`));setUsed(q.exists()?Number(q.data().asked||0):0);}catch(e){console.error(e);setActive(false)}finally{setLoading(false)}}),[]);
+ useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){window.location.replace(`${BASE}/login/`);return;}try{const s=await getDoc(doc(db,'users',u.uid));if(!s.exists()){window.location.replace(`${BASE}/login/`);return;}const d=s.data()||{};const isActive=activeFromRecord(d);setActive(isActive);console.info('EDUWILLS AI activation check',{uid:u.uid,activated:d.activated,activationStatus:d.activationStatus,activationActive:d.activationActive,williTokenActive:d.williTokenActive,activationExpiresAt:d.activationExpiresAt,isActive});const q=await getDoc(doc(db,'learnerAiQuota',`${u.uid}_${dayKey()}`));setUsed(q.exists()?Number(q.data().asked||0):0);}catch(e){console.error('EDUWILLS AI activation check failed',e);setActive(false)}finally{setLoading(false)}}),[]);
  useEffect(()=>end.current?.scrollIntoView({behavior:'smooth'}),[messages,sending]);
  useEffect(()=>{if(!sending)return;let i=0;setThinking(THINKING_MESSAGES[0]);const t=setInterval(()=>{i=(i+1)%THINKING_MESSAGES.length;setThinking(THINKING_MESSAGES[i])},2200);return()=>clearInterval(t)},[sending]);
  async function send(){const text=input.trim();if(!text||sending)return;if(used>=DAILY_AI_QUESTIONS)return;const u=auth.currentUser;if(!u)return;setInput('');setMessages(m=>[...m,{role:'user',text}]);setSending(true);try{const history=[...messages,{role:'user' as const,text}].map(m=>`${m.role==='user'?'Learner':'EDUWILLS AI'}: ${m.text}`);const textOut=await askEduwills(text,history);if(!textOut)throw new Error('EMPTY');const ref=doc(db,'learnerAiQuota',`${u.uid}_${dayKey()}`);const snap=await getDoc(ref);const current=snap.exists()?Number(snap.data().asked||0):0;if(current>=DAILY_AI_QUESTIONS)throw new Error('AI_QUOTA_EXHAUSTED');const next=current+1;if(!snap.exists())await setDoc(ref,{uid:u.uid,day:dayKey(),asked:next});else await updateDoc(ref,{asked:next});setUsed(next);setMessages(m=>[...m,{role:'ai',text:textOut}]);}catch(e){console.warn(e);setMessages(m=>[...m,{role:'ai',text:e instanceof Error&&e.message==='AI_QUOTA_EXHAUSTED'?'You have reached today’s EDUWILLS AI limit. Please come back tomorrow.':'I’m temporarily unable to answer that. Please try again shortly.'}]);if(e instanceof Error&&e.message==='AI_QUOTA_EXHAUSTED')setUsed(DAILY_AI_QUESTIONS);}finally{setSending(false)}}
