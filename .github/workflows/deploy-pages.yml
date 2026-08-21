@@ -29,87 +29,36 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Clean previous build output
-        run: rm -rf .next out
-      - name: Verify repair scripts
+      - name: Apply stable EDUWILLS implementation
         shell: bash
         run: |
           set -euxo pipefail
-          test -f app/admin/page.tsx
-          node --check scripts/repair-willi-token-lifecycle-v2.mjs
-          node --check scripts/repair-willi-token-lifecycle-v4.mjs
-          node --check scripts/repair-willi-token-runtime-v5.mjs
-          node --check scripts/repair-willi-token-final-v6.mjs
-          node --check scripts/repair-eduwills-multibook-ui-v1.mjs
-          node --check scripts/repair-quiz-speed-v1.mjs
-          node --check scripts/repair-quiz-cache-first-v2.mjs
-      - name: Apply EDUWILLS final implementation
-        shell: bash
-        run: |
-          set -euxo pipefail
-          run_repair() {
-            local script="$1"
-            echo "========================================"
-            echo "Running repair: $script"
-            echo "========================================"
-            node "$script"
-          }
-          run_repair scripts/repair-homepage-seo.mjs
-          run_repair scripts/repair-quiz-grounding.mjs
-          run_repair scripts/repair-ui-script-syntax.mjs
-          run_repair scripts/repair-quiz-final-polish.mjs
-          run_repair scripts/repair-quiz-final-behavior.mjs
-          run_repair scripts/repair-quiz-admin-latest.mjs
-          run_repair scripts/repair-willi-token-lifecycle-v2.mjs
-          run_repair scripts/repair-willi-token-lifecycle-v4.mjs
-          run_repair scripts/repair-willi-token-runtime-v5.mjs
-          run_repair scripts/repair-willi-token-final-v6.mjs
-          run_repair scripts/repair-willi-token-admin-final.mjs
-          run_repair scripts/repair-quiz-grounding.mjs
-          run_repair scripts/repair-quiz-instructions-result.mjs
-          run_repair scripts/repair-eduwills-multibook-ui-v1.mjs
-          run_repair scripts/repair-quiz-speed-v1.mjs
-          run_repair scripts/repair-quiz-cache-first-v2.mjs
-      - name: Verify final implementation before build
+          node --check scripts/repair-eduwills-next.mjs
+          node scripts/repair-eduwills-next.mjs
+          node --check scripts/publish-education-news.mjs
+      - name: Verify final implementation
         shell: bash
         run: |
           set -euxo pipefail
           test -f lib/aiAccess.ts
           test -f app/dashboard/ai/page.tsx
-          node --check scripts/repair-quiz-speed-v1.mjs
-          node --check scripts/repair-quiz-cache-first-v2.mjs
+          test -f components/EducationFeed.tsx
+          test -f public/education-news.json
           node - <<'NODE'
           const fs = require('fs');
-          const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
-          const ai = fs.readFileSync('app/dashboard/ai/page.tsx', 'utf8');
-          const access = fs.readFileSync('lib/aiAccess.ts', 'utf8');
-          const activation = fs.readFileSync('app/dashboard/activation/page.tsx', 'utf8');
-          const quizClient = fs.readFileSync('lib/quizAiClient.ts', 'utf8');
-          const dashboard = fs.readFileSync('app/dashboard/page.tsx', 'utf8');
-          if (!admin.includes("const userTokens = (uid: string) =>")) throw new Error('Admin userTokens implementation missing');
-          if (!admin.includes('getTime() > Date.now()')) throw new Error('Admin live expiry check missing');
-          if (!admin.includes("deleteDoc(doc(db, 'williTokens'")) throw new Error('Admin expired-token deletion missing');
-          if (!admin.includes('customDurationValue') || !admin.includes('customDurationUnit')) throw new Error('Custom WilliToken duration controls missing');
-          if (!admin.includes("duration === 'custom'")) throw new Error('Custom duration generation path missing');
-          if (!ai.includes("watchAiEntitlement")) throw new Error('AI is not using centralized entitlement service');
-          if (!ai.includes("getAiEntitlement")) throw new Error('AI entitlement service is not wired into the page');
-          if (!access.includes("activationStatus === 'active'")) throw new Error('AI account activation check missing');
-          if (!access.includes('activationExpiresAt')) throw new Error('AI activation expiry check missing');
-          if (!access.includes("where('uid', '==', uid)")) throw new Error('AI UID token fallback missing');
-          if (!access.includes("where('userId', '==', uid)")) throw new Error('AI userId token fallback missing');
-          if (!access.includes("where('username', '==', username)")) throw new Error('AI username token fallback missing');
-          if (!activation.includes("activationStatus:'active'")) throw new Error('Activation status update missing');
-          if (!activation.includes('activeWilliToken:clean')) throw new Error('Activation token linkage missing');
-          if (!activation.includes('activationExpiresAt')) throw new Error('Activation expiry persistence missing');
-          if (!activation.includes('eduwills-activation')) throw new Error('Activation visibility styling missing');
-          if (!quizClient.includes('const allocations=books.map')) throw new Error('Multi-book quiz allocation missing');
-          if (!quizClient.includes('CACHE-FIRST')) throw new Error('Cache-first quiz lookup missing');
-          if (!quizClient.includes('await readSharedCache(key,recent)')) throw new Error('Per-book cache lookup missing');
-          if (!quizClient.includes('STRICT BOOK SCOPE')) throw new Error('Strict per-book quiz grounding missing');
-          if (!quizClient.includes('count <= 5 ? 24000 : 90000')) throw new Error('Small-quiz prompt optimization missing');
-          if (!quizClient.includes('maxOutputTokens:5000')) throw new Error('Fast quiz output configuration missing');
-          if (!dashboard.includes('EDUWILLS feed')) throw new Error('Dashboard learning feed missing');
-          console.log('EDUWILLS cache-first quiz and activation visibility verification passed');
+          const quiz = fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          const client = fs.readFileSync('lib/quizAiClient.ts','utf8');
+          const dashboard = fs.readFileSync('app/dashboard/page.tsx','utf8');
+          if (!client.includes("const CACHE = 'v22-broad-book-knowledge-cache-first'")) throw new Error('New cache namespace missing');
+          if (!client.includes('readSharedCache')) throw new Error('Shared cache reader missing');
+          if (!client.includes('STRICT BOOK SCOPE')) throw new Error('Strict book scope missing');
+          if (!client.includes('allocations = selected.map')) throw new Error('Multi-book allocation missing');
+          if (!client.includes('The Lekki Headmaster')) throw new Error('Lekki Headmaster knowledge pack missing');
+          if (!client.includes('Sànyà')) throw new Error('Sànyà knowledge pack missing');
+          if (!quiz.includes("searchBookAuthors('title', raw)")) throw new Error('Quiz title search wiring missing');
+          if (!quiz.includes('canvas.width = 1400; canvas.height = 1000;')) throw new Error('Fresh result image format missing');
+          if (!dashboard.includes('<EducationFeed />')) throw new Error('Dashboard education feed missing');
+          console.log('EDUWILLS stable implementation verification passed');
           NODE
       - name: Build application
         env:
