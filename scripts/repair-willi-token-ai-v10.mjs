@@ -1,7 +1,27 @@
 import fs from 'node:fs';
 
 const path = 'app/dashboard/ai/page.tsx';
-const src = fs.readFileSync(path, 'utf8');
+let src = fs.readFileSync(path, 'utf8');
+
+// v10 must be self-contained: older repairs may have replaced the helper
+// declarations before this repair runs. Ensure the expiry helper exists.
+if (!src.includes('function tokenActivationExpiry(')) {
+  const marker = "function activeFromRecord(";
+  const helper = `function tokenActivationExpiry(x:any){
+ const direct=expiryMs(x?.activationExpiresAt);
+ if(direct)return direct;
+ if(x?.usedAt&&typeof x?.durationMs==='number'){
+   const used=expiryMs(x.usedAt);
+   if(used)return used+x.durationMs;
+ }
+ return expiryMs(x?.expiresAt||x?.expiry);
+}
+`;
+  const markerIndex = src.indexOf(marker);
+  if (markerIndex < 0) throw new Error('AI activation helper insertion point not found');
+  src = src.slice(0, markerIndex) + helper + src.slice(markerIndex);
+}
+
 const start = src.indexOf('async function reconcileActivation(');
 const end = src.indexOf('\ntype Msg=', start);
 if (start < 0 || end < 0) throw new Error('AI reconciliation function boundaries not found');
@@ -57,4 +77,4 @@ const replacement = `async function reconcileActivation(uid:string,d:any){
 }`;
 
 fs.writeFileSync(path, src.slice(0,start)+replacement+src.slice(end), 'utf8');
-console.log('WilliToken AI v10 applied: authoritative user activation plus direct active-token linkage and UID/username fallback.');
+console.log('WilliToken AI v10 applied: self-contained expiry helper, authoritative active-token linkage, and UID/username fallback.');
