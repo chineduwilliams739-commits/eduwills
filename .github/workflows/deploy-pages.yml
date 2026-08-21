@@ -57,6 +57,8 @@ jobs:
           if (!client.includes('Sànyà')) throw new Error('Sànyà knowledge pack missing');
           if (!quiz.includes('MIN_QUIZ_DURATION_MINUTES = 5')) throw new Error('Five-minute minimum missing');
           if (!quiz.includes('Math.max(MIN_QUIZ_DURATION_MINUTES')) throw new Error('Five-minute duration enforcement missing');
+          if (!quiz.includes('function Menu({label,value,options,onChange}')) throw new Error('Quiz Studio custom menus missing');
+          if (!quiz.includes('{value:"5",label:"5 minutes"}')) throw new Error('Five-minute menu option missing');
           if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) throw new Error('Dashboard education feed import missing');
           if (!dashboard.includes('<EducationFeed />')) throw new Error('Dashboard education feed missing');
           console.log('EDUWILLS stable implementation verification passed');
