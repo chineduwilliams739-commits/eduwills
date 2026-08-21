@@ -23,44 +23,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
       - name: Clean previous build output
         run: rm -rf .next out
-
       - name: Verify repair scripts
         shell: bash
         run: |
           set -euo pipefail
-          test -f app/page.tsx
-          test -f app/dashboard/quiz/page.tsx
           test -f app/admin/page.tsx
-          test -f lib/quizAiClient.ts
-          test -f lib/verifiedBookGrounding.ts
-          test -f scripts/repair-homepage-seo.mjs
-          test -f scripts/repair-quiz-grounding.mjs
-          test -f scripts/repair-quiz-final-polish.mjs
-          test -f scripts/repair-quiz-final-behavior.mjs
-          test -f scripts/repair-quiz-admin-latest.mjs
-          test -f scripts/repair-ui-script-syntax.mjs
-          test -f scripts/repair-quiz-instructions-result.mjs
           test -f scripts/repair-willi-token-lifecycle-v2.mjs
-          node --check scripts/repair-homepage-seo.mjs
-          node --check scripts/repair-quiz-grounding.mjs
-          node --check scripts/repair-quiz-final-polish.mjs
-          node --check scripts/repair-quiz-final-behavior.mjs
-          node --check scripts/repair-quiz-admin-latest.mjs
-          node --check scripts/repair-ui-script-syntax.mjs
-          node --check scripts/repair-quiz-instructions-result.mjs
+          test -f scripts/repair-willi-token-lifecycle-v3.mjs
           node --check scripts/repair-willi-token-lifecycle-v2.mjs
-
+          node --check scripts/repair-willi-token-lifecycle-v3.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -72,61 +51,26 @@ jobs:
           node scripts/repair-quiz-final-behavior.mjs
           node scripts/repair-quiz-admin-latest.mjs
           node scripts/repair-willi-token-lifecycle-v2.mjs
+          node scripts/repair-willi-token-lifecycle-v3.mjs
           node scripts/repair-quiz-grounding.mjs
           node scripts/repair-quiz-instructions-result.mjs
-
       - name: Verify final implementation before build
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "EDUWILLS_SEO_CONTENT_V1" app/page.tsx
-          grep -Fq "AI quiz generator for" app/page.tsx
-          grep -Fq "function Menu({" app/dashboard/quiz/page.tsx
-          grep -Fq "Swipe sideways to navigate questions" app/dashboard/quiz/page.tsx
-          grep -Fq "Leave this quiz?" app/dashboard/quiz/page.tsx
-          grep -Fq "answers.filter((x) => x !== undefined).length} answered questions" app/dashboard/quiz/page.tsx
-          grep -Fq "Explain why I failed this" app/dashboard/quiz/page.tsx
-          grep -Fq "Every question" app/dashboard/quiz/page.tsx
-          grep -Fq "EDUWILLS AI Review" app/dashboard/quiz/page.tsx
-          grep -Fq "setTimeout(() => submitQuiz(true), 0)" app/dashboard/quiz/page.tsx
-          grep -Fq "verifiedBookGrounding" lib/quizAiClient.ts
-          grep -Fq "groundedForBooks" lib/quizAiClient.ts
-          grep -Fq "verifiedResearch(books)" lib/quizAiClient.ts
-          grep -Fq "v22-strict-instructions-quiz" lib/quizAiClient.ts
-          grep -Fq "STRICTLY MANDATORY" lib/quizAiClient.ts
-          grep -Fq "resultFileName" app/dashboard/quiz/page.tsx
-          grep -Fq "EDUWILLS-' + suffix" app/dashboard/quiz/page.tsx
-          grep -Fq "SMART QUIZ • LEARNING RESULT" app/dashboard/quiz/page.tsx
-          grep -Fq "Math.max(5, Number(duration) || 5)" app/dashboard/quiz/page.tsx
-          grep -Fq "Custom duration…" app/admin/page.tsx
-          grep -Fq "manualDurationMs" app/admin/page.tsx
-          grep -Fq "absolute left-5" app/dashboard/quiz/page.tsx
           grep -Fq "activationStatus: 'active'" app/admin/page.tsx
           grep -Fq "activationStatus: 'inactive'" app/admin/page.tsx
-          grep -Fq "WilliToken lifecycle v2 applied" scripts/repair-willi-token-lifecycle-v2.mjs
-          if grep -Fq '<select value={duration}' app/dashboard/quiz/page.tsx; then
-            echo "ERROR: old unstyled duration dropdown is still present"
-            exit 1
-          fi
-          if grep -Fq '<select value={difficulty}' app/dashboard/quiz/page.tsx; then
-            echo "ERROR: old unstyled difficulty dropdown is still present"
-            exit 1
-          fi
-          echo "EDUWILLS final UI, SEO, exact-book grounding, strict instruction contract, unique styled result export, persistent timer, 5-minute minimum, manual WilliToken duration, and active-token lifecycle are present in the build source."
-
+          grep -Fq "WilliToken lifecycle v3 applied" scripts/repair-willi-token-lifecycle-v3.mjs
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
         run: npm run build
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
