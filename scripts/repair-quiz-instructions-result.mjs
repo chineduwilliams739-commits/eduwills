@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const aiFile = 'lib/quizAiClient.ts';
 let ai = fs.readFileSync(aiFile, 'utf8');
 
-aI = ai.replace(/const CACHE\s*=\s*['\"]v(?:20-cache-first-per-book|21-hard-grounded-book-quiz|22-strict-instructions-quiz)['\"];?/g, "const CACHE='v22-strict-instructions-quiz';");
+ai = ai.replace(/const CACHE\s*=\s*['\"]v(?:20-cache-first-per-book|21-hard-grounded-book-quiz|22-strict-instructions-quiz)['\"];?/g, "const CACHE='v22-strict-instructions-quiz';");
 
 // This repair used to require one exact historical source shape. The quiz client
 // has evolved through several safe implementations, so make this step idempotent
