@@ -3,6 +3,11 @@ import fs from 'node:fs';
 const aiFile = 'lib/quizAiClient.ts';
 let ai = fs.readFileSync(aiFile, 'utf8');
 
+// Force a fresh cache namespace so questions created before the strict instruction
+// contract cannot be reused merely because the user entered the same instructions.
+ai = ai.replace(/const CACHE='v21-hard-grounded-book-quiz';/g, "const CACHE='v22-strict-instructions-quiz';");
+ai = ai.replace(/const CACHE = 'v21-hard-grounded-book-quiz';/g, "const CACHE='v22-strict-instructions-quiz';");
+
 const promptRe = /function buildPrompt\(books:QuizBook\[\],count:number,difficulty:string,instructions:string,recent:string\[\],research:string\)\{[\s\S]*?\}\n\nexport async function generateQuiz/;
 const promptReplacement = String.raw`function buildPrompt(books:QuizBook[],count:number,difficulty:string,instructions:string,recent:string[],research:string){
   const userInstructions=String(instructions||'').trim()||'Create a diverse quiz from the actual book content.';
@@ -65,4 +70,4 @@ if (!imageRe.test(s)) throw new Error('result image block not found');
 s = s.replace(imageRe, imageReplacement);
 
 fs.writeFileSync(pageFile, s);
-console.log('EDUWILLS instruction contract and styled unique result-image export applied.');
+console.log('EDUWILLS strict instruction contract, fresh quiz cache namespace and styled unique result-image export applied.');
