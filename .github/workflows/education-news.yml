@@ -1,0 +1,30 @@
+name: Refresh EDUWILLS Education News
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Refresh education news
+        run: node scripts/publish-education-news.mjs
+      - name: Commit refreshed feed
+        run: |
+          git config user.name 'EDUWILLS News Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add public/education-news.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore: refresh education news feed'
+          git push
