@@ -69,11 +69,11 @@ jobs:
         run: |
           set -euxo pipefail
           grep -Fq "const userTokens = (uid: string) =>" app/admin/page.tsx
-          grep -Fq "e.getTime() > Date.now()" app/admin/page.tsx
+          grep -Fq "!!e && e.getTime() > Date.now()" app/admin/page.tsx
+          grep -Fq "const expiredTokenDocs" app/admin/page.tsx
           grep -Fq "const liveTokenDocs" app/admin/page.tsx
-          grep -Fq "expiredTokenDocs" app/admin/page.tsx
           grep -Fq "deleteDoc(doc(db, 'williTokens', x.id))" app/admin/page.tsx
-          grep -Fq "WilliToken Admin lifecycle finalized" scripts/repair-willi-token-admin-final.mjs
+          grep -Fq "used tokens retained until expiry" scripts/repair-willi-token-admin-final.mjs
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
