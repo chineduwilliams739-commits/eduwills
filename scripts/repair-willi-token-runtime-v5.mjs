@@ -14,7 +14,6 @@ function replaceRequired(p, re, replacement, label) {
   write(p, n);
 }
 
-// Redemption must move the token's expiry to the actual activation expiry.
 replaceRequired(
   activation,
   /await updateDoc\(tokenRef, \{ used: true, usedAt: new Date\(\)\.toISOString\(\), userId: uid, username: currentUsername \}\);/,
@@ -22,27 +21,29 @@ replaceRequired(
   'token redemption update'
 );
 
-// Dashboard: determine activation from the user's redeemed, non-expired token records.
 replaceRequired(
   dashboard,
-  /function isActiveRecord\(d:any\)\{[\s\S]*?\n\}\n\nexport default function DashboardPage/, 
+  "import { doc, getDoc } from 'firebase/firestore';",
+  "import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';",
+  'dashboard firestore imports'
+);
+replaceRequired(
+  dashboard,
+  /function isActiveRecord\(d:any\)\{[\s\S]*?\n\}\n\nexport default function DashboardPage/,
   `function isActiveRecord(d:any){
  const now=Date.now();
  const expires=expiryMs(d.activationExpiresAt);
- if(d.activationStatus==='active'&&expires>now)return true;
- if(d.activated===true&&expires>now)return true;
- return false;
+ return d.activationStatus==='active' && expires>now;
 }
 async function getActiveToken(uid:string){
+ const now=Date.now();
  try{
   const snap=await getDocs(query(collection(db,'williTokens'),where('userId','==',uid)));
   let latest:any=null;
   for(const item of snap.docs){
    const x=item.data()||{};
    const exp=expiryMs(x.activationExpiresAt||x.expiresAt||x.expiry);
-   if(exp<=now) continue;
-   if(x.used!==true) continue;
-   if(!latest||exp>latest.exp) latest={id:item.id,exp};
+   if(exp>now && x.used===true && (!latest||exp>latest.exp)) latest={id:item.id,exp};
   }
   return latest;
  }catch{return null;}
@@ -53,24 +54,11 @@ export default function DashboardPage`,
 );
 replaceRequired(
   dashboard,
-  "import { doc, getDoc } from 'firebase/firestore';",
-  "import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';",
-  'dashboard firestore imports'
-);
-replaceRequired(
-  dashboard,
   /const d=s\.data\(\);const identity=String\(d\.fullName\?\.split\(' '\)\[0\]\|\|d\.username\|\|u\.displayName\|\|' '\)\.trim\(\);[\s\S]*?setExpiry\(''\);\}\}catch\(e\)\{console\.error\(e\);/,
-  `const d=s.data();const identity=String(d.fullName?.split(' ')[0]||d.username||u.displayName||'').trim();if(!identity){await signOut(auth);window.location.replace(\`${BASE}/login/\`);return;}setName(identity);const tokenRecord=await getActiveToken(u.uid);const directExpiry=expiryMs(d.activationExpiresAt);const tokenActive=!!tokenRecord;const active=tokenActive||(isActiveRecord(d)&&directExpiry>Date.now());setActivated(active);if(active){const ms=tokenRecord?.exp||directExpiry;if(ms)setExpiry(new Date(ms).toLocaleString());}else setExpiry('');}catch(e){console.error(e);`,
+  `const d=s.data();const identity=String(d.fullName?.split(' ')[0]||d.username||u.displayName||'').trim();if(!identity){await signOut(auth);window.location.replace(\`${BASE}/login/\`);return;}setName(identity);const tokenRecord=await getActiveToken(u.uid);const directExpiry=expiryMs(d.activationExpiresAt);const active=!!tokenRecord||(isActiveRecord(d)&&directExpiry>Date.now());setActivated(active);if(active){const ms=tokenRecord?.exp||directExpiry;if(ms)setExpiry(new Date(ms).toLocaleString());}else setExpiry('');}catch(e){console.error(e);`,
   'dashboard auth activation check'
 );
 
-// AI: query the token collection and use only redeemed, non-expired tokens.
-replaceRequired(
-  ai,
-  "import {collection,doc,getDocs,getDoc,query,setDoc,updateDoc,where,deleteDoc} from 'firebase/firestore';",
-  "import {collection,doc,getDocs,getDoc,query,setDoc,updateDoc,where,deleteDoc} from 'firebase/firestore';",
-  'AI firestore import'
-);
 replaceRequired(
   ai,
   /function activeFromRecord\(d:any\)\{[\s\S]*?\n\}\nasync function reconcileActivation\(uid:string,d:any\)\{[\s\S]*?\n\}\ntype Msg=/,
@@ -102,40 +90,20 @@ type Msg=`,
   'AI activation reconciliation'
 );
 
-// Admin: remove expired tokens while loading, keep redeemed active tokens visible, and base user status on them.
+// Admin: keep every non-expired token (used or unused) in Active Token Expiry and delete expired tokens.
 replaceRequired(
   admin,
-  /const \[users, s, t, p\] = await Promise\.all\(\[[\s\S]*?\n      \]\);/,
-  `const [u, s, t, p] = await Promise.all([
-        getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'bookSlots')),
-        getDocs(collection(db, 'williTokens')),
-        getDoc(doc(db, 'settings', 'williTokenPolicies')),
-      ]);
-      const now = Date.now();
-      const validTokenDocs = [];
-      for (const td of t.docs) {
-        const x = td.data() || {};
-        const exp = tokenExpiry(x).getTime();
-        if (exp && exp <= now) { await deleteDoc(td.ref).catch(()=>undefined); continue; }
-        validTokenDocs.push(td);
-      }
-      setUsers(u.docs.map(d => ({ id: d.id, ...d.data() } as User)));
-      setSlots(s.docs.map(d => ({ id: d.id, ...d.data() } as Slot)).sort((a, b) => a.slot - b.slot));
+  /setTokens\(t\.docs\.map\(d => \(\{ id: d\.id, \.\.\.d\.data\(\) \} as WilliToken\)\)\);/,
+  `const validTokenDocs = t.docs.filter(td => { const x = td.data() || {}; const exp = tokenExpiry(x)?.getTime() || 0; return !exp || exp > Date.now(); });
+      Promise.all(t.docs.filter(td => !validTokenDocs.includes(td)).map(td => deleteDoc(td.ref).catch(()=>undefined)));
       setTokens(validTokenDocs.map(d => ({ id: d.id, ...d.data() } as WilliToken)));`,
-  'admin token cleanup load'
-);
-replaceRequired(
-  admin,
-  /setUsers\(u\.docs\.map\(d => \(\{ id: d\.id, \.\.\.d\.data\(\) \} as User\)\)\);\n      setSlots\(s\.docs\.map\(d => \(\{ id: d\.id, \.\.\.d\.data\(\) \} as Slot\)\)\.sort\(\(a, b\) => a\.slot - b\.slot\)\);\n      setTokens\(t\.docs\.map\(d => \(\{ id: d\.id, \.\.\.d\.data\(\) \} as WilliToken\)\)\);/,
-  `// token state is populated above after expired-token cleanup`,
-  'admin duplicate token state'
+  'admin token cleanup'
 );
 replaceRequired(
   admin,
   /const userTokens = \(uid: string\) => tokens\.filter\(t => t\.userId === uid && !t\.used\)\.sort\(\(a, b\) => \(tokenExpiry\(b\)\?\.getTime\(\) \|\| 0\) - \(tokenExpiry\(a\)\?\.getTime\(\) \|\| 0\)\);/,
-  `const userTokens = (uid: string) => tokens.filter(t => t.userId === uid).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));
-  const activeUserToken = (uid: string) => userTokens(uid).find(t => t.used === true && (tokenExpiry(t)?.getTime() || 0) > Date.now()) || null;
+  `const userTokens = (uid: string) => tokens.filter(t => t.userId === uid && (tokenExpiry(t)?.getTime() || 0) > Date.now()).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));
+  const activeUserToken = (uid: string) => userTokens(uid).find(t => t.used === true) || null;
   const userIsActive = (uid: string) => !!activeUserToken(uid);`,
   'admin active token selector'
 );
@@ -149,13 +117,7 @@ replaceRequired(
   admin,
   /u\.activated \? 'Yes' : 'No'/g,
   "userIsActive(u.uid || u.id) ? 'Active' : 'Inactive'",
-  'admin user status'
-);
-replaceRequired(
-  admin,
-  /<p className=\"mt-2 text-slate-400\">\{exp \? `WilliToken expires \$\{formatExpiry\(exp\)\}` : 'No active WilliToken'\}<\/p>/,
-  `<p className=\"mt-2 text-slate-400\">{exp ? \`WilliToken expires ${formatExpiry(exp)}\` : 'No active WilliToken'}</p><div className=\"mt-1 font-black ${'${userIsActive(uid) ? \'text-emerald-300\' : \'text-slate-500\'}'}\">{userIsActive(uid) ? 'ACTIVE' : 'INACTIVE'}</div>`,
-  'admin user status badge'
+  'admin user status export'
 );
 
 console.log('WilliToken lifecycle v5 applied');
