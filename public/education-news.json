@@ -1,4 +1,61 @@
 {
   "generatedAt": "2026-08-21T15:00:00.000Z",
-  "items": []
+  "items": [
+    {
+      "title": "JAMB bulletins and current admission updates",
+      "link": "https://www.jamb.gov.ng/bulletins",
+      "source": "JAMB",
+      "publishedAt": "Current official bulletin feed",
+      "description": "Official JAMB bulletins covering admissions, UTME and examination updates."
+    },
+    {
+      "title": "WAEC Nigeria official news and examination updates",
+      "link": "https://www.waecnigeria.org/news",
+      "source": "WAEC Nigeria",
+      "publishedAt": "Current official feed",
+      "description": "Official WAEC Nigeria news, examination notices, selected texts and candidate updates."
+    },
+    {
+      "title": "Federal Ministry of Education — latest education news",
+      "link": "https://education.gov.ng/",
+      "source": "Federal Ministry of Education",
+      "publishedAt": "Current official feed",
+      "description": "National education policy, scholarship, teacher, TVET and sector updates."
+    },
+    {
+      "title": "Nigeria Education Sector Renewal Initiative updates",
+      "link": "https://nesri.education.gov.ng/",
+      "source": "NESRI",
+      "publishedAt": "Current official feed",
+      "description": "Updates on TVET, STEMM, out-of-school children, girl-child education, digitalisation and quality assurance."
+    },
+    {
+      "title": "AI cheating, leaked papers and marking errors: exam protests went global",
+      "link": "https://www.theguardian.com/global-development/2026/aug/16/ai-cheating-leaked-papers-marking-errors-how-exam-protests-went-global",
+      "source": "The Guardian",
+      "publishedAt": "16 Aug 2026",
+      "description": "A global look at examination integrity, AI-driven cheating, digital marking and student pressure."
+    },
+    {
+      "title": "Teachers are AI-curious, but worried about screens",
+      "link": "https://www.axios.com/local/columbus/2026/08/19/mcgraw-hill-teacher-study-survey-ohio-ai-schools",
+      "source": "Axios",
+      "publishedAt": "19 Aug 2026",
+      "description": "A teacher survey highlights optimism about classroom AI alongside concerns about screen time and student focus."
+    },
+    {
+      "title": "2026 Education Data Refresh: global progress and persistent gaps",
+      "link": "https://www.uis.unesco.org/en/news/2026-education-data-refresh",
+      "source": "UNESCO UIS",
+      "publishedAt": "2026",
+      "description": "UNESCO education data highlights progress alongside persistent global and regional learning gaps."
+    },
+    {
+      "title": "Schools whose 2026/2027 admission lists have been released",
+      "link": "https://myschoolgist.com/news/admission-list/",
+      "source": "MySchoolGist",
+      "publishedAt": "16 Aug 2026",
+      "description": "A running guide to Nigerian university, polytechnic and college admission-list releases."
+    }
+  ]
 }
