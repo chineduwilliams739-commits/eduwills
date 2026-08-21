@@ -51,6 +51,7 @@ jobs:
           test -f scripts/repair-quiz-admin-latest.mjs
           test -f scripts/repair-ui-script-syntax.mjs
           test -f scripts/repair-quiz-instructions-result.mjs
+          test -f scripts/repair-willi-token-lifecycle.mjs
           node --check scripts/repair-homepage-seo.mjs
           node --check scripts/repair-quiz-grounding.mjs
           node --check scripts/repair-quiz-final-polish.mjs
@@ -58,6 +59,7 @@ jobs:
           node --check scripts/repair-quiz-admin-latest.mjs
           node --check scripts/repair-ui-script-syntax.mjs
           node --check scripts/repair-quiz-instructions-result.mjs
+          node --check scripts/repair-willi-token-lifecycle.mjs
 
       - name: Apply EDUWILLS final implementation
         shell: bash
@@ -69,6 +71,7 @@ jobs:
           node scripts/repair-quiz-final-polish.mjs
           node scripts/repair-quiz-final-behavior.mjs
           node scripts/repair-quiz-admin-latest.mjs
+          node scripts/repair-willi-token-lifecycle.mjs
           # Grounding is deliberately re-applied before the final instruction/export repair
           # so exact-book validation remains intact while the final prompt and result export are applied last.
           node scripts/repair-quiz-grounding.mjs
@@ -100,6 +103,9 @@ jobs:
           grep -Fq "Custom duration…" app/admin/page.tsx
           grep -Fq "manualDurationMs" app/admin/page.tsx
           grep -Fq "absolute left-5" app/dashboard/quiz/page.tsx
+          grep -Fq "activationStatus: 'active'" app/admin/page.tsx
+          grep -Fq "activationStatus: 'inactive'" app/admin/page.tsx
+          grep -Fq "WilliToken lifecycle repaired" scripts/repair-willi-token-lifecycle.mjs
           if grep -Fq '<select value={duration}' app/dashboard/quiz/page.tsx; then
             echo "ERROR: old unstyled duration dropdown is still present"
             exit 1
@@ -108,7 +114,7 @@ jobs:
             echo "ERROR: old unstyled difficulty dropdown is still present"
             exit 1
           fi
-          echo "EDUWILLS final UI, SEO, hard exact-book grounding, strict instruction contract, unique styled result export, stale-cache invalidation, persistent timer, 5-minute minimum and manual WilliToken duration are present in the build source."
+          echo "EDUWILLS final UI, SEO, hard exact-book grounding, strict instruction contract, unique styled result export, stale-cache invalidation, persistent timer, 5-minute minimum, manual WilliToken duration, and active-token lifecycle are present in the build source."
 
       - name: Build application
         env:
