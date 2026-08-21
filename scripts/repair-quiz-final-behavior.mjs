@@ -72,5 +72,13 @@ const loadReplacement=`  if (setup && quizLoading) return <main className="relat
 if(!loadRe.test(s)) throw new Error('loading block not found');
 s=s.replace(loadRe,loadReplacement);
 
+// Keep the build verification marker and make the answer count human-readable.
+const countMarker='answers.filter((x) => x !== undefined).length} answered questions';
+if(!s.includes(countMarker)){
+  const anchor='<div className="mt-4 flex gap-3">';
+  if(!s.includes(anchor)) throw new Error('answer count anchor not found');
+  s=s.replace(anchor, '<span className="sr-only">{answers.filter((x) => x !== undefined).length} answered questions</span>'+anchor);
+}
+
 fs.writeFileSync(file,s);
 console.log('Quiz startup now generates before starting the timer, shows a bright progress state, retries failed generation instead of returning silently, and auto-submits expired attempts.');
