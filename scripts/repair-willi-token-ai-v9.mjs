@@ -6,30 +6,6 @@ const activationPath = 'app/dashboard/activation/page.tsx';
 let ai = fs.readFileSync(aiPath, 'utf8');
 let activation = fs.readFileSync(activationPath, 'utf8');
 
-const oldReconcile = `async function reconcileActivation(uid:string,d:any){
- const now=Date.now();
- const direct=activeFromRecord(d);
- if(d.activationExpiresAt && expiryMs(d.activationExpiresAt)<=now){
-   await updateDoc(doc(db,'users',uid),{activated:false,activationStatus:'inactive',activationActive:false,williTokenActive:false,activationExpiresAt:null,activeWilliToken:null}).catch(()=>undefined);
-   return false;
- }
- try{
-   const snap=await getDocs(query(collection(db,'williTokens'),where('userId','==',uid)));
-   let active=false;
-   let latestExpiry=0;
-   for(const item of snap.docs){
-     const x=item.data()||{};
-     const exp=expiryMs(x.expiresAt||x.activationExpiresAt||x.expiry);
-     if(exp>now&&x.active!==false){active=true;if(exp>latestExpiry)latestExpiry=exp;}
-     else if(exp&&exp<=now) await deleteDoc(item.ref).catch(()=>undefined);
-   }
-   if(active&&!direct){
-     await updateDoc(doc(db,'users',uid),{activated:true,activationStatus:'active',activationActive:true,williTokenActive:true,activationExpiresAt:new Date(latestExpiry).toISOString(),activeWilliToken:snap.docs.find(item=>{const x=item.data()||{};return expiryMs(x.expiresAt||x.activationExpiresAt||x.expiry)===latestExpiry})?.id||null}).catch(()=>undefined);
-   }
-   return direct||active;
- }catch{return direct;}
-}`;
-
 const newReconcile = `async function reconcileActivation(uid:string,d:any){
  const now=Date.now();
  const directExpiry=expiryMs(d.activationExpiresAt);
@@ -41,45 +17,64 @@ const newReconcile = `async function reconcileActivation(uid:string,d:any){
  let latestId=d.activeWilliToken||null;
  try{
    const candidates=[];
-   const byUid=await getDocs(query(collection(db,'williTokens'),where('userId','==',uid)));
-   byUid.docs.forEach(r=>candidates.push(r));
-   const byUidField=await getDocs(query(collection(db,'williTokens'),where('uid','==',uid)));
-   byUidField.docs.forEach(r=>{if(!candidates.some(c=>c.id===r.id))candidates.push(r);});
-   const username=String(d.username||'').trim().toLowerCase();
+   const add=(rows:any[])=>rows.forEach((r:any)=>{if(!candidates.some((c:any)=>c.id===r.id))candidates.push(r);});
+   const byUserId=await getDocs(query(collection(db,'williTokens'),where('userId','==',uid)));
+   add(byUserId.docs);
+   const byUid=await getDocs(query(collection(db,'williTokens'),where('uid','==',uid)));
+   add(byUid.docs);
+   const username=String(d.username||'').trim();
    if(username){
      const byUsername=await getDocs(query(collection(db,'williTokens'),where('username','==',username)));
-     byUsername.docs.forEach(r=>{if(!candidates.some(c=>c.id===r.id))candidates.push(r);});
+     add(byUsername.docs);
    }
    for(const item of candidates){
      const x=item.data()||{};
-     const exp=expiryMs(x.activationExpiresAt||x.expiresAt||x.expiry||(x.durationMs&&x.usedAt?new Date(expiryMs(x.usedAt)+Number(x.durationMs)).toISOString():null));
-     if(exp>now && x.revoked!==true && x.cancelled!==true && (x.used===true || x.status==='active' || x.active===true)){
+     const usedAt=expiryMs(x.usedAt);
+     const durationMs=Number(x.durationMs||0);
+     const fallbackExpiry=usedAt>0&&durationMs>0?usedAt+durationMs:0;
+     const exp=expiryMs(x.activationExpiresAt||x.expiresAt||x.expiry)||(fallbackExpiry||0);
+     const redeemed=x.used===true||x.status==='active'||x.active===true;
+     const blocked=x.revoked===true||x.cancelled===true;
+     if(exp>now&&!blocked&&redeemed){
        active=true;
        if(exp>latestExpiry){latestExpiry=exp;latestId=item.id;}
-       if(x.used===true && (x.expiresAt!==new Date(exp).toISOString() || x.activationExpiresAt!==new Date(exp).toISOString())){
-         await updateDoc(item.ref,{active:true,status:'active',activationExpiresAt:new Date(exp).toISOString(),expiresAt:new Date(exp).toISOString(),userId:uid,uid}).catch(()=>undefined);
+       const iso=new Date(exp).toISOString();
+       if(x.used===true && (x.active!==true||x.status!=='active'||x.activationExpiresAt!==iso||x.expiresAt!==iso||x.userId!==uid||x.uid!==uid)){
+         await updateDoc(item.ref,{used:true,active:true,status:'active',activationExpiresAt:iso,expiresAt:iso,userId:uid,uid}).catch(()=>undefined);
        }
-     } else if(exp && exp<=now){ await deleteDoc(item.ref).catch(()=>undefined); }
+     } else if(exp&&exp<=now){
+       await deleteDoc(item.ref).catch(()=>undefined);
+     }
    }
    if(active){
-     await updateDoc(doc(db,'users',uid),{activated:true,activationStatus:'active',activationActive:true,williTokenActive:true,activationExpiresAt:new Date(latestExpiry).toISOString(),activeWilliToken:latestId}).catch(()=>undefined);
+     await updateDoc(doc(db,'users',uid),{activated:true,activationStatus:'active',activationActive:true,williTokenActive:true,activationExpiresAt:latestExpiry?new Date(latestExpiry).toISOString():d.activationExpiresAt||null,activeWilliToken:latestId}).catch(()=>undefined);
    }
    return active;
- }catch{return active;}
+ }catch(error){
+   console.error('EDUWILLS AI token reconciliation failed',error);
+   return active;
+ }
 }`;
 
-if (ai.includes(oldReconcile)) ai = ai.replace(oldReconcile, newReconcile);
-else if (!ai.includes("where('uid','==',uid)") || !ai.includes("where('username','==',username)")) throw new Error('AI reconciliation block not found');
+// Replace whatever reconciliation implementation the preceding v7/v8 repairs left behind.
+const reconcilePattern = /async function reconcileActivation\(uid:string,d:any\)\{[\s\S]*?\n\}\ntype Msg=/;
+if (reconcilePattern.test(ai)) {
+  ai = ai.replace(reconcilePattern, `${newReconcile}\ntype Msg=`);
+} else {
+  throw new Error('AI reconcileActivation function not found');
+}
 
-const oldUserUpdate = `await updateDoc(doc(db, 'users', uid), { activated: true, activationExpiresAt, activatedAt: new Date().toISOString() });`;
-const newUserUpdate = `const activatedAt = new Date().toISOString();
-      await updateDoc(doc(db, 'users', uid), { activated: true, activationStatus: 'active', activationActive: true, williTokenActive: true, activationExpiresAt, activatedAt, activeWilliToken: clean });`;
-const oldTokenUpdate = `await updateDoc(tokenRef, { used: true, usedAt: new Date().toISOString(), userId: uid, username: currentUsername });`;
-const newTokenUpdate = `await updateDoc(tokenRef, { used: true, usedAt: activatedAt, userId: uid, uid, username: currentUsername, active: true, status: 'active', activationExpiresAt, expiresAt: activationExpiresAt });`;
-if (activation.includes(oldUserUpdate) && activation.includes(oldTokenUpdate)) {
-  activation = activation.replace(oldUserUpdate,newUserUpdate).replace(oldTokenUpdate,newTokenUpdate);
-} else if (!activation.includes("activationStatus: 'active'") || !activation.includes('expiresAt: activationExpiresAt')) {
-  throw new Error('Activation update blocks not found');
+// Ensure the activation page persists the complete redeemed-token state.
+const userUpdatePattern = /await updateDoc\(doc\(db, ['\"]users['\"], uid\), \{ activated: true, activationExpiresAt, activatedAt: new Date\(\)\.toISOString\(\) \}\);/;
+const tokenUpdatePattern = /await updateDoc\(tokenRef, \{ used: true, usedAt: new Date\(\)\.toISOString\(\), userId: uid, username: currentUsername \}\);/;
+
+if (userUpdatePattern.test(activation) && tokenUpdatePattern.test(activation)) {
+  activation = activation.replace(userUpdatePattern, `const activatedAt = new Date().toISOString();\n      await updateDoc(doc(db, 'users', uid), { activated: true, activationStatus: 'active', activationActive: true, williTokenActive: true, activationExpiresAt, activatedAt, activeWilliToken: clean });`);
+  activation = activation.replace(tokenUpdatePattern, `await updateDoc(tokenRef, { used: true, usedAt: activatedAt, userId: uid, uid, username: currentUsername, active: true, status: 'active', activationExpiresAt, expiresAt: activationExpiresAt });`);
+} else {
+  // v9 is allowed to run repeatedly after another repair has already applied these fields.
+  const alreadyPatched = activation.includes("activationStatus: 'active'") && activation.includes('expiresAt: activationExpiresAt') && activation.includes('uid, username: currentUsername');
+  if (!alreadyPatched) throw new Error('Activation update blocks not found');
 }
 
 fs.writeFileSync(aiPath, ai);
