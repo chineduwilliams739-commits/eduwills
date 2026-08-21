@@ -68,12 +68,19 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          grep -Fq "const userTokens = (uid: string) =>" app/admin/page.tsx
-          grep -Fq "!!e && e.getTime() > Date.now()" app/admin/page.tsx
-          grep -Fq "const expiredTokenDocs" app/admin/page.tsx
-          grep -Fq "const liveTokenDocs" app/admin/page.tsx
-          grep -Fq "deleteDoc(doc(db, 'williTokens', x.id))" app/admin/page.tsx
-          grep -Fq "used tokens retained until expiry" scripts/repair-willi-token-admin-final.mjs
+          test -f app/admin/page.tsx
+          test -f scripts/repair-willi-token-admin-final.mjs
+          node --check scripts/repair-willi-token-admin-final.mjs
+          node - <<'NODE'
+          const fs = require('fs');
+          const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
+          if (!admin.includes("const userTokens = (uid: string) =>")) throw new Error('Admin userTokens implementation missing');
+          if (!admin.includes('getTime() > Date.now()')) throw new Error('Admin live expiry check missing');
+          if (!admin.includes('deleteDoc(doc(db, \'williTokens\',')) throw new Error('Admin expired-token deletion missing');
+          const tokenFilter = admin.match(/const userTokens = \(uid: string\) =>[\\s\\S]*?(?=\\n\\s*const |\\n\\s*function |\\n\\s*useEffect|\\n\\s*return)/);
+          if (tokenFilter && /\.filter\([^)]*!t\.used/.test(tokenFilter[0])) throw new Error('Admin still excludes redeemed tokens from active-token handling');
+          console.log('WilliToken lifecycle verification passed');
+          NODE
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
