@@ -34,7 +34,7 @@ jobs:
       - name: Verify repair scripts
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           test -f app/admin/page.tsx
           test -f scripts/repair-willi-token-lifecycle-v2.mjs
           test -f scripts/repair-willi-token-lifecycle-v4.mjs
@@ -45,22 +45,29 @@ jobs:
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
-          set -euo pipefail
-          node scripts/repair-homepage-seo.mjs
-          node scripts/repair-quiz-grounding.mjs
-          node scripts/repair-ui-script-syntax.mjs
-          node scripts/repair-quiz-final-polish.mjs
-          node scripts/repair-quiz-final-behavior.mjs
-          node scripts/repair-quiz-admin-latest.mjs
-          node scripts/repair-willi-token-lifecycle-v2.mjs
-          node scripts/repair-willi-token-lifecycle-v4.mjs
-          node scripts/repair-willi-token-runtime-v5.mjs
-          node scripts/repair-quiz-grounding.mjs
-          node scripts/repair-quiz-instructions-result.mjs
+          set -euxo pipefail
+          run_repair() {
+            local script="$1"
+            echo "========================================"
+            echo "Running repair: $script"
+            echo "========================================"
+            node "$script"
+          }
+          run_repair scripts/repair-homepage-seo.mjs
+          run_repair scripts/repair-quiz-grounding.mjs
+          run_repair scripts/repair-ui-script-syntax.mjs
+          run_repair scripts/repair-quiz-final-polish.mjs
+          run_repair scripts/repair-quiz-final-behavior.mjs
+          run_repair scripts/repair-quiz-admin-latest.mjs
+          run_repair scripts/repair-willi-token-lifecycle-v2.mjs
+          run_repair scripts/repair-willi-token-lifecycle-v4.mjs
+          run_repair scripts/repair-willi-token-runtime-v5.mjs
+          run_repair scripts/repair-quiz-grounding.mjs
+          run_repair scripts/repair-quiz-instructions-result.mjs
       - name: Verify final implementation before build
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           grep -Fq "activationStatus: 'active'" app/admin/page.tsx
           grep -Fq "activationStatus: 'inactive'" app/admin/page.tsx
           grep -Fq "WilliToken lifecycle v5 applied" scripts/repair-willi-token-runtime-v5.mjs
