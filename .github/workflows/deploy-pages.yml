@@ -43,6 +43,7 @@ jobs:
           node --check scripts/repair-willi-token-ai-v7.mjs
           node --check scripts/repair-willi-token-ai-v8.mjs
           node --check scripts/repair-willi-token-ai-v9.mjs
+          node --check scripts/repair-willi-token-ai-v10.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -68,13 +69,14 @@ jobs:
           run_repair scripts/repair-willi-token-ai-v7.mjs
           run_repair scripts/repair-willi-token-ai-v8.mjs
           run_repair scripts/repair-willi-token-ai-v9.mjs
+          run_repair scripts/repair-willi-token-ai-v10.mjs
           run_repair scripts/repair-quiz-grounding.mjs
           run_repair scripts/repair-quiz-instructions-result.mjs
       - name: Verify final implementation before build
         shell: bash
         run: |
           set -euxo pipefail
-          node --check scripts/repair-willi-token-ai-v9.mjs
+          node --check scripts/repair-willi-token-ai-v10.mjs
           node - <<'NODE'
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
@@ -87,12 +89,13 @@ jobs:
           if (!admin.includes('customDurationValue') || !admin.includes('customDurationUnit')) throw new Error('Custom WilliToken duration controls missing');
           if (!admin.includes("duration === 'custom'")) throw new Error('Custom duration generation path missing');
           if (!ai.includes("x.used===true")) throw new Error('AI redeemed-token check missing');
-          if (!ai.includes("where('userId','==',uid)")) throw new Error('AI UID token query missing');
+          if (!ai.includes("where('uid','==',uid)")) throw new Error('AI uid-field token query missing');
           if (!ai.includes("where('username','==',username)")) throw new Error('AI username token fallback missing');
+          if (!ai.includes('const linkedId=')) throw new Error('AI direct active-token linkage missing');
           if (!ai.includes('const directExpiry=')) throw new Error('AI direct activation fallback missing');
-          if (!activation.includes("activationStatus: 'active'")) throw new Error('Activation status update missing');
-          if (!activation.includes('activeWilliToken: clean')) throw new Error('Activation token linkage missing');
-          if (!activation.includes('expiresAt: activationExpiresAt')) throw new Error('Activation token expiry persistence missing');
+          if (!activation.includes("activationStatus:'active'")) throw new Error('Activation status update missing');
+          if (!activation.includes('activeWilliToken:clean')) throw new Error('Activation token linkage missing');
+          if (!activation.includes('activationExpiresAt')) throw new Error('Activation token expiry persistence missing');
           console.log('Final WilliToken lifecycle, AI unlock and custom-duration verification passed');
           NODE
       - name: Build application
