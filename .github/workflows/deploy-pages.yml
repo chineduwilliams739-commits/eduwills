@@ -41,6 +41,7 @@ jobs:
           node --check scripts/repair-willi-token-runtime-v5.mjs
           node --check scripts/repair-willi-token-final-v6.mjs
           node --check scripts/repair-eduwills-multibook-ui-v1.mjs
+          node --check scripts/repair-quiz-speed-v1.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -66,12 +67,14 @@ jobs:
           run_repair scripts/repair-quiz-grounding.mjs
           run_repair scripts/repair-quiz-instructions-result.mjs
           run_repair scripts/repair-eduwills-multibook-ui-v1.mjs
+          run_repair scripts/repair-quiz-speed-v1.mjs
       - name: Verify final implementation before build
         shell: bash
         run: |
           set -euxo pipefail
           test -f lib/aiAccess.ts
           test -f app/dashboard/ai/page.tsx
+          node --check scripts/repair-quiz-speed-v1.mjs
           node - <<'NODE'
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
@@ -97,8 +100,10 @@ jobs:
           if (!activation.includes('activationExpiresAt')) throw new Error('Activation expiry persistence missing');
           if (!quizClient.includes('const allocations=books.map')) throw new Error('Multi-book quiz allocation missing');
           if (!quizClient.includes('STRICT BOOK SCOPE')) throw new Error('Strict per-book quiz grounding missing');
+          if (!quizClient.includes('requested <= 5 ? 24000 : 90000')) throw new Error('Small-quiz prompt optimization missing');
+          if (!quizClient.includes('maxOutputTokens:5000')) throw new Error('Fast quiz output configuration missing');
           if (!dashboard.includes('EDUWILLS feed')) throw new Error('Dashboard learning feed missing');
-          console.log('EDUWILLS AI, WilliToken, multi-book quiz grounding and dashboard verification passed');
+          console.log('EDUWILLS activation visibility and quiz speed verification passed');
           NODE
       - name: Build application
         env:
