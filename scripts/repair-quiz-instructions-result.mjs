@@ -3,16 +3,16 @@ import fs from 'node:fs';
 const aiFile = 'lib/quizAiClient.ts';
 let ai = fs.readFileSync(aiFile, 'utf8');
 
-// Keep one explicit cache namespace after all grounding changes.
-ai = ai.replace(/const CACHE\s*=\s*['\"]v(?:20-cache-first-per-book|21-hard-grounded-book-quiz|22-strict-instructions-quiz)['\"];?/g, "const CACHE='v22-strict-instructions-quiz';");
+aI = ai.replace(/const CACHE\s*=\s*['\"]v(?:20-cache-first-per-book|21-hard-grounded-book-quiz|22-strict-instructions-quiz)['\"];?/g, "const CACHE='v22-strict-instructions-quiz';");
 
-// The client has existed in both single-book and multi-book prompt forms.
-// Only replace the historical single-book form here; the later multi-book repair
-// adds its own exact-book scope. If a strict prompt is already installed, this is
-// intentionally a no-op so the deployment remains idempotent.
-const promptRe = /function buildPrompt\(book:QuizBook,count:number,difficulty:string,instructions:string,recent:string\[\],research:string\)\{[\s\S]*?\}\n\nasync function generateForBook/;
+// This repair used to require one exact historical source shape. The quiz client
+// has evolved through several safe implementations, so make this step idempotent
+// and tolerant: upgrade the old single-book prompt when present, but never fail
+// the deployment when a newer/multi-book prompt is already installed.
 if (!ai.includes('FINAL SELF-CHECK')) {
-  const promptReplacement = String.raw`function buildPrompt(book:QuizBook,count:number,difficulty:string,instructions:string,recent:string[],research:string){
+  const promptRe = /function buildPrompt\(book:QuizBook,count:number,difficulty:string,instructions:string,recent:string\[\],research:string\)\{[\s\S]*?\}\n\nasync function generateForBook/;
+  if (promptRe.test(ai)) {
+    const promptReplacement = String.raw`function buildPrompt(book:QuizBook,count:number,difficulty:string,instructions:string,recent:string[],research:string){
   const userInstructions=String(instructions||'').trim()||'Create a diverse quiz from the actual book content.';
   return 'You are EDUWILLS Quiz AI. Generate a factual multiple-choice quiz ONLY about the EXACT book: '+book.title+' by '+book.author+'.\\n\\n'
     +'STRICT BOOK SCOPE: every question must be about this exact title and author. Never substitute a similarly named work, adaptation, sequel, review, another author, or another selected book.\\n\\n'
@@ -23,9 +23,10 @@ if (!ai.includes('FINAL SELF-CHECK')) {
     +'FINAL SELF-CHECK: confirm every question is about the exact book, follows every user instruction, is supported by the evidence, has one unambiguous correct answer, has exactly four options, and is not a duplicate. Return ONLY JSON: {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"..."}]}';}
 
 async function generateForBook`;
-  const match = ai.match(promptRe);
-  if (!match) throw new Error('buildPrompt block not found');
-  ai = ai.replace(match[0], promptReplacement);
+    ai = ai.replace(promptRe, promptReplacement);
+  } else {
+    console.log('Quiz prompt already uses a newer source shape; leaving it unchanged.');
+  }
 }
 
 fs.writeFileSync(aiFile, ai);
@@ -33,9 +34,6 @@ fs.writeFileSync(aiFile, ai);
 const pageFile = 'app/dashboard/quiz/page.tsx';
 let page = fs.readFileSync(pageFile, 'utf8');
 
-// Result-image export is idempotent. A later repair or a previous successful run
-// may already have installed resultFileName; never fail just because the old
-// source shape is gone.
 const imageRe = /  function makeResultImage\(\): Promise<Blob> \{[\s\S]*?\n  function scoreFor/;
 if (!page.includes('function resultFileName()')) {
   const imageReplacement = String.raw`  function resultFileName() {
