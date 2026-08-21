@@ -15,11 +15,22 @@ if (!s.includes(importLine)) {
 }
 
 // Invalidate older quiz caches after grounding changes.
-s = s.replace(/const CACHE\s*=\s*['\"]v(?:19-cross-device-router-chat-batched|20-verified-book-grounding-batched|20-cache-first-per-book)['\"];?/g, "const CACHE='v21-hard-grounded-book-quiz';");
+s = s.replace(/const CACHE\s*=\s*['\"]v(?:19-cross-device-router-chat-batched|20-verified-book-grounding-batched|20-cache-first-per-book|21-hard-grounded-book-quiz)['\"];?/g, "const CACHE='v21-hard-grounded-book-quiz';");
 
-// Make research grounding idempotent. The current client already performs
-// concurrent research, so inject verified evidence into its existing chunks
-// declaration rather than depending on one exact old source string.
+// The later cache-first/multi-book repairs use cacheKey([book], ...). The current
+// client historically called this helper bookCacheKey, so expose a compatible,
+// deterministic wrapper once and let all later repairs share it.
+if (!s.includes('async function cacheKey(')) {
+  const marker = 'async function bookCacheKey(book:QuizBook,difficulty:string,instructions:string)';
+  const idx = s.indexOf(marker);
+  if (idx < 0) throw new Error('bookCacheKey helper not found.');
+  const end = s.indexOf('\n\n', idx);
+  if (end < 0) throw new Error('bookCacheKey helper boundary not found.');
+  const helper = "\nasync function cacheKey(books:QuizBook[],difficulty:string,instructions:string){const book=books[0];if(!book)return `quiz:${CACHE}:empty`;return bookCacheKey(book,difficulty,instructions)}";
+  s = s.slice(0, end) + helper + s.slice(end);
+}
+
+// Make research grounding idempotent.
 if (!s.includes('const verified=verifiedResearch(books);')) {
   const patterns = [
     /const chunks:string\[\]=\[\];await Promise\.all\(books\.map\(async b=>\{/,
@@ -29,32 +40,26 @@ if (!s.includes('const verified=verifiedResearch(books);')) {
   const match = patterns.find((p) => p.test(s));
   if (!match) throw new Error('researchBooks insertion point not found.');
   s = s.replace(match, (m) => {
-    if (m.includes('for(const b of books)')) {
-      return 'const verified=verifiedResearch(books);const chunks:string[]=verified?[verified]:[];for(const b of books){';
-    }
+    if (m.includes('for(const b of books)')) return 'const verified=verifiedResearch(books);const chunks:string[]=verified?[verified]:[];for(const b of books){';
     return 'const verified=verifiedResearch(books);const chunks:string[]=verified?[verified]:[];await Promise.all(books.map(async b=>{';
   });
 }
 
-// Cached questions must pass the same exact-book grounding guard as newly
-// generated questions. Support the compact implementation used by the current client.
+// Cached questions must pass the same exact-book grounding guard as newly generated questions.
 if (!s.includes('groundedForBooks(books,q,research)')) {
   const cachedPatterns = [
     /if\(k&&!seen\.has\(k\)&&valid\(q\)\)\{accepted\.push\(q\);seen\.add\(k\)\}/,
     /if\(k&&!seen\.has\(k\)&&valid\(q\)\)\{accepted\.push\(q\);seen\.add\(k\);\}/
   ];
   const cached = cachedPatterns.find((p) => p.test(s));
-  if (cached) {
-    s = s.replace(cached, (m) => m.replace('&&valid(q)', '&&valid(q)&&groundedForBooks(books,q,research)'));
-  }
+  if (cached) s = s.replace(cached, (m) => m.replace('&&valid(q)', '&&valid(q)&&groundedForBooks(books,q,research)'));
 }
 
 // Newly generated questions must also be grounded to the exact selected book.
 if (!s.includes('groundedForBooks(books,q,research)')) {
   const old = 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q))continue;';
-  if (s.includes(old)) {
-    s = s.replace(old, 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks(books,q,research))continue;');
-  } else {
+  if (s.includes(old)) s = s.replace(old, 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks(books,q,research))continue;');
+  else {
     const compact = /if\(!k\|\|seen\.has\(k\)\|\|accepted\.some\(x=>similar\(x\.question,q\.question\)\)\|\|isMetadata\(q\)\)continue;/;
     if (compact.test(s)) s = s.replace(compact, 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks(books,q,research))continue;');
     else throw new Error('Quiz acceptance guard insertion point not found.');
