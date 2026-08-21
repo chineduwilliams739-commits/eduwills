@@ -36,6 +36,12 @@ jobs:
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
+      - name: Apply category switching and category-aware WilliTokens
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/implement-category-switch-and-token-categories.mjs
+          node scripts/implement-category-switch-and-token-categories.mjs
       - name: Verify final implementation
         shell: bash
         run: |
@@ -49,6 +55,8 @@ jobs:
           const quiz = fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           const client = fs.readFileSync('lib/quizAiClient.ts','utf8');
           const dashboard = fs.readFileSync('app/dashboard/page.tsx','utf8');
+          const personal = fs.readFileSync('app/dashboard/personal/page.tsx','utf8');
+          const admin = fs.readFileSync('app/admin/page.tsx','utf8');
           if (!client.includes('const CACHE=')) throw new Error('Quiz cache namespace missing');
           if (!client.includes('readSharedCache')) throw new Error('Shared cache reader missing');
           if (!client.includes('allocation=selected.map')) throw new Error('Multi-book allocation missing');
@@ -61,6 +69,10 @@ jobs:
           if (!quiz.includes('{value:"5",label:"5 minutes"}')) throw new Error('Five-minute menu option missing');
           if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) throw new Error('Dashboard education feed import missing');
           if (!dashboard.includes('<EducationFeed />')) throw new Error('Dashboard education feed missing');
+          if (!personal.includes('Switch your EDUWILLS experience')) throw new Error('Personal category switch missing');
+          if (!personal.includes('activeCategory')) throw new Error('Active category persistence missing');
+          if (!admin.includes('tokenCategories')) throw new Error('Admin category-aware token selection missing');
+          if (!admin.includes('categories: issueCategories')) throw new Error('Token category linkage missing');
           console.log('EDUWILLS stable implementation verification passed');
           NODE
       - name: Build application
