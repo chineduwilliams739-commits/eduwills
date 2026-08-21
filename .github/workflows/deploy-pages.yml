@@ -38,8 +38,10 @@ jobs:
           test -f app/admin/page.tsx
           test -f scripts/repair-willi-token-lifecycle-v2.mjs
           test -f scripts/repair-willi-token-lifecycle-v4.mjs
+          test -f scripts/repair-willi-token-runtime-v5.mjs
           node --check scripts/repair-willi-token-lifecycle-v2.mjs
           node --check scripts/repair-willi-token-lifecycle-v4.mjs
+          node --check scripts/repair-willi-token-runtime-v5.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -52,6 +54,7 @@ jobs:
           node scripts/repair-quiz-admin-latest.mjs
           node scripts/repair-willi-token-lifecycle-v2.mjs
           node scripts/repair-willi-token-lifecycle-v4.mjs
+          node scripts/repair-willi-token-runtime-v5.mjs
           node scripts/repair-quiz-grounding.mjs
           node scripts/repair-quiz-instructions-result.mjs
       - name: Verify final implementation before build
@@ -60,7 +63,7 @@ jobs:
           set -euo pipefail
           grep -Fq "activationStatus: 'active'" app/admin/page.tsx
           grep -Fq "activationStatus: 'inactive'" app/admin/page.tsx
-          grep -Fq "WilliToken lifecycle v4 applied" scripts/repair-willi-token-lifecycle-v4.mjs
+          grep -Fq "WilliToken lifecycle v5 applied" scripts/repair-willi-token-runtime-v5.mjs
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
