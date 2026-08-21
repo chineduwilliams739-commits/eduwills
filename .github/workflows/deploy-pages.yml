@@ -94,8 +94,9 @@ jobs:
           if (!ai.includes('const linkedId=')) throw new Error('AI direct active-token linkage missing');
           if (!ai.includes('const directExpiry=')) throw new Error('AI direct activation fallback missing');
           const activationStatusPattern = /activationStatus\s*:\s*["']active["']/;
+          const activeTokenPattern = /activeWilliToken\s*:\s*clean/;
           if (!activationStatusPattern.test(activation)) throw new Error('Activation status update missing');
-          if (!activation.includes('activeWilliToken:clean')) throw new Error('Activation token linkage missing');
+          if (!activeTokenPattern.test(activation)) throw new Error('Activation token linkage missing');
           if (!activation.includes('activationExpiresAt')) throw new Error('Activation token expiry persistence missing');
           console.log('Final WilliToken lifecycle, AI unlock and custom-duration verification passed');
           NODE
