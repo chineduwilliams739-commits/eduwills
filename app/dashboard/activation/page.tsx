@@ -10,7 +10,8 @@ const BASE = '/eduwills';
 const account = { number: '8129002773', bank: 'Palmpay', holder: 'Helen Umunnakwe' };
 const whatsappNumber = '2349077735074';
 type User = { username?: string; fullName?: string; activated?: boolean; activationExpiresAt?: string | null };
-type TokenRecord = { userId?: string; username?: string; expiresAt?: string; durationMs?: number; used?: boolean };
+type TokenRecord = { userId?: string; username?: string; expiresAt?: any; durationMs?: number; used?: boolean };
+function toMs(v:any){if(!v)return 0;if(typeof v.toMillis==='function')return v.toMillis();if(v.seconds)return Number(v.seconds)*1000;const n=Date.parse(String(v));return Number.isFinite(n)?n:0;}
 
 export default function ActivationPage() {
   const [copied, setCopied] = useState(false); const [username, setUsername] = useState(''); const [displayName, setDisplayName] = useState('Learner'); const [uid, setUid] = useState(''); const [token, setToken] = useState(''); const [tokenMessage, setTokenMessage] = useState(''); const [celebrate, setCelebrate] = useState(false); const [working, setWorking] = useState(false);
@@ -33,21 +34,15 @@ export default function ActivationPage() {
       const currentUsername = (currentUser.username || username).trim();
       if (!currentUsername) { setTokenMessage('Your EDUWILLS username could not be found. Please log in again.'); return; }
       if (record.username && record.username.trim().toLowerCase() !== currentUsername.toLowerCase()) { setTokenMessage('This WilliToken is assigned to another EDUWILLS username.'); return; }
-
-      // A token's selected duration is an activation duration, not a countdown
-      // that starts when the Admin generates it. Existing legacy tokens with an
-      // expiresAt field are still supported.
       let activationExpiresAt: string;
-      if (typeof record.durationMs === 'number' && record.durationMs >= 30 * 60000) {
+      if (typeof record.durationMs === 'number' && record.durationMs > 0) {
         activationExpiresAt = new Date(Date.now() + record.durationMs).toISOString();
       } else if (record.expiresAt) {
-        activationExpiresAt = record.expiresAt;
-        if (new Date(activationExpiresAt).getTime() <= Date.now()) { setTokenMessage('This older WilliToken has expired. Please ask the admin to generate a new one.'); return; }
+        const exp=toMs(record.expiresAt); if(exp<=Date.now()){setTokenMessage('This WilliToken has expired. Please ask the admin to generate a new one.');return;} activationExpiresAt=new Date(exp).toISOString();
       } else { setTokenMessage('This WilliToken has no valid activation duration. Please ask the admin to generate a new token.'); return; }
-
-      await updateDoc(doc(db, 'users', uid), { activated: true, activationExpiresAt, activatedAt: new Date().toISOString() });
-      // Firestore rules require the redeemed token to be migrated to the current Firebase UID.
-      await updateDoc(tokenRef, { used: true, usedAt: new Date().toISOString(), userId: uid, username: currentUsername });
+      const now=new Date().toISOString();
+      await updateDoc(doc(db, 'users', uid), { activated: true, activationStatus:'active', activationActive:true, williTokenActive:true, activationExpiresAt, activeWilliToken:clean, activatedAt: now });
+      await updateDoc(tokenRef, { used: true, usedAt: now, userId: uid, uid, username: currentUsername, active:true, activationStatus:'active', activationActive:true, activationExpiresAt, activationStartedAt: now });
       setUsername(currentUsername); setTokenMessage(`Activated until ${new Date(activationExpiresAt).toLocaleString()}.`); setCelebrate(true);
     } catch (error: any) {
       console.error('EDUWILLS WilliToken activation error:', error);
