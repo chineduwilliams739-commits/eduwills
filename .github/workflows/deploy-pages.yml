@@ -36,11 +36,10 @@ jobs:
         run: |
           set -euxo pipefail
           test -f app/admin/page.tsx
-          test -f scripts/repair-willi-token-admin-final.mjs
-          node --check scripts/repair-willi-token-admin-final.mjs
           node --check scripts/repair-willi-token-lifecycle-v2.mjs
           node --check scripts/repair-willi-token-lifecycle-v4.mjs
           node --check scripts/repair-willi-token-runtime-v5.mjs
+          node --check scripts/repair-willi-token-final-v6.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -61,6 +60,7 @@ jobs:
           run_repair scripts/repair-willi-token-lifecycle-v2.mjs
           run_repair scripts/repair-willi-token-lifecycle-v4.mjs
           run_repair scripts/repair-willi-token-runtime-v5.mjs
+          run_repair scripts/repair-willi-token-final-v6.mjs
           run_repair scripts/repair-willi-token-admin-final.mjs
           run_repair scripts/repair-quiz-grounding.mjs
           run_repair scripts/repair-quiz-instructions-result.mjs
@@ -68,18 +68,23 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          test -f app/admin/page.tsx
-          test -f scripts/repair-willi-token-admin-final.mjs
-          node --check scripts/repair-willi-token-admin-final.mjs
+          node --check scripts/repair-willi-token-final-v6.mjs
           node - <<'NODE'
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
+          const ai = fs.readFileSync('app/dashboard/ai/page.tsx', 'utf8');
+          const activation = fs.readFileSync('app/dashboard/activation/page.tsx', 'utf8');
           if (!admin.includes("const userTokens = (uid: string) =>")) throw new Error('Admin userTokens implementation missing');
           if (!admin.includes('getTime() > Date.now()')) throw new Error('Admin live expiry check missing');
-          if (!admin.includes('deleteDoc(doc(db, \'williTokens\',')) throw new Error('Admin expired-token deletion missing');
-          const tokenFilter = admin.match(/const userTokens = \(uid: string\) =>[\\s\\S]*?(?=\\n\\s*const |\\n\\s*function |\\n\\s*useEffect|\\n\\s*return)/);
-          if (tokenFilter && /\.filter\([^)]*!t\.used/.test(tokenFilter[0])) throw new Error('Admin still excludes redeemed tokens from active-token handling');
-          console.log('WilliToken lifecycle verification passed');
+          if (!admin.includes("deleteDoc(doc(db, 'williTokens'")) throw new Error('Admin expired-token deletion missing');
+          if (/const userTokens = \(uid: string\) =>[\s\S]*?\.filter\(t => t\.userId === uid && !t\.used\)/.test(admin)) throw new Error('Admin still excludes redeemed tokens');
+          if (!admin.includes('customDurationValue') || !admin.includes('customDurationUnit')) throw new Error('Custom WilliToken duration controls missing');
+          if (!admin.includes("duration === 'custom'")) throw new Error('Custom duration generation path missing');
+          if (!ai.includes('x.used===true')) throw new Error('AI redeemed-token check missing');
+          if (!ai.includes("where('userId','==',uid)")) throw new Error('AI user token query missing');
+          if (!activation.includes("activationStatus: 'active'")) throw new Error('Activation status update missing');
+          if (!activation.includes('activationExpiresAt')) throw new Error('Activation expiry update missing');
+          console.log('Final WilliToken lifecycle, AI unlock and custom-duration verification passed');
           NODE
       - name: Build application
         env:
