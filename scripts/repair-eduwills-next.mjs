@@ -78,6 +78,6 @@ write('app/dashboard/page.tsx', dashboard);
 must(quiz.includes("searchBookAuthors('title', raw)"), 'Broadened title search was not wired into Quiz Studio.');
 must(quiz.includes("searchBookAuthors('author', q)"), 'Broadened author search was not wired into Quiz Studio.');
 must(quiz.includes('canvas.width = 1400; canvas.height = 1000;'), 'Fresh quiz result image was not upgraded.');
-must(dashboard.includes('EDUWILLS feed'), 'Dashboard feed marker is missing.');
+must(dashboard.includes('<EducationFeed />'), 'EducationFeed component was not wired into the dashboard.');
 must(fs.existsSync('components/EducationFeed.tsx'), 'EducationFeed component is missing.');
 console.log('EDUWILLS stable implementation applied: broad book knowledge, strict per-book cache-first quiz generation, matching fresh result image, and daily education feed.');
