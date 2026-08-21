@@ -45,25 +45,16 @@ if (!s.includes('const verified=verifiedResearch(books);')) {
   });
 }
 
-// Cached questions must pass the same exact-book grounding guard as newly generated questions.
-if (!s.includes('groundedForBooks(books,q,research)')) {
-  const cachedPatterns = [
-    /if\(k&&!seen\.has\(k\)&&valid\(q\)\)\{accepted\.push\(q\);seen\.add\(k\)\}/,
-    /if\(k&&!seen\.has\(k\)&&valid\(q\)\)\{accepted\.push\(q\);seen\.add\(k\);\}/
-  ];
-  const cached = cachedPatterns.find((p) => p.test(s));
-  if (cached) s = s.replace(cached, (m) => m.replace('&&valid(q)', '&&valid(q)&&groundedForBooks(books,q,research)'));
+// Ground the current single-book generator with [book]. The later multi-book
+// cache-first repair replaces generateQuiz entirely, so this guard only needs to
+// make the intermediate client safe and type-correct.
+const singleCachedGuard = 'if(k&&!seen.has(k)&&valid(q)){accepted.push(q);seen.add(k)}';
+if (!s.includes('groundedForBooks([book],q,research)') && s.includes(singleCachedGuard)) {
+  s = s.replace(singleCachedGuard, 'if(k&&!seen.has(k)&&valid(q)&&groundedForBooks([book],q,research)){accepted.push(q);seen.add(k)}');
 }
-
-// Newly generated questions must also be grounded to the exact selected book.
-if (!s.includes('groundedForBooks(books,q,research)')) {
-  const old = 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q))continue;';
-  if (s.includes(old)) s = s.replace(old, 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks(books,q,research))continue;');
-  else {
-    const compact = /if\(!k\|\|seen\.has\(k\)\|\|accepted\.some\(x=>similar\(x\.question,q\.question\)\)\|\|isMetadata\(q\)\)continue;/;
-    if (compact.test(s)) s = s.replace(compact, 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks(books,q,research))continue;');
-    else throw new Error('Quiz acceptance guard insertion point not found.');
-  }
+const singleGeneratedGuard = 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q))continue;';
+if (!s.includes('!groundedForBooks([book],q,research)') && s.includes(singleGeneratedGuard)) {
+  s = s.replace(singleGeneratedGuard, 'if(!k||seen.has(k)||accepted.some(x=>similar(x.question,q.question))||isMetadata(q)||!groundedForBooks([book],q,research))continue;');
 }
 
 // Small requests stay fast; larger requests use controlled adaptive batches.
