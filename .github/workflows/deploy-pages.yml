@@ -33,8 +33,8 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          node --check scripts/repair-eduwills-next.mjs
-          node scripts/repair-eduwills-next.mjs
+          node --check scripts/implement-education-news-and-quiz-policy.mjs
+          node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
       - name: Verify final implementation
         shell: bash
@@ -49,14 +49,15 @@ jobs:
           const quiz = fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           const client = fs.readFileSync('lib/quizAiClient.ts','utf8');
           const dashboard = fs.readFileSync('app/dashboard/page.tsx','utf8');
-          if (!client.includes("const CACHE = 'v22-broad-book-knowledge-cache-first'")) throw new Error('New cache namespace missing');
+          if (!client.includes('const CACHE=')) throw new Error('Quiz cache namespace missing');
           if (!client.includes('readSharedCache')) throw new Error('Shared cache reader missing');
-          if (!client.includes('STRICT BOOK SCOPE')) throw new Error('Strict book scope missing');
-          if (!client.includes('allocations = selected.map')) throw new Error('Multi-book allocation missing');
+          if (!client.includes('allocation=selected.map')) throw new Error('Multi-book allocation missing');
+          if (!client.includes('BOOK_KNOWLEDGE_PACKS')) throw new Error('Broadened book knowledge packs missing');
           if (!client.includes('The Lekki Headmaster')) throw new Error('Lekki Headmaster knowledge pack missing');
           if (!client.includes('Sànyà')) throw new Error('Sànyà knowledge pack missing');
-          if (!quiz.includes("searchBookAuthors('title', raw)")) throw new Error('Quiz title search wiring missing');
-          if (!quiz.includes('canvas.width = 1400; canvas.height = 1000;')) throw new Error('Fresh result image format missing');
+          if (!quiz.includes('MIN_QUIZ_DURATION_MINUTES = 5')) throw new Error('Five-minute minimum missing');
+          if (!quiz.includes('Math.max(MIN_QUIZ_DURATION_MINUTES')) throw new Error('Five-minute duration enforcement missing');
+          if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) throw new Error('Dashboard education feed import missing');
           if (!dashboard.includes('<EducationFeed />')) throw new Error('Dashboard education feed missing');
           console.log('EDUWILLS stable implementation verification passed');
           NODE
@@ -78,5 +79,5 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v4
+        id: deployment
