@@ -3,11 +3,6 @@ import fs from 'node:fs';
 function read(path) { return fs.readFileSync(path, 'utf8'); }
 function write(path, value) { fs.writeFileSync(path, value); }
 
-// ---------------------------------------------------------------------------
-// 1. Activation: redeeming a token must make the SAME user record active and
-// preserve the activation expiry. The token remains a live record until that
-// expiry, regardless of used=true.
-// ---------------------------------------------------------------------------
 const activationPath = 'app/dashboard/activation/page.tsx';
 let activation = read(activationPath);
 activation = activation.replace(
@@ -20,17 +15,11 @@ activation = activation.replace(
 );
 write(activationPath, activation);
 
-// ---------------------------------------------------------------------------
-// 2. EDUWILLS AI: only a redeemed, non-expired token OR a valid current
-// activation record can unlock AI. Expired token documents are deleted.
-// ---------------------------------------------------------------------------
 const aiPath = 'app/dashboard/ai/page.tsx';
 let ai = read(aiPath);
-ai = ai.replace(/async function reconcileActivation\(uid:string,d:any\)\{[\s\S]*?\n\}\ntype Msg=/, `async function reconcileActivation(uid:string,d:any){
+const aiHelper = `async function reconcileActivation(uid:string,d:any){
  const now=Date.now();
- let redeemedActive=false;
- let latestExpiry=0;
- let latestToken='';
+ let redeemedActive=false; let latestExpiry=0; let latestToken='';
  try{
   const snap=await getDocs(query(collection(db,'williTokens'),where('userId','==',uid)));
   for(const item of snap.docs){
@@ -56,17 +45,18 @@ ai = ai.replace(/async function reconcileActivation\(uid:string,d:any\)\{[\s\S]*
  }
  return active;
 }
-type Msg=`);
+type Msg=`;
+if (/async function reconcileActivation\(uid:string,d:any\)/.test(ai)) {
+  ai = ai.replace(/async function reconcileActivation\(uid:string,d:any\)\{[\s\S]*?\ntype Msg=/, aiHelper);
+} else {
+  ai = ai.replace("type Msg={role:'ai'|'user';text:string};", aiHelper + "{role:'ai'|'user';text:string};");
+}
 write(aiPath, ai);
 
-// ---------------------------------------------------------------------------
-// 3. Admin: restore a reliable custom duration input and make Active Token
-// Expiry include BOTH unused and redeemed live tokens.
-// ---------------------------------------------------------------------------
 const adminPath = 'app/admin/page.tsx';
 let admin = read(adminPath);
 
-if (!admin.includes("customDurationValue")) {
+if (!admin.includes('customDurationValue')) {
   admin = admin.replace(
     "const [duration, setDuration] = useState('30 days');",
     "const [duration, setDuration] = useState('30 days');\n  const [customDurationValue, setCustomDurationValue] = useState('30');\n  const [customDurationUnit, setCustomDurationUnit] = useState<'minutes'|'hours'|'days'>('days');"
@@ -79,21 +69,10 @@ if (!admin.includes('function manualDurationMs(')) {
   admin = admin.replace(marker, helper + marker);
 }
 
-// Make custom duration a true override of category policy.
-admin = admin.replace(
-  "const chosen = effectiveDurationFor(u);\n    const ms = durations.find(x => x[0] === chosen)?.[1];",
-  "const chosen = duration === 'custom' ? 'custom' : effectiveDurationFor(u);\n    const ms = chosen === 'custom' ? manualDurationMs(customDurationValue, customDurationUnit) : durations.find(x => x[0] === chosen)?.[1];"
-);
-admin = admin.replace(
-  "if (!ms) return alert('No valid WilliToken duration is configured for this user.');",
-  "if (!ms) return alert('Enter a valid custom WilliToken duration greater than zero.');"
-);
-
-// Make generated expiry represent the token's own validity. Redemption later
-// changes activationExpiresAt/expiresAt to start the activation countdown.
-admin = admin.replace(
-  /const createToken = async \(\) => \{[\s\S]*?\n  \};\n\n(?=  const removeBook)/,
-  `const createToken = async () => {
+const createStart = admin.indexOf('  const createToken = async () => {');
+const removeStart = admin.indexOf('  const removeBook = async', createStart);
+if (createStart < 0 || removeStart < 0) throw new Error('Admin createToken markers missing');
+const createBlock = `  const createToken = async () => {
     const u = selectedUser;
     if (!u) return alert('Select a user first.');
     const chosen = duration === 'custom' ? 'custom' : effectiveDurationFor(u);
@@ -103,21 +82,16 @@ admin = admin.replace(
     const now = new Date();
     const expiresAt = new Date(now.getTime() + ms);
     try {
-      await setDoc(doc(db, 'williTokens', t), { token: t, userId: u.uid || u.id, username: u.username || '', categories: categoriesFor(u), duration: chosen === 'custom' ? \\`${customDurationValue} ${customDurationUnit}\\` : chosen, durationMs: ms, createdAt: serverTimestamp(), issuedAt: now.toISOString(), expiresAt, used: false, active: true, status: 'issued' });
+      await setDoc(doc(db, 'williTokens', t), { token: t, userId: u.uid || u.id, username: u.username || '', categories: categoriesFor(u), duration: chosen === 'custom' ? (customDurationValue + ' ' + customDurationUnit) : chosen, durationMs: ms, createdAt: serverTimestamp(), issuedAt: now.toISOString(), expiresAt, used: false, active: true, status: 'issued' });
       setGenerated(t); setCopied(false); await load();
     } catch (e: any) { alert(e?.code === 'permission-denied' ? 'Firebase denied the WilliToken operation. Publish the latest Firestore rules and try again.' : 'Could not create the token.'); }
   };
 
-`);
+`;
+admin = admin.slice(0, createStart) + createBlock + admin.slice(removeStart);
 
-// Replace userTokens so redeemed live tokens remain visible.
-admin = admin.replace(
-  /const userTokens = \(uid: string\) => .*?;/,
-  "const userTokens = (uid: string) => tokens.filter(t => t.userId === uid && (() => { const e = tokenExpiry(t); return !!e && e.getTime() > Date.now(); })()).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));"
-);
+admin = admin.replace(/const userTokens = \(uid: string\) => .*?;/, "const userTokens = (uid: string) => tokens.filter(t => t.userId === uid && (() => { const e = tokenExpiry(t); return !!e && e.getTime() > Date.now(); })()).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));");
 
-// Replace the token-loading assignment with live-token cleanup while retaining
-// used=true records until their expiry.
 const loadOld = /setTokens\(t\.docs\.map\(d => \(\{ id: d\.id, \.\.\.d\.data\(\) \} as WilliToken\)\);/;
 if (loadOld.test(admin)) {
   admin = admin.replace(loadOld, `const allTokenDocs = t.docs.map(d => ({ id: d.id, ...d.data() } as WilliToken));
@@ -127,7 +101,6 @@ if (loadOld.test(admin)) {
       setTokens(liveTokenDocs);`);
 }
 
-// Replace the custom-duration UI if the earlier repair removed it.
 if (!admin.includes('Custom duration…')) {
   const oldUI = '<select value={duration} onChange={e => setDuration(e.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm font-bold">{durations.map(x => <option key={x[0]} value={x[0]}>{x[0]}</option>)}</select><button onClick={createToken}';
   const newUI = '<div className="grid gap-2"><select value={duration} onChange={e => setDuration(e.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm font-bold">{durations.map(x => <option key={x[0]} value={x[0]}>{x[0]}</option>)}<option value="custom">Custom duration…</option></select>{duration === \'custom\' && <div className="grid grid-cols-2 gap-2"><input type="number" min="1" step="1" value={customDurationValue} onChange={e => setCustomDurationValue(e.target.value)} placeholder="Amount" className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm font-bold"/><select value={customDurationUnit} onChange={e => setCustomDurationUnit(e.target.value as \'minutes\'|\'hours\'|\'days\')} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm font-bold"><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option></select></div>}</div><button onClick={createToken}';
@@ -135,16 +108,20 @@ if (!admin.includes('Custom duration…')) {
   admin = admin.replace(oldUI, newUI);
 }
 
-// Ensure the revoke handler exists because the active-token UI uses it.
 if (!admin.includes('const revokeToken = async')) {
   const marker = '  const removeBook = async (book: Slot) => {';
   if (!admin.includes(marker)) throw new Error('Admin removeBook marker missing');
-  admin = admin.replace(marker, `  const revokeToken = async (t: WilliToken) => {\n    if (!window.confirm(\\`Revoke WilliToken \\\${t.token || t.id}?\\n\\nThis permanently removes the token.\\`)) return;\n    try { await deleteDoc(doc(db, 'williTokens', t.id)); setTokens(v => v.filter(x => x.id !== t.id)); }\n    catch (e: any) { alert(e?.code === 'permission-denied' ? 'Only an authenticated Admin can revoke WilliTokens.' : 'Could not revoke this WilliToken.'); }\n  };\n\n` + marker);
+  const revoke = `  const revokeToken = async (t: WilliToken) => {
+    if (!window.confirm('Revoke WilliToken ' + (t.token || t.id) + '?\\n\\nThis permanently removes the token.')) return;
+    try { await deleteDoc(doc(db, 'williTokens', t.id)); setTokens(v => v.filter(x => x.id !== t.id)); }
+    catch (e: any) { alert(e?.code === 'permission-denied' ? 'Only an authenticated Admin can revoke WilliTokens.' : 'Could not revoke this WilliToken.'); }
+  };
+
+`;
+  admin = admin.replace(marker, revoke + marker);
 }
 
-// Update misleading active-token text and show redeemed state.
 admin = admin.replace('Only unused, non-expired tokens are shown. Redeemed or expired records are removed automatically when Admin data loads.', 'All non-expired generated tokens are shown. Redeemed tokens remain active until their activation expiry; expired records are removed automatically.');
 admin = admin.replace('<p className="font-black text-emerald-300">Unused · ready to activate</p>', '<p className="font-black text-emerald-300">{t.used ? \'Redeemed · ACTIVE\' : \'Unused · ready to activate\'}</p>');
-
 write(adminPath, admin);
 console.log('WilliToken final v6 applied: activation unlock, custom duration, live token retention and expiry cleanup fixed.');
