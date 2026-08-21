@@ -3,7 +3,6 @@ import fs from 'node:fs';
 const personalPath = 'app/dashboard/personal/page.tsx';
 const adminPath = 'app/admin/page.tsx';
 
-// Personal is now implemented directly in the page. Do not overwrite it with a generated template.
 const personal = fs.readFileSync(personalPath, 'utf8');
 if (!personal.includes('activeCategory')) throw new Error('Personal active category implementation missing');
 if (!personal.includes('switchCategory')) throw new Error('Personal category switch handler missing');
@@ -13,6 +12,7 @@ let admin = fs.readFileSync(adminPath, 'utf8');
 
 admin = admin.replace("const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary'] as const;", "const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary', 'Book Learner'] as const;");
 admin = admin.replace("  'senior secondary school': 'Senior Secondary',\n};", "  'senior secondary school': 'Senior Secondary',\n  book: 'Book Learner', books: 'Book Learner', 'book learner': 'Book Learner',\n};");
+admin = admin.replace("  activationExpiresAt?: any; category?: string; categories?: string[]; educationLevel?: string;", "  activationExpiresAt?: any; category?: string; categories?: string[]; activeCategory?: string; educationLevel?: string;");
 admin = admin.replace("const [savingPolicy, setSavingPolicy] = useState(false);", "const [savingPolicy, setSavingPolicy] = useState(false);\n  const [tokenCategories, setTokenCategories] = useState<string[]>([]);\n  const [assignedCategories, setAssignedCategories] = useState<string[]>([]);\n  const [savingAssignment, setSavingAssignment] = useState(false);");
 admin = admin.replace("const selectedUser = users.find(u => (u.uid || u.id) === selectedUserId) || null;", "const selectedUser = users.find(u => (u.uid || u.id) === selectedUserId) || null;\n  useEffect(() => { const c = selectedUser ? categoriesFor(selectedUser) : []; setTokenCategories(c); setAssignedCategories(c); }, [selectedUserId, users]);");
 
@@ -21,11 +21,9 @@ const newCreate = "  const createToken = async () => {\n    const u = selectedUs
 if (admin.includes(oldCreate)) admin = admin.replace(oldCreate, newCreate);
 else if (!admin.includes('categories: issueCategories')) throw new Error('Admin token generator block not found');
 
-// Admin-controlled account assignment. The assignment is stored on the same users record
-// used by the Personal/category switcher, so category access survives refresh and login.
 if (!admin.includes('const saveCategoryAssignment = async')) {
   const marker = "  const removeBook = async (book: Slot) => {";
-  const helper = `  const saveCategoryAssignment = async () => {\n    const u = selectedUser;\n    if (!u) return alert('Select a user first.');\n    if (!assignedCategories.length) return alert('Select at least one EDUWILLS category for this account.');\n    setSavingAssignment(true);\n    try {\n      const uid = u.uid || u.id;\n      await setDoc(doc(db, 'users', uid), { categories: assignedCategories, category: assignedCategories[0], activeCategory: assignedCategories.includes(u.activeCategory || '') ? u.activeCategory : assignedCategories[0], educationLevels: assignedCategories }, { merge: true });\n      setUsers(v => v.map(x => (x.uid || x.id) === uid ? { ...x, categories: assignedCategories, category: assignedCategories[0], activeCategory: assignedCategories.includes(x.activeCategory || '') ? x.activeCategory : assignedCategories[0], educationLevels: assignedCategories } : x));\n      setTokenCategories(assignedCategories);\n      alert('Account categories assigned successfully.');\n    } catch (e: any) {\n      alert(e?.code === 'permission-denied' ? 'Firebase denied this admin category assignment.' : 'Could not assign categories to this account.');\n    } finally { setSavingAssignment(false); }\n  };\n\n`;
+  const helper = `  const saveCategoryAssignment = async () => {\n    const u = selectedUser;\n    if (!u) return alert('Select a user first.');\n    if (!assignedCategories.length) return alert('Select at least one EDUWILLS category for this account.');\n    setSavingAssignment(true);\n    try {\n      const uid = u.uid || u.id;\n      const nextActive = assignedCategories.includes(u.activeCategory || '') ? u.activeCategory : assignedCategories[0];\n      await setDoc(doc(db, 'users', uid), { categories: assignedCategories, category: assignedCategories[0], activeCategory: nextActive, educationLevels: assignedCategories }, { merge: true });\n      setUsers(v => v.map(x => (x.uid || x.id) === uid ? { ...x, categories: assignedCategories, category: assignedCategories[0], activeCategory: assignedCategories.includes(x.activeCategory || '') ? x.activeCategory : assignedCategories[0], educationLevels: assignedCategories } : x));\n      setTokenCategories(assignedCategories);\n      alert('Account categories assigned successfully.');\n    } catch (e: any) {\n      alert(e?.code === 'permission-denied' ? 'Firebase denied this admin category assignment.' : 'Could not assign categories to this account.');\n    } finally { setSavingAssignment(false); }\n  };\n\n`;
   if (!admin.includes(marker)) throw new Error('Admin removeBook marker not found');
   admin = admin.replace(marker, helper + marker);
 }
