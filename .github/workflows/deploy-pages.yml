@@ -75,8 +75,11 @@ jobs:
           if (!quiz.includes('{value:"5",label:"5 minutes"}')) throw new Error('Five-minute menu option missing');
           if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) throw new Error('Dashboard education feed import missing');
           if (!dashboard.includes('<EducationFeed />')) throw new Error('Dashboard education feed missing');
-          if (!personal.includes('Switch your EDUWILLS experience')) throw new Error('Personal category switch missing');
+          if (!dashboard.includes('activeCategory')) throw new Error('Dashboard active category wiring missing');
+          if (!dashboard.includes('Switch category')) throw new Error('Dashboard category switch entry missing');
+          if (!personal.includes('Switch EDUWILLS category')) throw new Error('Personal category switch UI missing');
           if (!personal.includes('activeCategory')) throw new Error('Active category persistence missing');
+          if (!personal.includes('window.location.assign(`${BASE}/dashboard/?category=')) throw new Error('Category switch dashboard redirect missing');
           if (!admin.includes('tokenCategories')) throw new Error('Admin category-aware token selection missing');
           if (!admin.includes('categories: issueCategories')) throw new Error('Token category linkage missing');
           if (!admin.includes('WilliToken Control Centre')) throw new Error('WilliToken control centre missing');
