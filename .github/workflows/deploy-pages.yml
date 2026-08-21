@@ -42,6 +42,7 @@ jobs:
           node --check scripts/repair-willi-token-final-v6.mjs
           node --check scripts/repair-eduwills-multibook-ui-v1.mjs
           node --check scripts/repair-quiz-speed-v1.mjs
+          node --check scripts/repair-quiz-cache-first-v2.mjs
       - name: Apply EDUWILLS final implementation
         shell: bash
         run: |
@@ -68,6 +69,7 @@ jobs:
           run_repair scripts/repair-quiz-instructions-result.mjs
           run_repair scripts/repair-eduwills-multibook-ui-v1.mjs
           run_repair scripts/repair-quiz-speed-v1.mjs
+          run_repair scripts/repair-quiz-cache-first-v2.mjs
       - name: Verify final implementation before build
         shell: bash
         run: |
@@ -75,6 +77,7 @@ jobs:
           test -f lib/aiAccess.ts
           test -f app/dashboard/ai/page.tsx
           node --check scripts/repair-quiz-speed-v1.mjs
+          node --check scripts/repair-quiz-cache-first-v2.mjs
           node - <<'NODE'
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
@@ -98,12 +101,15 @@ jobs:
           if (!activation.includes("activationStatus:'active'")) throw new Error('Activation status update missing');
           if (!activation.includes('activeWilliToken:clean')) throw new Error('Activation token linkage missing');
           if (!activation.includes('activationExpiresAt')) throw new Error('Activation expiry persistence missing');
+          if (!activation.includes('eduwills-activation')) throw new Error('Activation visibility styling missing');
           if (!quizClient.includes('const allocations=books.map')) throw new Error('Multi-book quiz allocation missing');
+          if (!quizClient.includes('CACHE-FIRST')) throw new Error('Cache-first quiz lookup missing');
+          if (!quizClient.includes('await readSharedCache(key,recent)')) throw new Error('Per-book cache lookup missing');
           if (!quizClient.includes('STRICT BOOK SCOPE')) throw new Error('Strict per-book quiz grounding missing');
-          if (!quizClient.includes('requested <= 5 ? 24000 : 90000')) throw new Error('Small-quiz prompt optimization missing');
+          if (!quizClient.includes('count <= 5 ? 24000 : 90000')) throw new Error('Small-quiz prompt optimization missing');
           if (!quizClient.includes('maxOutputTokens:5000')) throw new Error('Fast quiz output configuration missing');
           if (!dashboard.includes('EDUWILLS feed')) throw new Error('Dashboard learning feed missing');
-          console.log('EDUWILLS activation visibility and quiz speed verification passed');
+          console.log('EDUWILLS cache-first quiz and activation visibility verification passed');
           NODE
       - name: Build application
         env:
