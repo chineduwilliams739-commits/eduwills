@@ -8,9 +8,14 @@ import { askEduwills } from '@/lib/quizAiClient';
 
 const BASE = '/eduwills';
 const DAILY_LIMIT = 10;
+const DAILY_KEY = 'eduwills-ai-questions';
 const THINKING = ['Reading your question…', 'Checking the learning context…', 'Thinking through the answer…', 'Building a clear explanation…'];
 type Msg = { role: 'ai' | 'user'; text: string };
 const welcome = 'Hello! I’m EDUWILLS AI. Ask me about a book, character, theme, vocabulary, difficult passage, or study strategy.';
+
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+function loadUsed(uid: string) { try { const raw = localStorage.getItem(`${DAILY_KEY}:${uid}`); if (!raw) return 0; const data = JSON.parse(raw); return data.date === todayKey() ? Math.max(0, Number(data.used) || 0) : 0; } catch { return 0; } }
+function saveUsed(uid: string, used: number) { try { localStorage.setItem(`${DAILY_KEY}:${uid}`, JSON.stringify({ date: todayKey(), used })); } catch {} }
 
 export default function AIPage() {
   const [entitlement, setEntitlement] = useState<AiEntitlement | null>(null);
@@ -24,21 +29,22 @@ export default function AIPage() {
 
   useEffect(() => watchAiEntitlement(state => {
     if (!state.user) { window.location.replace(`${BASE}/login/`); return; }
-    setEntitlement(state.entitlement); setAuthLoading(false);
+    setEntitlement(state.entitlement); setUsed(loadUsed(state.user.uid)); setAuthLoading(false);
     if (state.error) console.error(state.error);
   }), []);
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, sending]);
   useEffect(() => { if (!sending) return; let i = 0; const timer = setInterval(() => { i = (i + 1) % THINKING.length; setThinking(THINKING[i]); }, 2000); return () => clearInterval(timer); }, [sending]);
 
-  async function refreshAccess() { const user = auth.currentUser; if (!user) return; setEntitlement(await getAiEntitlement(user)); }
+  async function refreshAccess() { const user = auth.currentUser; if (!user) return; setEntitlement(await getAiEntitlement(user)); setUsed(loadUsed(user.uid)); }
   async function send() {
-    const text = input.trim(), user = auth.currentUser;
-    if (!text || sending || !user || !entitlement?.allowed || used >= DAILY_LIMIT) return;
+    const text = input.trim(), user = auth.currentUser, currentUsed = user ? loadUsed(user.uid) : used;
+    if (!text || sending || !user || !entitlement?.allowed || currentUsed >= DAILY_LIMIT) return;
     setInput(''); setMessages(v => [...v, { role: 'user', text }]); setSending(true);
     try {
       const history = [...messages, { role: 'user' as const, text }].map(m => `${m.role === 'user' ? 'Learner' : 'EDUWILLS AI'}: ${m.text}`);
       const answer = await askEduwills(text, history); if (!answer) throw new Error('EMPTY_AI_RESPONSE');
-      setUsed(v => v + 1); setMessages(v => [...v, { role: 'ai', text: answer }]);
+      const nextUsed = currentUsed + 1;
+      saveUsed(user.uid, nextUsed); setUsed(nextUsed); setMessages(v => [...v, { role: 'ai', text: answer }]);
     } catch (error) { console.error('EDUWILLS AI error', error); setMessages(v => [...v, { role: 'ai', text: 'I’m temporarily unable to answer that. Please try again shortly.' }]); }
     finally { setSending(false); }
   }
