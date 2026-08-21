@@ -67,6 +67,9 @@ jobs:
           node scripts/repair-quiz-final-polish.mjs
           node scripts/repair-quiz-final-behavior.mjs
           node scripts/repair-quiz-admin-latest.mjs
+          # Grounding is deliberately re-applied last so no later repair script
+          # can accidentally remove the exact-book validator or restore stale cache keys.
+          node scripts/repair-quiz-grounding.mjs
 
       - name: Verify final implementation before build
         shell: bash
@@ -84,6 +87,8 @@ jobs:
           grep -Fq "setTimeout(() => submitQuiz(true), 0)" app/dashboard/quiz/page.tsx
           grep -Fq "verifiedBookGrounding" lib/quizAiClient.ts
           grep -Fq "groundedForBooks" lib/quizAiClient.ts
+          grep -Fq "verifiedResearch(books)" lib/quizAiClient.ts
+          grep -Fq "v21-hard-grounded-book-quiz" lib/quizAiClient.ts
           grep -Fq "Math.max(5, Number(duration) || 5)" app/dashboard/quiz/page.tsx
           grep -Fq "Custom duration…" app/admin/page.tsx
           grep -Fq "manualDurationMs" app/admin/page.tsx
@@ -96,7 +101,7 @@ jobs:
             echo "ERROR: old unstyled difficulty dropdown is still present"
             exit 1
           fi
-          echo "EDUWILLS final UI, SEO, exact-book grounding, persistent timer, 5-minute minimum and manual WilliToken duration are present in the build source."
+          echo "EDUWILLS final UI, SEO, hard exact-book grounding, stale-cache invalidation, persistent timer, 5-minute minimum and manual WilliToken duration are present in the build source."
 
       - name: Build application
         env:
