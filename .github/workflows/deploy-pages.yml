@@ -42,6 +42,12 @@ jobs:
           set -euxo pipefail
           node --check scripts/implement-category-switch-and-token-categories.mjs
           node scripts/implement-category-switch-and-token-categories.mjs
+      - name: Restore WilliToken Admin control centre
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-willi-token-admin-controls.mjs
+          node scripts/repair-willi-token-admin-controls.mjs
       - name: Verify final implementation
         shell: bash
         run: |
@@ -73,6 +79,10 @@ jobs:
           if (!personal.includes('activeCategory')) throw new Error('Active category persistence missing');
           if (!admin.includes('tokenCategories')) throw new Error('Admin category-aware token selection missing');
           if (!admin.includes('categories: issueCategories')) throw new Error('Token category linkage missing');
+          if (!admin.includes('WilliToken Control Centre')) throw new Error('WilliToken control centre missing');
+          if (!admin.includes('const revokeToken = async')) throw new Error('WilliToken revoke action missing');
+          if (!admin.includes('Redeemed · active')) throw new Error('WilliToken redemption status missing');
+          if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing');
           console.log('EDUWILLS stable implementation verification passed');
           NODE
       - name: Build application
