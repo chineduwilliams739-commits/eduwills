@@ -24,31 +24,44 @@ export function questionKey(q: Pick<BankQuestion,'level'|'className'|'subject'|'
     .map(v => String(v).trim().toLowerCase().replace(/\s+/g,' ')).join('|');
 }
 
+function offlineKey(p: {level: StudentLevel;className:string;subjects:string[];examType:ExamType;year?:number|'all';topics?:string[]}) {
+  return `eduwills:student-bank:v1:${JSON.stringify({level:p.level,className:p.className,subjects:[...p.subjects].sort(),examType:p.examType,year:p.year||'all',topics:[...(p.topics||[])].sort()})}`;
+}
+
 export async function getCachedQuestions(params: {
   level: StudentLevel; className: string; subjects: string[]; examType: ExamType;
   year?: number | 'all'; topics?: string[]; objective: number; subjective: number;
 }) {
   const result: BankQuestion[] = [];
   const seen = new Set<string>();
-  const base = collection(db,'studentQuestionBank');
-  for (const subject of params.subjects.slice(0,10)) {
-    const constraints = [
-      where('level','==',params.level),
-      where('className','==',params.className),
-      where('subject','==',subject),
-      where('examType','==',params.examType),
-      limit(Math.max(100, params.objective + params.subjective + 30)),
-    ];
+  const key = offlineKey(params);
+  const add = (q: BankQuestion) => {
+    if (params.year !== undefined && params.year !== 'all' && q.year && q.year !== params.year) return;
+    if (params.topics?.length && q.topic && !params.topics.includes(q.topic)) return;
+    const k = questionKey(q); if (seen.has(k)) return; seen.add(k); result.push(q);
+  };
+
+  // Firestore is the authoritative shared bank. Browser storage is a local offline copy.
+  try {
+    const base = collection(db,'studentQuestionBank');
+    for (const subject of params.subjects.slice(0,10)) {
+      const constraints = [where('level','==',params.level),where('className','==',params.className),where('subject','==',subject),where('examType','==',params.examType),limit(Math.max(100, params.objective + params.subjective + 30))];
+      try {
+        const snap = await getDocs(query(base,...constraints));
+        for (const d of snap.docs) add({ id:d.id, ...d.data() } as BankQuestion);
+      } catch {}
+    }
+    try { localStorage.setItem(key, JSON.stringify({savedAt:Date.now(),questions:result.slice(0,1000)})); } catch {}
+  } catch {}
+
+  // If the network/index is unavailable, continue from the previously downloaded bank.
+  if (!result.length) {
     try {
-      const snap = await getDocs(query(base,...constraints));
-      for (const doc of snap.docs) {
-        const q = { id: doc.id, ...doc.data() } as BankQuestion;
-        if (params.year !== undefined && params.year !== 'all' && q.year && q.year !== params.year) continue;
-        if (params.topics?.length && q.topic && !params.topics.includes(q.topic)) continue;
-        const k = questionKey(q); if (seen.has(k)) continue; seen.add(k); result.push(q);
-      }
-    } catch { /* Missing indexes must never stop the test builder. */ }
+      const raw = localStorage.getItem(key); const parsed = raw ? JSON.parse(raw) : null;
+      for (const q of Array.isArray(parsed?.questions) ? parsed.questions : []) add(q as BankQuestion);
+    } catch {}
   }
+
   const objectives = result.filter(q => q.type === 'objective').slice(0, params.objective);
   const subjective = result.filter(q => q.type === 'subjective').slice(0, params.subjective);
   return { questions: [...objectives,...subjective], objectiveAvailable: objectives.length, subjectiveAvailable: subjective.length };
