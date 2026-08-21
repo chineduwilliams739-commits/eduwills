@@ -2,11 +2,15 @@ name: Refresh EDUWILLS Education News
 
 on:
   schedule:
-    - cron: '0 7 * * *'
+    - cron: '15 5 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: education-news
+  cancel-in-progress: true
 
 jobs:
   refresh:
@@ -22,9 +26,12 @@ jobs:
         run: node scripts/publish-education-news.mjs
       - name: Commit refreshed feed
         run: |
-          git config user.name 'EDUWILLS News Bot'
-          git config user.email 'actions@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add public/education-news.json
-          git diff --cached --quiet && exit 0
+          if git diff --cached --quiet; then
+            echo 'No education-news changes to commit.'
+            exit 0
+          fi
           git commit -m 'chore: refresh education news feed'
           git push
