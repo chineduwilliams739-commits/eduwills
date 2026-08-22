@@ -7,7 +7,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
-const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary'] as const;
+const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary', 'Book Learner'] as const;
 const DURATIONS = [
   ['30 minutes', 1800000], ['1 hour', 3600000], ['6 hours', 21600000], ['12 hours', 43200000],
   ['1 day', 86400000], ['7 days', 604800000], ['30 days', 2592000000], ['1 year', 31536000000],
@@ -25,6 +25,7 @@ const normalizeCategory = (value: string) => {
   if (['primary', 'primary school', 'pupil', 'pupils'].includes(v)) return 'Primary';
   if (['junior', 'junior secondary', 'junior secondary school', 'jss'].includes(v)) return 'Junior Secondary';
   if (['senior', 'senior secondary', 'senior secondary school', 'sss'].includes(v)) return 'Senior Secondary';
+  if (['book learner', 'book learner school', 'booklearner', 'book'].includes(v)) return 'Book Learner';
   return value.trim();
 };
 
@@ -77,6 +78,7 @@ export default function AdminPage() {
   const [adminEmail, setAdminEmail] = useState('');
   const [savingCategories, setSavingCategories] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [tokenCategories, setTokenCategories] = useState<string[]>([]);
 
   const load = async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -113,7 +115,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     const selected = users.find(u => (u.uid || u.id) === selectedUid);
-    setSelectedCategories(selected ? getCategories(selected) : []);
+    const assigned = selected ? getCategories(selected) : [];
+    setSelectedCategories(assigned);
+    setTokenCategories(assigned);
+    setGenerated('');
   }, [selectedUid, users]);
 
   const selectedUser = users.find(u => (u.uid || u.id) === selectedUid) || null;
@@ -132,6 +137,7 @@ export default function AdminPage() {
 
   const createToken = async () => {
     if (!selectedUser) return alert('Select a user first.');
+    if (!tokenCategories.length) return alert('Select at least one category for this WilliToken.');
     const ms = DURATIONS.find(x => x[0] === duration)?.[1];
     if (!ms) return alert('Select a valid duration.');
     const value = makeToken();
@@ -142,7 +148,7 @@ export default function AdminPage() {
         userId: selectedUser.uid || selectedUser.id,
         uid: selectedUser.uid || selectedUser.id,
         username: selectedUser.username || '',
-        categories: selectedCategories,
+        categories: [...new Set(tokenCategories.map(normalizeCategory))],
         duration,
         durationMs: ms,
         createdAt: serverTimestamp(),
@@ -181,6 +187,7 @@ export default function AdminPage() {
         educationLevels: selectedCategories,
         schoolLevels: selectedCategories,
       });
+      setTokenCategories(selectedCategories);
       await load();
       alert('User category assignment saved.');
     } catch (e: any) {
@@ -236,8 +243,8 @@ export default function AdminPage() {
             <div className="mt-4 max-h-[520px] space-y-2 overflow-y-auto">{filteredUsers.map(u => { const uid = u.uid || u.id; const cats = getCategories(u); const live = userTokens(uid).find(t => !t.revoked && !t.redeemed && t.used !== true && (expiryDate(t)?.getTime() || 0) > Date.now()); return <button key={u.id} onClick={() => setSelectedUid(uid)} className={`block w-full rounded-2xl border p-4 text-left ${selectedUid === uid ? 'border-cyan-300/60 bg-cyan-400/10' : 'border-white/10 bg-slate-900/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-black">{u.fullName || 'Unnamed user'}</p><p className="text-xs text-slate-400">{u.username ? `@${u.username}` : 'No username'}{u.phone ? ` · ${u.phone}` : ''}</p><div className="mt-2 flex flex-wrap gap-1.5">{(cats.length ? cats : ['Category not assigned']).map(c => <span key={c} className="rounded-full bg-violet-400/10 px-2.5 py-1 text-[11px] font-black text-violet-200">{c}</span>)}</div></div><div className="text-right text-xs"><p className={live ? 'text-emerald-300' : 'text-slate-500'}>{live ? `Active · ${remaining(expiryDate(live))}` : 'No live token'}</p></div></div></button>; })}</div>
             {selectedUser && <div className="mt-5 rounded-3xl border border-cyan-300/20 bg-cyan-400/5 p-5">
               <h3 className="text-xl font-black">{selectedUser.fullName || 'Selected user'}</h3><p className="mt-1 text-sm text-slate-400">{selectedUser.username ? `@${selectedUser.username}` : selectedUser.uid || selectedUser.id}</p>
-              <div className="mt-5 border-t border-white/10 pt-5"><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Category assignment</p><p className="mt-1 text-sm text-slate-400">Admins assign one or more learning categories. Users can later switch between categories that have been assigned to them.</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{CATEGORIES.map(c => <label key={c} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-slate-900 p-3"><input type="checkbox" checked={selectedCategories.includes(c)} onChange={e => setSelectedCategories(v => e.target.checked ? [...new Set([...v, c])] : v.filter(x => x !== c))} /><span className="text-sm font-black">{c}</span></label>)}</div><button onClick={saveCategories} disabled={savingCategories} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950"><Check size={16} /> {savingCategories ? 'Saving…' : 'Save category assignment'}</button></div>
-              <div className="mt-5 border-t border-white/10 pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Generate WilliToken</p><p className="mt-1 text-xs text-slate-400">The token records the assigned categories and expires automatically.</p></div></div><div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"><select value={duration} onChange={e => setDuration(e.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm font-black">{DURATIONS.map(([label]) => <option key={label} value={label}>{label}</option>)}</select><button onClick={createToken} className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950">Generate WilliToken</button></div>{generated && <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-400/10 p-4"><code className="flex-1 break-all font-black tracking-widest">{generated}</code><button onClick={copy} className="rounded-lg border border-white/10 p-2">{copied ? <Check size={16} /> : <Copy size={16} />}</button></div>}</div>
+              <div className="mt-5 border-t border-white/10 pt-5"><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Category assignment</p><p className="mt-1 text-sm text-slate-400">Admins assign one or more learning categories. Users can later switch between categories that have been assigned to them.</p><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{CATEGORIES.map(c => <label key={c} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-slate-900 p-3"><input type="checkbox" checked={selectedCategories.includes(c)} onChange={e => setSelectedCategories(v => e.target.checked ? [...new Set([...v, c])] : v.filter(x => x !== c))} /><span className="text-sm font-black">{c}</span></label>)}</div><button onClick={saveCategories} disabled={savingCategories} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950"><Check size={16} /> {savingCategories ? 'Saving…' : 'Save category assignment'}</button></div>
+              <div className="mt-5 border-t border-white/10 pt-5"><div><p className="text-xs font-black uppercase tracking-[.16em] text-cyan-300">Generate WilliToken</p><p className="mt-1 text-xs text-slate-400">Choose exactly which assigned categories this token grants. The token keeps these categories until it expires.</p></div><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{CATEGORIES.map(c => <label key={c} className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-slate-900 p-3"><input type="checkbox" checked={tokenCategories.includes(c)} onChange={e => setTokenCategories(v => e.target.checked ? [...new Set([...v, c])] : v.filter(x => x !== c))} /><span className="text-sm font-black">{c}</span></label>)}</div><div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"><select value={duration} onChange={e => setDuration(e.target.value)} className="rounded-xl border border-white/10 bg-slate-900 p-3 text-sm font-black">{DURATIONS.map(([label]) => <option key={label} value={label}>{label}</option>)}</select><button onClick={createToken} disabled={!tokenCategories.length} className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-black text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">Generate WilliToken</button></div>{generated && <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-400/10 p-4"><code className="flex-1 break-all font-black tracking-widest">{generated}</code><button onClick={copy} className="rounded-lg border border-white/10 p-2">{copied ? <Check size={16} /> : <Copy size={16} />}</button></div>}</div>
             </div>}
           </section>
         )}
