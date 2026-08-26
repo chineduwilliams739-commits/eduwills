@@ -29,5 +29,13 @@ lib = lib.replace('Math.min(8, remaining)', 'Math.min(10, remaining)');
 lib = lib.replace('repairAttempts < 6', 'repairAttempts < 2');
 lib = lib.replace(/const CACHE = '[^']+';/, "const CACHE = 'v17-multiprovider-functional';");
 
+// CACHE_FIRST_NO_FALLBACK: the UI is expected to block empty book selection,
+// and the AI client must enforce that invariant too. Never generate a quiz for
+// a synthetic "Selected book" placeholder because that can trigger an AI call
+// with no real source book.
+const fallback = "const selected=books.length?books:[{title:'Selected book',author:'Unknown'}];";
+const guard = "if (!Array.isArray(books) || books.length === 0) throw new Error('BOOK_SELECTION_REQUIRED'); const selected=books;";
+if (lib.includes(fallback)) lib = lib.replace(fallback, guard);
+
 fs.writeFileSync(libPath, lib);
-console.log('EDUWILLS quiz runtime: app/dashboard/quiz/page.tsx untouched; AI router/runtime patches applied safely.');
+console.log('EDUWILLS quiz runtime: quiz page untouched; cache-first generation, no-book guard, and AI router/runtime patches applied safely.');
