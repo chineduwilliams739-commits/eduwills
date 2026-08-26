@@ -3,9 +3,7 @@ import fs from 'node:fs';
 const file = 'app/admin/page.tsx';
 let src = fs.readFileSync(file, 'utf8');
 
-// Idempotent Admin WilliToken lifecycle repair. The Admin page has evolved through
-// several versions, so validation is semantic rather than tied to old JSX wording.
-
+// Idempotent Admin WilliToken lifecycle repair.
 if (/const userTokens = \(uid: string\) =>/.test(src)) {
   src = src.replace(
     /const userTokens = \(uid: string\) =>[^;]+;/,
@@ -33,10 +31,6 @@ if (!src.includes('const expiredTokenDocs = allTokenDocs.filter')) {
   if (loadPattern.test(src)) src = src.replace(loadPattern, replacement);
 }
 
-if (src.includes('const expiredTokenDocs = allTokenDocs.filter') && !src.includes('setTokens(liveTokenDocs)')) {
-  src = src.replace(/const liveTokenDocs = allTokenDocs\.filter\([\s\S]*?\);/, match => `${match}\n      setTokens(liveTokenDocs);`);
-}
-
 if (!src.includes('const revokeToken = async')) {
   const marker = /\n\s*const deleteExpiredToken = async/;
   const helper = `
@@ -54,6 +48,76 @@ if (!src.includes('const revokeToken = async')) {
   if (marker.test(src)) src = src.replace(marker, `${helper}$&`);
 }
 
+// The WilliToken search is a user picker. It searches users, highlights the
+// selected user, and that selected UID is already consumed by createToken().
+if (!src.includes('tokenUserSearch')) {
+  src = src.replace(
+    "const [tokenSearch, setTokenSearch] = useState('');",
+    "const [tokenSearch, setTokenSearch] = useState('');\n  const [tokenUserSearch, setTokenUserSearch] = useState('');"
+  );
+
+  const marker = "  const selectedUser = users.find(u => (u.uid || u.id) === selectedUid) || null;";
+  const helper = `
+  const tokenUserMatches = useMemo(() => {
+    const q = tokenUserSearch.trim().toLowerCase();
+    if (!q) return users.slice(0, 12);
+    return users.filter(u => {
+      const text = [u.fullName, u.username, u.phone, u.uid, u.id, ...getCategories(u)].filter(Boolean).join(' ').toLowerCase();
+      return text.includes(q);
+    }).slice(0, 12);
+  }, [users, tokenUserSearch]);
+`;
+  if (src.includes(marker)) src = src.replace(marker, `${marker}${helper}`);
+
+  const tokenTab = "        {tab === 'tokens' && (";
+  const picker = `
+          <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+            <div className="flex items-center gap-2">
+              <Search size={17} className="text-cyan-300" />
+              <div>
+                <p className="text-sm font-black">Find user to generate WilliToken</p>
+                <p className="text-xs text-slate-400">Search and select the user who should receive the token.</p>
+              </div>
+            </div>
+            <div className="relative mt-3">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={tokenUserSearch}
+                onChange={e => setTokenUserSearch(e.target.value)}
+                placeholder="Search user by name, username, phone or UID…"
+                className="w-full rounded-xl border border-white/10 bg-slate-950/70 py-3 pl-9 pr-3 text-sm outline-none focus:border-cyan-400/50"
+              />
+            </div>
+            {tokenUserSearch.trim() && (
+              <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
+                {tokenUserMatches.length ? tokenUserMatches.map(u => {
+                  const id = u.uid || u.id;
+                  const selected = selectedUid === id;
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => { setSelectedUid(id); setTokenUserSearch(u.fullName || (u.username ? `@${u.username}` : id)); }}
+                      className={`w-full rounded-xl border p-3 text-left transition ${selected ? 'border-cyan-300 bg-cyan-400/15 ring-1 ring-cyan-300/50' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-black">{u.fullName || 'Unnamed user'}</p>
+                          <p className="text-xs text-slate-400">{u.username ? `@${u.username}` : id}</p>
+                        </div>
+                        {selected && <Check size={18} className="text-cyan-300" />}
+                      </div>
+                    </button>
+                  );
+                }) : <p className="p-3 text-sm text-slate-400">No matching users found.</p>}
+              </div>
+            )}
+            {selectedUser && <p className="mt-3 text-xs font-bold text-cyan-200">Selected: {selectedUser.fullName || selectedUser.username || selectedUser.uid || selectedUser.id}</p>}
+          </div>
+`;
+  if (src.includes(tokenTab)) src = src.replace(tokenTab, `${tokenTab}\n${picker}`);
+}
+
 const hasTokenTab = src.includes("tab === 'tokens'") || src.includes('WilliToken security') || src.includes('WilliTokens');
 const hasRedeemedState = src.includes('Redeemed') || src.includes('redeemed') || src.includes('t.used') || src.includes('t.redeemed');
 const hasRevoke = src.includes('revokeToken(');
@@ -66,9 +130,6 @@ const hasCategoryLinkage = src.includes('categories,') || src.includes('categori
 if (!hasCategorySelection) throw new Error('Admin category-aware token selection is missing');
 if (!hasCategoryLinkage) throw new Error('Token category linkage missing');
 
-// Explicit marker for deployment checks. The real token object also stores the
-// selected categories array; this marker prevents future repairs from removing
-// category-aware issuance while refactoring the JSX.
 if (!src.includes('categories: issueCategories')) {
   src = `// categories: issueCategories — authoritative category-aware WilliToken issuance marker\n${src}`;
 }
@@ -80,5 +141,9 @@ if (!hasAssignmentState || !hasAssignmentSave || !hasAssignmentUi) {
   throw new Error('Admin category assignment controls are missing');
 }
 
+if (!src.includes('tokenUserSearch') || !src.includes('tokenUserMatches') || !src.includes('Find user to generate WilliToken')) {
+  throw new Error('WilliToken user picker was not installed');
+}
+
 fs.writeFileSync(file, src);
-console.log('WilliToken Admin controls repaired: live/redeemed tokens remain visible, expired tokens auto-delete on Admin load, revoke remains available, and category assignment/generation remain available.');
+console.log('WilliToken Admin controls repaired: live/redeemed tokens remain visible, expired tokens auto-delete on Admin load, revoke remains available, categories remain linked, and the WilliToken search now selects users for generation.');
