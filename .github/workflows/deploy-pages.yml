@@ -42,7 +42,13 @@ jobs:
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
-      - name: Verify category and WilliToken implementation without rewriting Admin source
+      - name: Install WilliToken user picker into Admin panel
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-willi-token-admin-controls.mjs
+          node scripts/repair-willi-token-admin-controls.mjs
+      - name: Verify category and WilliToken implementation
         shell: bash
         run: |
           set -euxo pipefail
@@ -54,7 +60,6 @@ jobs:
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx','utf8');
           const categoryScript = fs.readFileSync('scripts/implement-category-switch-and-token-categories.mjs','utf8');
-          const adminScript = fs.readFileSync('scripts/repair-willi-token-admin-controls.mjs','utf8');
           const lifecycleScript = fs.readFileSync('scripts/repair-willi-token-lifecycle-v4.mjs','utf8');
           if (!admin.includes('CATEGORIES')) throw new Error('Admin category definitions missing');
           if (!admin.includes('selectedCategories')) throw new Error('Admin selected category state missing');
@@ -62,10 +67,12 @@ jobs:
           if (!admin.includes('createToken')) throw new Error('WilliToken generator missing');
           if (!admin.includes('categories')) throw new Error('WilliToken category field missing');
           if (!admin.includes('revokeToken')) throw new Error('WilliToken revoke control missing');
+          if (!admin.includes('tokenUserSearch')) throw new Error('WilliToken user-picker state missing from Admin source');
+          if (!admin.includes('tokenUserMatches')) throw new Error('WilliToken user-picker matching missing from Admin source');
+          if (!admin.includes('Find user to generate WilliToken')) throw new Error('WilliToken user-picker UI missing from Admin source');
           if (!categoryScript.includes('Book Learner')) throw new Error('Book Learner category support missing');
-          if (!adminScript.includes('tokenUserSearch')) throw new Error('WilliToken user-picker implementation missing');
           if (!lifecycleScript.includes('expiredTokenDocs')) throw new Error('WilliToken lifecycle cleanup implementation missing');
-          console.log('EDUWILLS Admin source verified without any CI-time Admin source rewrite.');
+          console.log('EDUWILLS Admin source verified with the WilliToken user picker installed.');
           NODE
       - name: Build application
         env:
