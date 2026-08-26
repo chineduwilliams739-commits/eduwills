@@ -52,10 +52,10 @@ export default function PersonalPage() {
           tokenCategories = snap.docs.flatMap(x => {
             const t = x.data();
             const exp = expiryMs(t.expiresAt || t.activationExpiresAt || t.expiry);
-            if (t.used !== true || t.revoked === true || t.cancelled === true || (exp && exp <= now)) return [];
+            if (t.revoked === true || t.cancelled === true || (exp && exp <= now)) return [];
             return Array.isArray(t.categories) ? t.categories : [];
           });
-        } catch { /* User profile categories remain usable if token query is denied. */ }
+        } catch { /* Profile categories remain usable if token query is denied. */ }
         const categories = normaliseCategories([
           ...(Array.isArray(d.categories) ? d.categories : []),
           ...(Array.isArray(d.educationLevels) ? d.educationLevels : []),
@@ -91,8 +91,7 @@ export default function PersonalPage() {
       localStorage.setItem('eduwills_active_category_id', categoryId);
       sessionStorage.setItem('eduwills_active_category', category);
       setUser((v: any) => ({ ...v, activeCategory: category, activeCategoryId: categoryId }));
-      // Reload the dashboard so category-aware sections read the new selection immediately.
-      window.location.assign(`${BASE}/dashboard/?category=${encodeURIComponent(categoryId)}`);
+      window.location.assign(`${BASE}/dashboard/category/?category=${encodeURIComponent(categoryId)}`);
     } catch (e: any) {
       console.error(e);
       setError(e?.code === 'permission-denied' ? 'Your profile cannot save category changes with the current Firebase rules.' : 'Could not switch category. Please try again.');
