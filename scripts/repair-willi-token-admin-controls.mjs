@@ -97,13 +97,13 @@ if (!src.includes('tokenUserSearch')) {
                     <button
                       key={u.id}
                       type="button"
-                      onClick={() => { setSelectedUid(id); setTokenUserSearch(u.fullName || (u.username ? `@${u.username}` : id)); }}
-                      className={`w-full rounded-xl border p-3 text-left transition ${selected ? 'border-cyan-300 bg-cyan-400/15 ring-1 ring-cyan-300/50' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                      onClick={() => { setSelectedUid(id); setTokenUserSearch(u.fullName || (u.username ? '@' + u.username : id)); }}
+                      className={'w-full rounded-xl border p-3 text-left transition ' + (selected ? 'border-cyan-300 bg-cyan-400/15 ring-1 ring-cyan-300/50' : 'border-white/10 bg-white/5 hover:bg-white/10')}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="font-black">{u.fullName || 'Unnamed user'}</p>
-                          <p className="text-xs text-slate-400">{u.username ? `@${u.username}` : id}</p>
+                          <p className="text-xs text-slate-400">{u.username ? '@' + u.username : id}</p>
                         </div>
                         {selected && <Check size={18} className="text-cyan-300" />}
                       </div>
