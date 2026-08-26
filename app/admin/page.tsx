@@ -8,8 +8,6 @@ import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
 const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary', 'Book Learner'] as const;
-// Authoritative category list used by WilliToken issuance. Keep this separate so
-// token creation and account assignment cannot silently drift apart.
 const issueCategories = [...CATEGORIES];
 const DURATIONS = [
   ['30 minutes', 1800000], ['1 hour', 3600000], ['6 hours', 21600000], ['12 hours', 43200000],
@@ -71,6 +69,7 @@ export default function AdminPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [tab, setTab] = useState<Tab>('users');
   const [search, setSearch] = useState('');
+  const [tokenSearch, setTokenSearch] = useState('');
   const [selectedUid, setSelectedUid] = useState('');
   const [duration, setDuration] = useState('30 days');
   const [generated, setGenerated] = useState('');
@@ -135,6 +134,28 @@ export default function AdminPage() {
     if (!q) return users;
     return users.filter(u => `${u.fullName || ''} ${u.username || ''} ${u.phone || ''} ${getCategories(u).join(' ')}`.toLowerCase().includes(q));
   }, [users, search]);
+
+  const filteredTokens = useMemo(() => {
+    const q = tokenSearch.trim().toLowerCase();
+    const source = tokens.filter(t => !selectedUid || (t.userId || t.uid) === selectedUid);
+    if (!q) return source;
+    return source.filter(t => {
+      const owner = userName(t.userId || t.uid || '');
+      const text = `${t.token || t.id} ${t.username || ''} ${owner} ${(t.categories || []).join(' ')} ${t.duration || ''} ${t.redeemed || t.used ? 'redeemed' : 'not redeemed'}`;
+      return text.toLowerCase().includes(q);
+    });
+  }, [tokens, tokenSearch, selectedUid, users]);
+
+  const groupedBooks = useMemo(() => {
+    const groups = new Map<string, Book[]>();
+    books.forEach(book => {
+      const key = book.userId || 'unknown';
+      const current = groups.get(key) || [];
+      current.push(book);
+      groups.set(key, current);
+    });
+    return [...groups.entries()].sort((a, b) => userName(a[0]).localeCompare(userName(b[0])));
+  }, [books, users]);
 
   const userTokens = (uid: string) => tokens.filter(t => (t.userId || t.uid) === uid).sort((a, b) => (expiryDate(b)?.getTime() || 0) - (expiryDate(a)?.getTime() || 0));
 
@@ -206,7 +227,7 @@ export default function AdminPage() {
       const latest = userTokens(u.uid || u.id).find(t => !t.revoked && (expiryDate(t)?.getTime() || 0) > Date.now());
       rows.push([u.fullName || '', u.username || '', u.phone || '', getCategories(u).join(' | '), u.activated ? 'Yes' : 'No', formatDate(expiryDate(latest))]);
     });
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = rows.map(r => r.map(v => `\"${String(v).replace(/\"/g, '\"\"')}\"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a'); a.href = url; a.download = 'eduwills-users.csv'; a.click(); URL.revokeObjectURL(url);
   };
@@ -265,11 +286,39 @@ export default function AdminPage() {
               {generated && <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"><p className="text-xs font-black uppercase text-emerald-300">Generated token</p><div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all rounded-lg bg-slate-950 px-3 py-2 font-black text-white">{generated}</code><button onClick={copy} className="rounded-lg bg-white/10 p-2" title="Copy">{copied ? <Check size={17}/> : <Copy size={17}/>}</button></div></div>}
               {selectedUser && <div className="mt-5 rounded-2xl border border-white/10 bg-slate-900/70 p-4"><p className="text-xs font-black uppercase text-slate-400">Assigned account categories</p><div className="mt-2 flex flex-wrap gap-2">{issueCategories.map(category => <button key={category} onClick={() => setSelectedCategories(prev => prev.includes(category) ? prev.filter(x => x !== category) : [...prev, category])} className={`rounded-full px-3 py-1.5 text-xs font-black ${selectedCategories.includes(category) ? 'bg-cyan-400 text-slate-950' : 'bg-white/10 text-slate-300'}`}>{category}</button>)}</div><button onClick={saveCategories} disabled={savingCategories} className="mt-3 rounded-xl border border-cyan-300/40 bg-cyan-400/10 px-4 py-2.5 text-sm font-black text-cyan-200">{savingCategories ? 'Saving…' : 'Save account assignment'}</button></div>}
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-300">Token records</p><h2 className="mt-1 text-2xl font-black">Redeemed, active and expired</h2></div><button onClick={() => load(true)} className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-black">Refresh</button></div><div className="mt-4 space-y-3">{tokens.filter(t => !selectedUid || (t.userId || t.uid) === selectedUid).map(t => { const exp = expiryDate(t); const expired = !!exp && exp.getTime() <= Date.now(); return <div key={t.id} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><code className="font-black text-cyan-200">{t.token || t.id}</code><p className="mt-1 text-xs text-slate-400">{userName(t.userId || t.uid || '')} · {t.categories?.join(', ') || 'No category recorded'}</p></div><div className="text-right text-xs font-bold"><p className={t.revoked ? 'text-red-300' : expired ? 'text-slate-400' : 'text-emerald-300'}>{t.revoked ? 'Revoked' : expired ? 'Expired' : 'Active'}</p><p className="text-slate-500">{t.redeemed || t.used ? 'Redeemed' : 'Not redeemed'}</p></div></div><p className="mt-2 text-xs text-slate-500">Expires: {formatDate(exp)} · {remaining(exp)}</p><div className="mt-3 flex flex-wrap gap-2">{!expired && !t.revoked && <button onClick={() => revokeToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Revoke</button>}{expired && <button onClick={() => deleteExpiredToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Delete expired</button>}</div></div>})}</div></div>
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-300">Token records</p><h2 className="mt-1 text-2xl font-black">Redeemed, active and expired</h2></div><button onClick={() => load(true)} className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-black">Refresh</button></div>
+              <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4"><Search size={18} className="text-slate-400" /><input value={tokenSearch} onChange={e => setTokenSearch(e.target.value)} placeholder="Search token, user, category or status" className="w-full bg-transparent py-3.5 text-sm outline-none" /></div>
+              <div className="mt-4 space-y-3">{filteredTokens.map(t => { const exp = expiryDate(t); const expired = !!exp && exp.getTime() <= Date.now(); return <div key={t.id} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><code className="font-black text-cyan-200">{t.token || t.id}</code><p className="mt-1 text-xs text-slate-400">{userName(t.userId || t.uid || '')} · {t.categories?.join(', ') || 'No category recorded'}</p></div><div className="text-right text-xs font-bold"><p className={t.revoked ? 'text-red-300' : expired ? 'text-slate-400' : 'text-emerald-300'}>{t.revoked ? 'Revoked' : expired ? 'Expired' : 'Active'}</p><p className="text-slate-500">{t.redeemed || t.used ? 'Redeemed' : 'Not redeemed'}</p></div></div><p className="mt-2 text-xs text-slate-500">Expires: {formatDate(exp)} · {remaining(exp)}</p><div className="mt-3 flex flex-wrap gap-2">{!expired && !t.revoked && <button onClick={() => revokeToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Revoke</button>}{expired && <button onClick={() => deleteExpiredToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Delete expired</button>}</div></div>})}</div>
+              {!filteredTokens.length && <p className="mt-4 rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-center text-sm text-slate-500">No WilliTokens match your search.</p>}
+            </div>
           </section>
         )}
 
-        {tab === 'books' && <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><h2 className="text-2xl font-black">Saved books</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{books.map(b => <div key={b.id} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><p className="font-black">{b.title}</p><p className="text-sm text-slate-400">{b.author}</p><p className="mt-2 text-xs text-slate-500">{userName(b.userId)}</p></div>)}</div></section>}
+        {tab === 'books' && (
+          <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6">
+            <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-300">Books</p><h2 className="text-2xl font-black">Saved books by user</h2><p className="mt-1 text-sm text-slate-400">Each user has one box containing all books they have saved.</p></div><span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-slate-300">{books.length} saved book{books.length === 1 ? '' : 's'}</span></div>
+            <div className="mt-4 space-y-4">
+              {groupedBooks.map(([uid, userBooks]) => (
+                <div key={uid} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                    <div><p className="font-black text-white">{userName(uid)}</p><p className="text-xs text-slate-500">{userBooks.length} saved book{userBooks.length === 1 ? '' : 's'}</p></div>
+                    <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[11px] font-black text-cyan-200">User books</span>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {userBooks.sort((a, b) => (a.slot || 0) - (b.slot || 0)).map(b => (
+                      <div key={b.id} className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
+                        <p className="font-black">{b.title}</p>
+                        <p className="text-sm text-slate-400">{b.author}</p>
+                        {typeof b.slot === 'number' && <p className="mt-1 text-[11px] text-slate-600">Slot {b.slot}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {!groupedBooks.length && <p className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-center text-sm text-slate-500">No saved books found.</p>}
+            </div>
+          </section>
+        )}
 
         {tab === 'accounts' && <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><h2 className="text-2xl font-black">Admin Accounts</h2><p className="mt-2 text-sm text-slate-400">Signed in as {adminEmail || 'Admin'}.</p><p className="mt-3 text-sm text-slate-300">Additional admin management remains protected by the existing Firebase admin records.</p></section>}
       </div>
