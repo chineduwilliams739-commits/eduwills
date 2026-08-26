@@ -1,25 +1,39 @@
 import fs from 'node:fs';
 
-// This deployment repair used to rewrite app source with broad regular
-// expressions. That was unsafe: a semicolon inside an arrow-function predicate
-// could cause only part of a line to be replaced and make the Next.js build
-// invalid. The Admin and AI source now contain their own authoritative logic,
-// so this script is intentionally validation-only.
+// Safe CI repair/validation for the WilliToken lifecycle.
+// Never rewrites the Admin page wholesale. If the Admin loader is missing
+// expiry cleanup, patch only its exact token-loading statement.
 
-const requiredFiles = [
-  'app/admin/page.tsx',
-  'app/dashboard/ai/page.tsx',
-];
+const adminPath = 'app/admin/page.tsx';
+const aiPath = 'app/dashboard/ai/page.tsx';
 
-for (const file of requiredFiles) {
-  if (!fs.existsSync(file)) throw new Error(`Required EDUWILLS file is missing: ${file}`);
-}
+if (!fs.existsSync(adminPath)) throw new Error(`Required EDUWILLS file is missing: ${adminPath}`);
+if (!fs.existsSync(aiPath)) throw new Error(`Required EDUWILLS file is missing: ${aiPath}`);
 
-const admin = fs.readFileSync('app/admin/page.tsx', 'utf8');
-const ai = fs.readFileSync('app/dashboard/ai/page.tsx', 'utf8');
+let admin = fs.readFileSync(adminPath, 'utf8');
+const ai = fs.readFileSync(aiPath, 'utf8');
 
 if (!admin.includes('const userTokens')) throw new Error('Admin WilliToken handling is missing.');
 if (!admin.includes('expiryDate')) throw new Error('Admin expiry handling is missing.');
 if (!ai.includes('getAiEntitlement')) throw new Error('EDUWILLS AI entitlement handling is missing.');
 
-console.log('WilliToken lifecycle validation passed. No source rewriting was performed.');
+// Keep every live token in the Active token expiry data and delete expired
+// documents when Admin data is loaded. This exact, local replacement avoids
+// the source-corruption problem caused by earlier broad regular expressions.
+if (!admin.includes('expiredTokenDocs')) {
+  const needle = "      setTokens(t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));";
+  const replacement = `      const allTokenDocs = t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken));
+      const nowMs = Date.now();
+      const expiredTokenDocs = allTokenDocs.filter(x => { const e = expiryDate(x); return !!e && e.getTime() <= nowMs; });
+      if (expiredTokenDocs.length) await Promise.all(expiredTokenDocs.map(x => deleteDoc(doc(db, 'williTokens', x.id)).catch(() => undefined)));
+      const liveTokenDocs = allTokenDocs.filter(x => { const e = expiryDate(x); return !!e && e.getTime() > nowMs; });
+      setTokens(liveTokenDocs);`;
+
+  if (!admin.includes(needle)) {
+    throw new Error('Admin WilliToken loader shape is not recognized; refusing unsafe source rewrite.');
+  }
+  admin = admin.replace(needle, replacement);
+  fs.writeFileSync(adminPath, admin);
+}
+
+console.log('WilliToken lifecycle validation passed. Expired-token cleanup is present and no broad source rewrite was performed.');
