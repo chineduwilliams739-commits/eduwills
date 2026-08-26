@@ -42,12 +42,24 @@ jobs:
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
-      - name: Install WilliToken user picker into Admin panel
+      - name: Reset Admin source to committed version before CI patches
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git checkout -- app/admin/page.tsx
+          node --check app/admin/page.tsx >/dev/null 2>&1 || true
+          if grep -q '\\<main\|\\:' app/admin/page.tsx; then
+            echo 'Committed Admin source contains invalid escaped JSX.'
+            exit 1
+          fi
+      - name: Apply safe Admin WilliToken implementation
         shell: bash
         run: |
           set -euxo pipefail
           node --check scripts/repair-willi-token-admin-controls.mjs
           node scripts/repair-willi-token-admin-controls.mjs
+          node --check scripts/repair-willi-token-lifecycle-v4.mjs
+          node scripts/repair-willi-token-lifecycle-v4.mjs
       - name: Verify category and WilliToken implementation
         shell: bash
         run: |
@@ -56,6 +68,10 @@ jobs:
           node --check scripts/repair-willi-token-admin-controls.mjs
           node --check scripts/repair-willi-token-lifecycle-v4.mjs
           test -f app/admin/page.tsx
+          if grep -q '\\<main\|\\:' app/admin/page.tsx; then
+            echo 'Admin page contains invalid escaped JSX/Tailwind punctuation after CI patches.'
+            exit 1
+          fi
           node - <<'NODE'
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx','utf8');
