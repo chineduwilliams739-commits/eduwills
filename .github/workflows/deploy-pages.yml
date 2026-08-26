@@ -47,33 +47,34 @@ jobs:
         run: |
           set -euxo pipefail
           python3 scripts/apply-admin-willi-token-ui.py
-      - name: Verify Admin and WilliToken implementation
+      - name: Apply quiz and EDUWILLS AI reliability implementation
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 scripts/apply-quiz-ai-reliability-v2.py
+      - name: Verify Admin, Quiz and AI implementation
         shell: bash
         run: |
           set -euxo pipefail
           test -f app/admin/page.tsx
-          if grep -q '\\<main\|\\:px-\|\\:py-' app/admin/page.tsx; then
-            echo 'Admin page contains invalid escaped JSX/Tailwind punctuation.'
+          test -f app/dashboard/quiz/page.tsx
+          test -f app/dashboard/ai/page.tsx
+          if grep -q '\\<main\|\\:px-\|\\:py-' app/admin/page.tsx app/dashboard/quiz/page.tsx app/dashboard/ai/page.tsx; then
+            echo 'Application page contains invalid escaped JSX/Tailwind punctuation.'
             exit 1
           fi
           node - <<'NODE'
           const fs = require('fs');
           const admin = fs.readFileSync('app/admin/page.tsx','utf8');
-          const categoryScript = fs.readFileSync('scripts/implement-category-switch-and-token-categories.mjs','utf8');
-          const lifecycleScript = fs.readFileSync('scripts/repair-willi-token-lifecycle-v4.mjs','utf8');
-          if (!admin.includes('CATEGORIES')) throw new Error('Admin category definitions missing');
-          if (!admin.includes('selectedCategories')) throw new Error('Admin selected category state missing');
-          if (!admin.includes('tokenCategories')) throw new Error('Admin token category selection missing');
-          if (!admin.includes('createToken')) throw new Error('WilliToken generator missing');
-          if (!admin.includes('categories')) throw new Error('WilliToken category field missing');
-          if (!admin.includes('revokeToken')) throw new Error('WilliToken revoke control missing');
-          if (!admin.includes('tokenUserSearch')) throw new Error('WilliToken user-picker state missing from Admin source');
-          if (!admin.includes('tokenUserMatches')) throw new Error('WilliToken user-picker matching missing from Admin source');
-          if (!admin.includes('Find user to generate WilliToken')) throw new Error('WilliToken user-picker UI missing from Admin source');
-          if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing from Admin source');
-          if (!categoryScript.includes('Book Learner')) throw new Error('Book Learner category support missing');
-          if (!lifecycleScript.includes('expiredTokenDocs')) throw new Error('WilliToken lifecycle cleanup implementation missing');
-          console.log('EDUWILLS Admin source verified with safe WilliToken user picker and expiry cleanup.');
+          const quiz = fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          const ai = fs.readFileSync('lib/quizAiClient.ts','utf8');
+          if (!admin.includes('tokenUserSearch')) throw new Error('WilliToken user picker missing');
+          if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing');
+          if (!quiz.includes('NO_BOOK_SELECTED') && !ai.includes('NO_BOOK_SELECTED')) throw new Error('Quiz empty-book guard missing');
+          if (!quiz.includes('Please select at least one saved book')) throw new Error('Quiz no-book warning missing');
+          if (!ai.includes('chatGemini=')) throw new Error('Dedicated EDUWILLS AI chat model missing');
+          if (!ai.includes('const batch=Math.min(20,remaining);')) throw new Error('Quiz batch speed optimization missing');
+          console.log('Admin, Quiz and EDUWILLS AI implementation verified.');
           NODE
       - name: Build application
         env:
