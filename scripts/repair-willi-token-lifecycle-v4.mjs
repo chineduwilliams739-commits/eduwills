@@ -19,10 +19,13 @@ admin = admin.replace(/function tokenExpiry\(t\?: WilliToken\): Date \| null \{[
 }`);
 
 // Active token expiry = every non-expired generated token, whether used or not.
-admin = admin.replace(/const userTokens = \(uid: string\) => .*?;/, `const userTokens = (uid: string) => tokens.filter(t => t.userId === uid && (() => { const e = tokenExpiry(t); return !!e && e.getTime() > Date.now(); })()).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));`);
+// IMPORTANT: replace the complete line. Do not use an unanchored `.*?;` because
+// the predicate itself contains semicolons and can leave a duplicated fragment.
+admin = admin.replace(/^  const userTokens = \(uid: string\) => .*;$/m, `  const userTokens = (uid: string) => tokens.filter(t => (t.userId || t.uid) === uid).filter(t => { const e = tokenExpiry(t); return !!e && e.getTime() > Date.now(); }).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));`);
 
-// Replace token creation. Generating a token stores it as active, but does NOT
-// activate the learner until that token is actually redeemed.
+// Replace token creation only for older source variants that still expose a
+// removeBook marker. Current Admin source already has the correct createToken
+// implementation, so this block intentionally does nothing there.
 const createStart = admin.indexOf('  const createToken = async () => {');
 const removeStart = admin.indexOf('  const removeBook = async', createStart);
 if (createStart >= 0 && removeStart > createStart) {
@@ -133,4 +136,4 @@ if(ai.includes('async function reconcileActivation')) ai=ai.replace(/async funct
 else ai=ai.replace("type Msg={role:'ai'|'user';text:string};",helper+"\ntype Msg={role:'ai'|'user';text:string};");
 fs.writeFileSync(aiPath,ai);
 
-console.log('WilliToken lifecycle v4 applied: all live generated tokens remain in Active token expiry, expired tokens are deleted, only redeemed live tokens activate users/AI, and active users are marked active rather than expired.');
+console.log('WilliToken lifecycle v4 applied safely: live generated tokens remain in Active token expiry, expired tokens are deleted, only redeemed live tokens activate users/AI, and the Admin source is not corrupted by partial-line replacement.');
