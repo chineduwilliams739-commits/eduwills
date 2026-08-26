@@ -6,8 +6,12 @@ let page = fs.readFileSync(path, 'utf8');
 const heroTitle = 'AI quiz generator for <span className="text-eduBlue">WAEC, JAMB & NECO.</span> Turn every book into a smart quiz.';
 const heroCopy = 'EDUWILLS is an AI quiz generator for Nigerian students preparing for WAEC, JAMB, NECO and school tests. Turn the books you study into intelligent practice quizzes, review your answers and learn smarter.';
 
-page = page.replace(/Turn every book into a <span className="text-eduBlue">smart quiz\.<\/span>/, heroTitle);
-page = page.replace(/EDUWILLS helps learners understand, practice and test themselves with intelligent quizzes built around the books they study\./, heroCopy);
+// Keep this repair idempotent and resilient to earlier homepage wording changes.
+// Replace the first homepage H1 rather than depending on one exact historical sentence.
+page = page.replace(/<h1 className="[^"]+">[\s\S]*?<\/h1>/, `<h1 className="max-w-3xl text-5xl font-black leading-[.98] tracking-[-.045em] sm:text-6xl lg:text-7xl">${heroTitle}</h1>`);
+
+// Replace the first hero paragraph after the H1, while preserving the rest of the page.
+page = page.replace(/(<h1[\s\S]*?<\/h1>\s*)<p className="mt-7 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">[\s\S]*?<\/p>/, `$1<p className="mt-7 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">${heroCopy}</p>`);
 
 const marker = 'EDUWILLS_SEO_CONTENT_V1';
 if (!page.includes(marker)) {
