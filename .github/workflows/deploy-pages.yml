@@ -56,10 +56,19 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          # CI may update the AI client, but must never rewrite the Quiz Studio TSX page.
           git checkout -- app/dashboard/quiz/page.tsx
           if grep -q '\\<main\|\\:px-\|\\:py-' app/dashboard/quiz/page.tsx; then
             echo 'Authoritative Quiz Studio source contains invalid escaped JSX/Tailwind punctuation.'
+            exit 1
+          fi
+      - name: Apply Book Learner cache-first generation fix
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/fix-book-learner-quiz-generation.mjs
+          node scripts/fix-book-learner-quiz-generation.mjs
+          if grep -q "title:'Selected book'" lib/quizAiClient.ts; then
+            echo 'Unsafe placeholder book fallback still present.'
             exit 1
           fi
       - name: Verify Admin, Quiz and AI implementation
@@ -82,6 +91,9 @@ jobs:
           if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing');
           if (!quiz.includes("if (!selected.length)")) throw new Error('Quiz no-book guard missing');
           if (!quiz.includes('Choose at least one book before starting.')) throw new Error('Quiz no-book warning missing');
+          if (!quiz.includes('generateQuiz(current.books, current.questions, current.difficulty, current.instructions, recent, \'\')')) throw new Error('Quiz page is not using cache-first generation path');
+          if (!ai.includes('BOOK_SELECTION_REQUIRED')) throw new Error('Quiz AI book-selection guard missing');
+          if (!ai.includes('if(!research)research=await researchBooks([book])')) throw new Error('Lazy book research missing');
           if (!ai.includes('chatGemini=')) throw new Error('Dedicated EDUWILLS AI chat model missing');
           if (!ai.includes('const batch=Math.min(20,remaining);')) throw new Error('Quiz batch speed optimization missing');
           console.log('Admin, Quiz and EDUWILLS AI implementation verified.');
