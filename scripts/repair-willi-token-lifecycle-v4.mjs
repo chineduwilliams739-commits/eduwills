@@ -6,7 +6,7 @@ let admin = fs.readFileSync(adminPath, 'utf8');
 // Ensure the Admin source has every Firestore helper used below.
 admin = admin.replace(/import \{[^\n]*\} from 'firebase\/firestore';/, "import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';");
 
-// Normalize expiry handling for Firestore Timestamps and ISO dates.
+// Normalize expiry handling for older Admin variants that use tokenExpiry.
 admin = admin.replace(/function tokenExpiry\(t\?: WilliToken\): Date \| null \{[\s\S]*?\n\}/, `function tokenExpiry(t?: WilliToken): Date | null {
   if (!t) return null;
   const raw: any = t.expiresAt;
@@ -19,9 +19,12 @@ admin = admin.replace(/function tokenExpiry\(t\?: WilliToken\): Date \| null \{[
 }`);
 
 // Active token expiry = every non-expired generated token, whether used or not.
-// IMPORTANT: replace the complete line. Do not use an unanchored `.*?;` because
-// the predicate itself contains semicolons and can leave a duplicated fragment.
-admin = admin.replace(/^  const userTokens = \(uid: string\) => .*;$/m, `  const userTokens = (uid: string) => tokens.filter(t => (t.userId || t.uid) === uid).filter(t => { const e = tokenExpiry(t); return !!e && e.getTime() > Date.now(); }).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));`);
+// Only rewrite older variants that actually define tokenExpiry. The current
+// Admin source uses expiryDate(), so leaving its existing implementation intact
+// avoids introducing an undefined helper during the deployment repair.
+if (admin.includes('function tokenExpiry')) {
+  admin = admin.replace(/^  const userTokens = \(uid: string\) => .*;$/m, `  const userTokens = (uid: string) => tokens.filter(t => (t.userId || t.uid) === uid).filter(t => { const e = tokenExpiry(t); return !!e && e.getTime() > Date.now(); }).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));`);
+}
 
 // Replace token creation only for older source variants that still expose a
 // removeBook marker. Current Admin source already has the correct createToken
