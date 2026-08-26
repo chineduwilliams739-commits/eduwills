@@ -28,7 +28,15 @@ jobs:
         with:
           node-version: '24'
       - name: Install dependencies
+        uses: actions/checkout@v4
+      - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Restore EDUWILLS homepage
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/restore-homepage-final.mjs
+          node scripts/restore-homepage-final.mjs
       - name: Apply stable EDUWILLS implementation
         shell: bash
         run: |
@@ -58,11 +66,15 @@ jobs:
           test -f public/education-news.json
           node - <<'NODE'
           const fs = require('fs');
+          const page = fs.readFileSync('app/page.tsx','utf8');
           const quiz = fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           const client = fs.readFileSync('lib/quizAiClient.ts','utf8');
           const dashboard = fs.readFileSync('app/dashboard/page.tsx','utf8');
           const personal = fs.readFileSync('app/dashboard/personal/page.tsx','utf8');
           const admin = fs.readFileSync('app/admin/page.tsx','utf8');
+          if (!page.includes('EDUWILLS_SEO_CONTENT_V1')) throw new Error('Homepage SEO content missing');
+          if (!page.includes('AI quiz generator for')) throw new Error('Homepage SEO hero missing');
+          if (!page.includes('WAEC practice questions')) throw new Error('Homepage exam-prep content missing');
           if (!client.includes('const CACHE=')) throw new Error('Quiz cache namespace missing');
           if (!client.includes('readSharedCache')) throw new Error('Shared cache reader missing');
           if (!client.includes('allocation=selected.map')) throw new Error('Multi-book allocation missing');
