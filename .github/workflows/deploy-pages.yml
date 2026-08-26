@@ -54,6 +54,12 @@ jobs:
           set -euxo pipefail
           node --check scripts/repair-willi-token-admin-controls.mjs
           node scripts/repair-willi-token-admin-controls.mjs
+      - name: Apply WilliToken lifecycle and activation repair
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-willi-token-lifecycle-v4.mjs
+          node scripts/repair-willi-token-lifecycle-v4.mjs
       - name: Verify final implementation
         shell: bash
         run: |
