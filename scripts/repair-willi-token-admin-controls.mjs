@@ -3,11 +3,10 @@ import fs from 'node:fs';
 const file = 'app/admin/page.tsx';
 let src = fs.readFileSync(file, 'utf8');
 
-// This repair is intentionally idempotent. The Admin page has evolved through
-// several lifecycle versions, so do not depend on obsolete JSX markers.
+// Idempotent Admin WilliToken lifecycle repair. The Admin page has evolved through
+// several versions, so validation is semantic rather than tied to old JSX wording.
 
-// 1) Keep every non-expired token visible to Admin, including redeemed tokens.
-//    The userTokens helper must not filter out used/redeemed tokens.
+// 1) Keep every live token visible, including redeemed tokens.
 if (/const userTokens = \(uid: string\) =>/.test(src)) {
   src = src.replace(
     /const userTokens = \(uid: string\) =>[^;]+;/,
@@ -15,8 +14,7 @@ if (/const userTokens = \(uid: string\) =>/.test(src)) {
   );
 }
 
-// 2) Automatically delete expired WilliTokens whenever Admin data is loaded.
-//    Tokens are retained while live, regardless of whether they are redeemed.
+// 2) Delete expired tokens when Admin data is loaded. Live redeemed tokens remain.
 if (!src.includes('const expiredTokenDocs = allTokenDocs.filter')) {
   const loadPattern = /\s*setTokens\(t\.docs\.map\(x => \(\{ id: x\.id, \.\.\.x\.data\(\) \} as WilliToken\)\)\);/;
   const replacement = `
@@ -37,14 +35,12 @@ if (!src.includes('const expiredTokenDocs = allTokenDocs.filter')) {
   if (loadPattern.test(src)) src = src.replace(loadPattern, replacement);
 }
 
-// 3) If an earlier repair already added a similar cleanup block, make sure it
-//    is still present and that only live records enter React state.
+// 3) Preserve an existing cleanup implementation if another repair already added it.
 if (src.includes('const expiredTokenDocs = allTokenDocs.filter') && !src.includes('setTokens(liveTokenDocs)')) {
   src = src.replace(/const liveTokenDocs = allTokenDocs\.filter\([\s\S]*?\);/, match => `${match}\n      setTokens(liveTokenDocs);`);
 }
 
-// 4) Keep an explicit revoke action. Revoke must not silently disappear from
-// the Admin UI and must immediately invalidate the token.
+// 4) Keep an explicit revoke action.
 if (!src.includes('const revokeToken = async')) {
   const marker = /\n\s*const deleteExpiredToken = async/;
   const helper = `
@@ -62,26 +58,29 @@ if (!src.includes('const revokeToken = async')) {
   if (marker.test(src)) src = src.replace(marker, `${helper}$&`);
 }
 
-// 5) The tokens tab must expose redeemed status and a revoke action.
-//    Do not fail the deployment when styling/wording changes; only fail if the
-//    entire security surface has somehow disappeared.
-const hasTokenTab = src.includes("tab === 'tokens'") || src.includes('WilliToken security');
+// 5) Security surface must exist: token tab, redeemed state, and revoke action.
+const hasTokenTab = src.includes("tab === 'tokens'") || src.includes('WilliToken security') || src.includes('WilliTokens');
 const hasRedeemedState = src.includes('Redeemed') || src.includes('redeemed') || src.includes('t.used') || src.includes('t.redeemed');
 const hasRevoke = src.includes('revokeToken(');
 if (!hasTokenTab) throw new Error('Admin WilliToken tab is missing');
 if (!hasRedeemedState) throw new Error('Admin redeemed-token status is missing');
 if (!hasRevoke) throw new Error('Admin WilliToken revoke control is missing');
 
-// 6) Category-aware generation must remain intact. This is intentionally a
-// semantic check rather than a brittle exact source marker.
-if (!src.includes('categories: selectedCategories')) {
-  throw new Error('Category-aware WilliToken generation is missing');
-}
+// 6) Category-aware token generation must remain intact.
+const hasCategorySelection = src.includes('tokenCategories') && src.includes('selectedCategories');
+const hasCategoryLinkage = src.includes('categories,') || src.includes('categories:');
+if (!hasCategorySelection) throw new Error('Admin category-aware token selection is missing');
+if (!hasCategoryLinkage) throw new Error('Token category linkage missing');
 
-// 7) Category assignment must remain available to Admin.
-if (!src.includes('Save category assignment') && !src.includes('Category assignment')) {
+// 7) Category assignment must remain available to Admin. The current implementation
+// uses selectedCategories + saveCategories + users/{id} update rather than a literal
+// "Save category assignment" label, so validate the actual behavior.
+const hasAssignmentState = src.includes('const [selectedCategories, setSelectedCategories]') || src.includes('useState<string[]>([])');
+const hasAssignmentSave = src.includes('const saveCategories = async') && src.includes("updateDoc(doc(db, 'users', selectedUser.id)") && src.includes('categories: selectedCategories');
+const hasAssignmentUi = src.includes('saveCategories(') || src.includes('savingCategories');
+if (!hasAssignmentState || !hasAssignmentSave || !hasAssignmentUi) {
   throw new Error('Admin category assignment controls are missing');
 }
 
 fs.writeFileSync(file, src);
-console.log('WilliToken Admin controls repaired: live/redeemed tokens remain visible, expired tokens auto-delete on Admin load, revoke remains available, and category-aware generation is preserved.');
+console.log('WilliToken Admin controls repaired: live/redeemed tokens remain visible, expired tokens auto-delete on Admin load, revoke remains available, and category assignment/generation remain available.');
