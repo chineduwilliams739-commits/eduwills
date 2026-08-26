@@ -60,6 +60,12 @@ jobs:
           set -euxo pipefail
           node --check scripts/repair-willi-token-lifecycle-v4.mjs
           node scripts/repair-willi-token-lifecycle-v4.mjs
+      - name: Sanitize Admin TSX
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node --check scripts/sanitize-admin-page.mjs
+          node scripts/sanitize-admin-page.mjs
       - name: Verify final implementation
         shell: bash
         run: |
