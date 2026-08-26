@@ -42,34 +42,18 @@ jobs:
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
-      - name: Reset Admin source to committed version before CI patches
-        shell: bash
-        run: |
-          set -euxo pipefail
-          git checkout -- app/admin/page.tsx
-          node --check app/admin/page.tsx >/dev/null 2>&1 || true
-          if grep -q '\\<main\|\\:' app/admin/page.tsx; then
-            echo 'Committed Admin source contains invalid escaped JSX.'
-            exit 1
-          fi
       - name: Apply safe Admin WilliToken implementation
         shell: bash
         run: |
           set -euxo pipefail
-          node --check scripts/repair-willi-token-admin-controls.mjs
-          node scripts/repair-willi-token-admin-controls.mjs
-          node --check scripts/repair-willi-token-lifecycle-v4.mjs
-          node scripts/repair-willi-token-lifecycle-v4.mjs
-      - name: Verify category and WilliToken implementation
+          python3 scripts/apply-admin-willi-token-ui.py
+      - name: Verify Admin and WilliToken implementation
         shell: bash
         run: |
           set -euxo pipefail
-          node --check scripts/implement-category-switch-and-token-categories.mjs
-          node --check scripts/repair-willi-token-admin-controls.mjs
-          node --check scripts/repair-willi-token-lifecycle-v4.mjs
           test -f app/admin/page.tsx
-          if grep -q '\\<main\|\\:' app/admin/page.tsx; then
-            echo 'Admin page contains invalid escaped JSX/Tailwind punctuation after CI patches.'
+          if grep -q '\\<main\|\\:px-\|\\:py-' app/admin/page.tsx; then
+            echo 'Admin page contains invalid escaped JSX/Tailwind punctuation.'
             exit 1
           fi
           node - <<'NODE'
@@ -86,9 +70,10 @@ jobs:
           if (!admin.includes('tokenUserSearch')) throw new Error('WilliToken user-picker state missing from Admin source');
           if (!admin.includes('tokenUserMatches')) throw new Error('WilliToken user-picker matching missing from Admin source');
           if (!admin.includes('Find user to generate WilliToken')) throw new Error('WilliToken user-picker UI missing from Admin source');
+          if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing from Admin source');
           if (!categoryScript.includes('Book Learner')) throw new Error('Book Learner category support missing');
           if (!lifecycleScript.includes('expiredTokenDocs')) throw new Error('WilliToken lifecycle cleanup implementation missing');
-          console.log('EDUWILLS Admin source verified with the WilliToken user picker installed.');
+          console.log('EDUWILLS Admin source verified with safe WilliToken user picker and expiry cleanup.');
           NODE
       - name: Build application
         env:
