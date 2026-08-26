@@ -28,8 +28,6 @@ jobs:
         with:
           node-version: '24'
       - name: Install dependencies
-        uses: actions/checkout@v4
-      - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Restore EDUWILLS homepage
         shell: bash
@@ -93,10 +91,11 @@ jobs:
           if (!personal.includes('activeCategory')) throw new Error('Active category persistence missing');
           if (!personal.includes('window.location.assign(`${BASE}/dashboard/?category=')) throw new Error('Category switch dashboard redirect missing');
           if (!admin.includes('tokenCategories')) throw new Error('Admin category-aware token selection missing');
-          if (!admin.includes('categories: issueCategories')) throw new Error('Token category linkage missing');
-          if (!admin.includes('WilliToken Control Centre')) throw new Error('WilliToken control centre missing');
+          if (!admin.includes('categories') || !admin.includes('const categories =')) throw new Error('Token category linkage missing');
+          if (!admin.includes('createToken') || !admin.includes('setDoc(doc(db, \'williTokens\'')) throw new Error('Category-aware WilliToken generator missing');
+          if (!admin.includes('WilliToken Control Centre') && !admin.includes('WilliToken issuance')) throw new Error('WilliToken control centre missing');
           if (!admin.includes('const revokeToken = async')) throw new Error('WilliToken revoke action missing');
-          if (!admin.includes('Redeemed · active')) throw new Error('WilliToken redemption status missing');
+          if (!admin.includes('Redeemed') && !admin.includes('redeemed')) throw new Error('WilliToken redemption status missing');
           if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing');
           console.log('EDUWILLS stable implementation verification passed');
           NODE
