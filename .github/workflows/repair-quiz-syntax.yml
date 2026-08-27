@@ -34,6 +34,12 @@ jobs:
               print('No invalid await expression found; nothing to repair.')
           PY
 
+      - name: Repair malformed Quiz Studio JSX escapes
+        shell: bash
+        run: |
+          set -euxo pipefail
+          node scripts/repair-quiz-tsx-source.mjs
+
       - name: Commit repair
         shell: bash
         run: |
@@ -45,5 +51,5 @@ jobs:
             exit 0
           fi
           git add app/dashboard/quiz/page.tsx
-          git commit -m "fix quiz overview async syntax"
+          git commit -m "fix malformed quiz studio JSX"
           git push
