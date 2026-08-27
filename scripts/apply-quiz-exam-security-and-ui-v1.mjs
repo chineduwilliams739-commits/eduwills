@@ -51,7 +51,6 @@ if (!s.includes(securityMarker)) {
   s = s.replace(anchor, securityBlock + anchor);
 }
 
-// Premium question/options styling. Keep the replacement structurally balanced.
 const oldCard = 'className="mt-4 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft sm:p-8"';
 const newCard = 'className="mt-4 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-200/50"';
 if (s.includes(oldCard)) s = s.replace(oldCard, newCard);
@@ -80,3 +79,6 @@ must(s.includes('Choose the best answer.'), 'Professional question interface mis
 
 fs.writeFileSync(path, s);
 console.log('Quiz exam security/UI v3 applied: balanced premium question UI, warning on leaving the test, automatic submission after a second leave.');
+
+// Also repair the live AI generation runtime in the same deployment pass.
+await import('./repair-quiz-generation-runtime-v6.mjs');
