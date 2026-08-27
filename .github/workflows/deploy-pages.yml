@@ -87,6 +87,19 @@ jobs:
           const missing=uiSignals.filter(s=>!q.toLowerCase().includes(s.toLowerCase()));
           if(missing.length) throw new Error('Quiz Studio functional UI signals missing: '+missing.join(', '));
           NODE
+      - name: Apply professional Quiz Studio exam security and styling
+        run: |
+          set -euxo pipefail
+          node --check scripts/apply-quiz-exam-security-and-ui-v1.mjs
+          node scripts/apply-quiz-exam-security-and-ui-v1.mjs
+          node - <<'NODE'
+          const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          if(!q.includes('EDUWILLS_EXAM_SECURITY_V1')) throw new Error('Exam security marker missing');
+          if(!q.includes('visibilitychange')) throw new Error('Tab-switch warning missing');
+          if(!q.includes('window.addEventListener(\'blur\'')) throw new Error('Leave-window detection missing');
+          if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
+          if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
+          NODE
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
