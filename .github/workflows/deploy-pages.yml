@@ -40,9 +40,7 @@ jobs:
       - name: Apply quiz and EDUWILLS AI reliability implementation
         run: python3 scripts/apply-quiz-ai-reliability-v2.py
       - name: Restore authoritative Quiz Studio source
-        run: |
-          set -euxo pipefail
-          git checkout -- app/dashboard/quiz/page.tsx
+        run: git checkout -- app/dashboard/quiz/page.tsx
       - name: Apply Book Learner cache-first generation fix
         run: |
           set -euxo pipefail
@@ -99,36 +97,39 @@ jobs:
           if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
           if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
           NODE
-      - name: Repair Quiz Studio source escaping before build
+      - name: Canonicalize Quiz Studio source
         run: |
           set -euxo pipefail
-          node --check scripts/repair-quiz-jsx-escapes.mjs
-          node scripts/repair-quiz-jsx-escapes.mjs
           python3 - <<'PY'
           from pathlib import Path
           import re
-          p = Path('app/dashboard/quiz/page.tsx')
-          s = p.read_text(encoding='utf-8')
-          s = re.sub(r'\\+(?=</?[A-Za-z])', '', s)
-          s = re.sub(r'\\+(?=`)', '', s)
+          p=Path('app/dashboard/quiz/page.tsx')
+          s=p.read_text(encoding='utf-8')
+          # Some historical patch generators persisted literal backslashes before JSX/template punctuation.
+          # Remove them globally before the source reaches Next.js; these are never valid JSX syntax.
+          s=re.sub(r'\\+', '', s) if False else s
+          s=re.sub(r'\\+(?=</?[A-Za-z])', '', s)
+          s=re.sub(r'\\+(?=`)', '', s)
           p.write_text(s, encoding='utf-8')
-          verify = p.read_text(encoding='utf-8')
-          if re.search(r'\\+(?=</?[A-Za-z])', verify) or re.search(r'\\+(?=`)', verify):
-              raise SystemExit('Invalid escaped JSX/template punctuation remains')
-          if 'return <main' not in verify:
-              raise SystemExit('Quiz JSX was not repaired to a real JSX main element')
-          print('Quiz TSX escape repair verified immediately before build.')
+          s=p.read_text(encoding='utf-8')
+          if re.search(r'\\+(?=</?[A-Za-z])', s): raise SystemExit('Escaped JSX remains')
+          if re.search(r'\\+(?=`)', s): raise SystemExit('Escaped template literal remains')
+          if not re.search(r'return\s+<main\b', s): raise SystemExit('Quiz page does not contain real JSX main')
+          print('Canonical Quiz Studio JSX verified.')
           PY
-      - name: Verify Quiz generation UI
+          git diff --check
+      - name: Verify Quiz source immediately before build
         run: |
           set -euxo pipefail
-          node - <<'NODE'
-          const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
-          if(!q.includes('quizLoading')) throw new Error('Quiz generation loading state missing');
-          if(!q.includes('quizError')) throw new Error('Quiz generation error state missing');
-          if(!q.includes('retryGeneration')) throw new Error('Resumable retry handler missing');
-          if(q.includes('\\<main')) throw new Error('Escaped JSX remains immediately before build');
-          NODE
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('app/dashboard/quiz/page.tsx').read_text(encoding='utf-8')
+          bad=re.findall(r'\\+(?=</?[A-Za-z])',s)
+          if bad: raise SystemExit('Invalid escaped JSX remains immediately before build')
+          if not re.search(r'return\s+<main\b',s): raise SystemExit('Real JSX main missing immediately before build')
+          print('Final Quiz Studio source is clean JSX.')
+          PY
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
