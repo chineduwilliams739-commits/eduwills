@@ -83,7 +83,9 @@ jobs:
           const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           if(!ai.includes('CHARACTER_GROUNDING_RULE')) throw new Error('Book character grounding guard missing');
           if(!ai.includes('EXACT-BOOK RESEARCH EVIDENCE')) throw new Error('Exact-book evidence grounding missing');
-          if(!q.includes('Knowledge Challenge')) throw new Error('Professional Quiz Studio interface missing');
+          const uiSignals=['question','options','progress','retryGeneration','quizError'];
+          const missing=uiSignals.filter(s=>!q.toLowerCase().includes(s.toLowerCase()));
+          if(missing.length) throw new Error('Quiz Studio functional UI signals missing: '+missing.join(', '));
           NODE
       - name: Verify Quiz generation UI
         run: |
