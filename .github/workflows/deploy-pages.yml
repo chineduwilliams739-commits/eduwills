@@ -50,6 +50,14 @@ jobs:
           node --check scripts/fix-book-learner-quiz-generation.mjs
           node scripts/fix-book-learner-quiz-generation.mjs
           if grep -q "title:'Selected book'" lib/quizAiClient.ts; then exit 1; fi
+      - name: Apply Book Learner runtime v3
+        run: |
+          set -euxo pipefail
+          node --check scripts/fix-book-learner-quiz-runtime-v3.mjs
+          node scripts/fix-book-learner-quiz-runtime-v3.mjs
+          if grep -q "title:'Selected book'" lib/quizAiClient.ts; then exit 1; fi
+          if ! grep -q "BOOK_SELECTION_REQUIRED" lib/quizAiClient.ts; then exit 1; fi
+          if ! grep -q "AI_GENERATION_FAILED:" app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Keep Book Learner generation visible on failure
         run: |
           set -euxo pipefail
