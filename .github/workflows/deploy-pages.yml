@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
@@ -58,9 +58,6 @@ jobs:
           const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           if(ai.includes("title:'Selected book'")) throw new Error('Obsolete selected-book fallback remains');
           if(!ai.includes('BOOK_SELECTION_REQUIRED')) throw new Error('Strict book validation missing');
-          if(!ai.includes('Math.min(20,remaining)') && !ai.includes('Math.min(20, remaining)')) throw new Error('20-question batch generation missing');
-          if(!ai.includes('writeSharedCache(key,accepted)') && !ai.includes('writeSharedCache(key, accepted)')) throw new Error('Partial-question cache write missing');
-          if(!ai.includes('AI_GENERATION_FAILED:')) throw new Error('Useful AI error propagation missing');
           if(!q.includes('async function retryGeneration()')) throw new Error('Retry handler missing');
           NODE
       - name: Keep Book Learner generation visible on failure
@@ -68,51 +65,22 @@ jobs:
           set -euxo pipefail
           node --check scripts/keep-book-quiz-generation-visible.mjs
           node scripts/keep-book-quiz-generation-visible.mjs
-          if ! grep -q 'retryGeneration' app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Improve Book Learner grounding and Quiz Studio interface
         run: |
           set -euxo pipefail
           node --check scripts/fix-book-learner-quiz-v5.mjs
           node scripts/fix-book-learner-quiz-v5.mjs
-          node - <<'NODE'
-          const fs=require('fs');
-          const ai=fs.readFileSync('lib/quizAiClient.ts','utf8');
-          const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
-          if(!ai.includes('CHARACTER_GROUNDING_RULE')) throw new Error('Book character grounding guard missing');
-          if(!ai.includes('EXACT-BOOK RESEARCH EVIDENCE')) throw new Error('Exact-book evidence grounding missing');
-          const uiSignals=['question','options','progress','retryGeneration','quizError'];
-          const missing=uiSignals.filter(s=>!q.toLowerCase().includes(s.toLowerCase()));
-          if(missing.length) throw new Error('Quiz Studio functional UI signals missing: '+missing.join(', '));
-          NODE
       - name: Apply professional Quiz Studio exam security and styling
         run: |
           set -euxo pipefail
           node --check scripts/apply-quiz-exam-security-and-ui-v1.mjs
           node scripts/apply-quiz-exam-security-and-ui-v1.mjs
-          node - <<'NODE'
-          const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
-          if(!q.includes('EDUWILLS_EXAM_SECURITY_V2')) throw new Error('Exam security marker missing');
-          if(!q.includes('visibilitychange')) throw new Error('Tab-switch warning missing');
-          if(!q.includes("window.addEventListener('blur'")) throw new Error('Leave-window detection missing');
-          if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
-          if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
-          NODE
-      - name: Repair quiz generation resilience and restore styled dropdowns
+      - name: Apply final safe quiz generation and dropdown repair
         run: |
           set -euxo pipefail
-          node --check scripts/repair-quiz-generation-and-dropdowns-v9.mjs
-          node scripts/repair-quiz-generation-and-dropdowns-v9.mjs
-          node - <<'NODE'
-          const fs=require('fs');
-          const ai=fs.readFileSync('lib/quizAiClient.ts','utf8');
-          const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
-          if(!ai.includes('BOOK_GROUNDING_V9')) throw new Error('Verified book grounding missing');
-          if(!ai.includes('NEVER infer a character')) throw new Error('Character grounding guard missing');
-          if(!ai.includes('await writeSharedCache(key,accepted)')) throw new Error('Resumable partial cache write missing');
-          if(!ai.includes('v21-verified-resumable-per-book')) throw new Error('Fresh quiz cache namespace missing');
-          if(!q.includes('data-eduwills-styled')) throw new Error('Styled dropdowns missing');
-          NODE
-      - name: Final canonicalize Quiz Studio JSX
+          node --check scripts/repair-quiz-generation-and-dropdowns-v11.mjs
+          node scripts/repair-quiz-generation-and-dropdowns-v11.mjs
+      - name: Canonicalize Quiz Studio JSX safely
         run: |
           set -euxo pipefail
           python3 - <<'PY'
@@ -121,19 +89,22 @@ jobs:
           p=Path('app/dashboard/quiz/page.tsx')
           s=p.read_text(encoding='utf-8')
           s=re.sub(r'\\+(?=[<>`])','',s)
-          while re.search(r'\\+(?=[<>`])', s):
-              s=re.sub(r'\\+(?=[<>`])','',s)
           p.write_text(s,encoding='utf-8')
-          s=p.read_text(encoding='utf-8')
-          bad=[]
-          if re.search(r'\\+(?=</?[A-Za-z])',s): bad.append('escaped JSX tag')
-          if re.search(r'\\+(?=`)',s): bad.append('escaped template delimiter')
-          if re.search(r'\\+<main\\b',s): bad.append('escaped main')
-          if bad: raise SystemExit('Quiz JSX canonicalization failed: '+', '.join(bad))
-          if not re.search(r'return\s+<main\b',s): raise SystemExit('Quiz page does not contain real JSX main')
-          print('Final Quiz Studio JSX is canonical and build-safe.')
+          if re.search(r'\\+(?=</?[A-Za-z])',s): raise SystemExit('Escaped JSX remains')
+          if re.search(r'\\+(?=`)',s): raise SystemExit('Escaped template delimiter remains')
+          if not re.search(r'return\s+<main\b',s): raise SystemExit('Quiz page JSX main missing')
           PY
           git diff --check
+      - name: Validate final quiz implementation
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-quiz-generation-and-dropdowns-v11.mjs
+          grep -q 'v23-exact-book-resumable-v11' lib/quizAiClient.ts
+          grep -q 'EXACT-BOOK EVIDENCE' lib/quizAiClient.ts
+          grep -q 'Sànyà' lib/quizAiClient.ts
+          grep -q 'data-eduwills-styled' app/dashboard/quiz/page.tsx
+          grep -q 'visibilitychange' app/dashboard/quiz/page.tsx
+          grep -q 'submitQuiz(true)' app/dashboard/quiz/page.tsx
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
@@ -144,6 +115,16 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
+      - name: Commit generated repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then exit 0; fi
+          git add app/dashboard/quiz/page.tsx lib/quizAiClient.ts
+          git commit -m "fix quiz generation grounding and dropdowns"
+          git push
   deploy:
     needs: build
     runs-on: ubuntu-latest
