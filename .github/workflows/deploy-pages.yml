@@ -97,7 +97,7 @@ jobs:
           if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
           if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
           NODE
-      - name: Canonicalize Quiz Studio source
+      - name: Final canonicalize Quiz Studio JSX
         run: |
           set -euxo pipefail
           python3 - <<'PY'
@@ -105,31 +105,17 @@ jobs:
           import re
           p=Path('app/dashboard/quiz/page.tsx')
           s=p.read_text(encoding='utf-8')
-          # Historical patch scripts occasionally persisted escape characters into the TSX file.
-          # Remove only backslashes that directly precede JSX delimiters or template-literal backticks.
-          s=s.replace('\\<','<')
-          s=s.replace('\\`','`')
-          s=s.replace('\\>','>')
-          p.write_text(s, encoding='utf-8')
+          # Historical patch scripts can persist one or more backslashes before
+          # JSX/template delimiters. Remove ALL such runs only at delimiters.
+          s=re.sub(r'\\+(?=[<>`])','',s)
+          p.write_text(s,encoding='utf-8')
           s=p.read_text(encoding='utf-8')
-          if re.search(r'\\+(?=</?[A-Za-z])', s): raise SystemExit('Escaped JSX remains')
-          if re.search(r'\\+(?=`)', s): raise SystemExit('Escaped template literal remains')
-          if not re.search(r'return\s+<main\b', s): raise SystemExit('Quiz page does not contain real JSX main')
-          print('Canonical Quiz Studio JSX verified.')
+          if re.search(r'\\+(?=</?[A-Za-z])',s): raise SystemExit('Escaped JSX remains immediately before build')
+          if re.search(r'\\+(?=`)',s): raise SystemExit('Escaped template literal remains immediately before build')
+          if not re.search(r'return\s+<main\b',s): raise SystemExit('Quiz page does not contain real JSX main')
+          print('Final Quiz Studio JSX is canonical and build-safe.')
           PY
           git diff --check
-      - name: Verify Quiz source immediately before build
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          s=Path('app/dashboard/quiz/page.tsx').read_text(encoding='utf-8')
-          if '\\<' in s: raise SystemExit('Invalid escaped JSX remains immediately before build')
-          if '\\`' in s: raise SystemExit('Invalid escaped template literal remains immediately before build')
-          if not re.search(r'return\s+<main\b',s): raise SystemExit('Real JSX main missing immediately before build')
-          print('Final Quiz Studio source is clean JSX.')
-          PY
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
