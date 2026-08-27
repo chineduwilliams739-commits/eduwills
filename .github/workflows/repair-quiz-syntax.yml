@@ -17,40 +17,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Repair invalid await in explainFailure
+      - name: Repair quiz source
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          p = Path('app/dashboard/quiz/page.tsx')
-          s = p.read_text()
-          bad = "if (r.ok) setWhy((p) => ({ ...p, [i]: await r.text() }));"
-          good = "if (r.ok) { const text = await r.text(); setWhy((p) => ({ ...p, [i]: text })); }"
-          if bad in s:
-              p.write_text(s.replace(bad, good, 1))
-              print('Repaired invalid await expression.')
-          else:
-              print('No invalid await expression found; nothing to repair.')
+          p=Path('app/dashboard/quiz/page.tsx')
+          s=p.read_text()
+          bad="if (r.ok) setWhy((p) => ({ ...p, [i]: await r.text() }));"
+          good="if (r.ok) { const text = await r.text(); setWhy((p) => ({ ...p, [i]: text })); }"
+          if bad in s: p.write_text(s.replace(bad,good,1))
           PY
-
-      - name: Repair malformed Quiz Studio JSX escapes
-        shell: bash
-        run: |
-          set -euxo pipefail
-          node scripts/repair-quiz-tsx-source.mjs
-
-      - name: Apply exact-book grounding, resumable generation and dropdown repair
-        shell: bash
-        run: |
-          set -euxo pipefail
           node --check scripts/repair-quiz-grounding-v7.mjs
           node scripts/repair-quiz-grounding-v7.mjs
 
-      - name: Validate quiz source and production build
+      - name: Validate grounding and build
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           grep -q 'v21-exact-book-evidence-resumable' lib/quizAiClient.ts
           grep -q 'EXACT-BOOK EVIDENCE' lib/quizAiClient.ts
           grep -q 'Never call Sànyà a boy or man' lib/quizAiClient.ts
