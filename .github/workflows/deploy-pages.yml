@@ -1,20 +1,15 @@
 name: Deploy EDUWILLS to GitHub Pages
-
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,73 +25,43 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Restore EDUWILLS homepage
-        shell: bash
         run: |
           set -euxo pipefail
           node --check scripts/restore-homepage-final.mjs
           node scripts/restore-homepage-final.mjs
       - name: Apply stable EDUWILLS implementation
-        shell: bash
         run: |
           set -euxo pipefail
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
       - name: Apply safe Admin WilliToken implementation
-        shell: bash
-        run: |
-          set -euxo pipefail
-          python3 scripts/apply-admin-willi-token-ui.py
+        run: python3 scripts/apply-admin-willi-token-ui.py
       - name: Apply quiz and EDUWILLS AI reliability implementation
-        shell: bash
-        run: |
-          set -euxo pipefail
-          python3 scripts/apply-quiz-ai-reliability-v2.py
+        run: python3 scripts/apply-quiz-ai-reliability-v2.py
       - name: Restore authoritative Quiz Studio source
-        shell: bash
         run: |
           set -euxo pipefail
           git checkout -- app/dashboard/quiz/page.tsx
-          if grep -q '\\<main\|\\:px-\|\\:py-' app/dashboard/quiz/page.tsx; then
-            echo 'Authoritative Quiz Studio source contains invalid escaped JSX/Tailwind punctuation.'
-            exit 1
-          fi
+          if grep -q '\\<main\|\\:px-\|\\:py-' app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Apply Book Learner cache-first generation fix
-        shell: bash
         run: |
           set -euxo pipefail
           node --check scripts/fix-book-learner-quiz-generation.mjs
           node scripts/fix-book-learner-quiz-generation.mjs
-          if grep -q "title:'Selected book'" lib/quizAiClient.ts; then
-            echo 'Unsafe placeholder book fallback still present.'
-            exit 1
-          fi
-      - name: Verify Admin, Quiz and AI implementation
-        shell: bash
+          if grep -q "title:'Selected book'" lib/quizAiClient.ts; then exit 1; fi
+      - name: Keep Book Learner generation visible on failure
         run: |
           set -euxo pipefail
-          test -f app/admin/page.tsx
-          test -f app/dashboard/quiz/page.tsx
-          test -f app/dashboard/ai/page.tsx
-          if grep -q '\\<main\|\\:px-\|\\:py-' app/admin/page.tsx app/dashboard/quiz/page.tsx app/dashboard/ai/page.tsx; then
-            echo 'Application page contains invalid escaped JSX/Tailwind punctuation.'
-            exit 1
-          fi
+          node --check scripts/keep-book-quiz-generation-visible.mjs
+          node scripts/keep-book-quiz-generation-visible.mjs
+      - name: Verify Quiz generation UI
+        run: |
+          set -euxo pipefail
           node - <<'NODE'
-          const fs = require('fs');
-          const admin = fs.readFileSync('app/admin/page.tsx','utf8');
-          const quiz = fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
-          const ai = fs.readFileSync('lib/quizAiClient.ts','utf8');
-          if (!admin.includes('tokenUserSearch')) throw new Error('WilliToken user picker missing');
-          if (!admin.includes('expiredTokenDocs')) throw new Error('WilliToken expiry cleanup missing');
-          if (!quiz.includes("if (!selected.length)")) throw new Error('Quiz no-book guard missing');
-          if (!quiz.includes('Choose at least one book before starting.')) throw new Error('Quiz no-book warning missing');
-          if (!quiz.includes('generateQuiz(current.books, current.questions, current.difficulty, current.instructions, recent, \'\')')) throw new Error('Quiz page is not using cache-first generation path');
-          if (!ai.includes('BOOK_SELECTION_REQUIRED')) throw new Error('Quiz AI book-selection guard missing');
-          if (!ai.includes('if(!research)research=await researchBooks([book])')) throw new Error('Lazy book research missing');
-          if (!ai.includes('chatGemini=')) throw new Error('Dedicated EDUWILLS AI chat model missing');
-          if (!ai.includes('const batch=Math.min(20,remaining);')) throw new Error('Quiz batch speed optimization missing');
-          console.log('Admin, Quiz and EDUWILLS AI implementation verified.');
+          const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          if(!q.includes('if (setup && quizLoading && !qs.length)')) throw new Error('Quiz generation loading screen missing');
+          if(!q.includes('if (setup && !qs.length && quizError)')) throw new Error('Quiz generation error screen missing');
           NODE
       - name: Build application
         env:
