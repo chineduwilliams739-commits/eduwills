@@ -105,11 +105,11 @@ jobs:
           import re
           p=Path('app/dashboard/quiz/page.tsx')
           s=p.read_text(encoding='utf-8')
-          # Some historical patch generators persisted literal backslashes before JSX/template punctuation.
-          # Remove them globally before the source reaches Next.js; these are never valid JSX syntax.
-          s=re.sub(r'\\+', '', s) if False else s
-          s=re.sub(r'\\+(?=</?[A-Za-z])', '', s)
-          s=re.sub(r'\\+(?=`)', '', s)
+          # Historical patch scripts occasionally persisted escape characters into the TSX file.
+          # Remove only backslashes that directly precede JSX delimiters or template-literal backticks.
+          s=s.replace('\\<','<')
+          s=s.replace('\\`','`')
+          s=s.replace('\\>','>')
           p.write_text(s, encoding='utf-8')
           s=p.read_text(encoding='utf-8')
           if re.search(r'\\+(?=</?[A-Za-z])', s): raise SystemExit('Escaped JSX remains')
@@ -125,8 +125,8 @@ jobs:
           from pathlib import Path
           import re
           s=Path('app/dashboard/quiz/page.tsx').read_text(encoding='utf-8')
-          bad=re.findall(r'\\+(?=</?[A-Za-z])',s)
-          if bad: raise SystemExit('Invalid escaped JSX remains immediately before build')
+          if '\\<' in s: raise SystemExit('Invalid escaped JSX remains immediately before build')
+          if '\\`' in s: raise SystemExit('Invalid escaped template literal remains immediately before build')
           if not re.search(r'return\s+<main\b',s): raise SystemExit('Real JSX main missing immediately before build')
           print('Final Quiz Studio source is clean JSX.')
           PY
