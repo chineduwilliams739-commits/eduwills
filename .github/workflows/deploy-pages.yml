@@ -97,6 +97,21 @@ jobs:
           if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
           if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
           NODE
+      - name: Repair quiz generation resilience and restore styled dropdowns
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-quiz-generation-and-dropdowns-v9.mjs
+          node scripts/repair-quiz-generation-and-dropdowns-v9.mjs
+          node - <<'NODE'
+          const fs=require('fs');
+          const ai=fs.readFileSync('lib/quizAiClient.ts','utf8');
+          const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          if(!ai.includes('BOOK_GROUNDING_V9')) throw new Error('Verified book grounding missing');
+          if(!ai.includes('NEVER infer a character')) throw new Error('Character grounding guard missing');
+          if(!ai.includes('await writeSharedCache(key,accepted)')) throw new Error('Resumable partial cache write missing');
+          if(!ai.includes('v21-verified-resumable-per-book')) throw new Error('Fresh quiz cache namespace missing');
+          if(!q.includes('data-eduwills-styled')) throw new Error('Styled dropdowns missing');
+          NODE
       - name: Final canonicalize Quiz Studio JSX
         run: |
           set -euxo pipefail
@@ -105,11 +120,7 @@ jobs:
           import re
           p=Path('app/dashboard/quiz/page.tsx')
           s=p.read_text(encoding='utf-8')
-          # Some historical patch scripts escaped JSX/template delimiters.
-          # Canonicalize every run of backslashes immediately before a JSX
-          # delimiter or template-literal delimiter, regardless of run length.
           s=re.sub(r'\\+(?=[<>`])','',s)
-          # Defensive second pass for files that contain doubled escape runs.
           while re.search(r'\\+(?=[<>`])', s):
               s=re.sub(r'\\+(?=[<>`])','',s)
           p.write_text(s,encoding='utf-8')
