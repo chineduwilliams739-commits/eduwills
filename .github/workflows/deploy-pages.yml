@@ -105,13 +105,20 @@ jobs:
           import re
           p=Path('app/dashboard/quiz/page.tsx')
           s=p.read_text(encoding='utf-8')
-          # Historical patch scripts can persist one or more backslashes before
-          # JSX/template delimiters. Remove ALL such runs only at delimiters.
+          # Some historical patch scripts escaped JSX/template delimiters.
+          # Canonicalize every run of backslashes immediately before a JSX
+          # delimiter or template-literal delimiter, regardless of run length.
           s=re.sub(r'\\+(?=[<>`])','',s)
+          # Defensive second pass for files that contain doubled escape runs.
+          while re.search(r'\\+(?=[<>`])', s):
+              s=re.sub(r'\\+(?=[<>`])','',s)
           p.write_text(s,encoding='utf-8')
           s=p.read_text(encoding='utf-8')
-          if re.search(r'\\+(?=</?[A-Za-z])',s): raise SystemExit('Escaped JSX remains immediately before build')
-          if re.search(r'\\+(?=`)',s): raise SystemExit('Escaped template literal remains immediately before build')
+          bad=[]
+          if re.search(r'\\+(?=</?[A-Za-z])',s): bad.append('escaped JSX tag')
+          if re.search(r'\\+(?=`)',s): bad.append('escaped template delimiter')
+          if re.search(r'\\+<main\\b',s): bad.append('escaped main')
+          if bad: raise SystemExit('Quiz JSX canonicalization failed: '+', '.join(bad))
           if not re.search(r'return\s+<main\b',s): raise SystemExit('Quiz page does not contain real JSX main')
           print('Final Quiz Studio JSX is canonical and build-safe.')
           PY
