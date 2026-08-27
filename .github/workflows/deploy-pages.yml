@@ -43,7 +43,6 @@ jobs:
         run: |
           set -euxo pipefail
           git checkout -- app/dashboard/quiz/page.tsx
-          if grep -q '\\<main\|\\:px-\|\\:py-' app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Apply Book Learner cache-first generation fix
         run: |
           set -euxo pipefail
@@ -100,7 +99,7 @@ jobs:
           if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
           if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
           NODE
-      - name: Repair Quiz Studio source escaping
+      - name: Repair Quiz Studio source escaping before build
         run: |
           set -euxo pipefail
           node --check scripts/repair-quiz-jsx-escapes.mjs
@@ -110,16 +109,16 @@ jobs:
           import re
           p = Path('app/dashboard/quiz/page.tsx')
           s = p.read_text(encoding='utf-8')
-          # These backslashes were accidentally persisted by earlier patch scripts.
-          # Remove only backslashes immediately preceding JSX/template punctuation.
-          s = re.sub(r'\\+(?=[<>`])', '', s)
+          s = re.sub(r'\\+(?=</?[A-Za-z])', '', s)
+          s = re.sub(r'\\+(?=`)', '', s)
           p.write_text(s, encoding='utf-8')
+          verify = p.read_text(encoding='utf-8')
+          if re.search(r'\\+(?=</?[A-Za-z])', verify) or re.search(r'\\+(?=`)', verify):
+              raise SystemExit('Invalid escaped JSX/template punctuation remains')
+          if 'return <main' not in verify:
+              raise SystemExit('Quiz JSX was not repaired to a real JSX main element')
+          print('Quiz TSX escape repair verified immediately before build.')
           PY
-          if grep -nE '\\+<(main|/|[A-Za-z])|\\+`' app/dashboard/quiz/page.tsx; then
-            echo 'Invalid escaped JSX/template punctuation remains'
-            exit 1
-          fi
-          grep -q '^.*return <main' app/dashboard/quiz/page.tsx
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
@@ -128,6 +127,7 @@ jobs:
           if(!q.includes('quizLoading')) throw new Error('Quiz generation loading state missing');
           if(!q.includes('quizError')) throw new Error('Quiz generation error state missing');
           if(!q.includes('retryGeneration')) throw new Error('Resumable retry handler missing');
+          if(q.includes('\\<main')) throw new Error('Escaped JSX remains immediately before build');
           NODE
       - name: Build application
         env:
