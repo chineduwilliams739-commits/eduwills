@@ -1,22 +1,22 @@
 import fs from 'node:fs';
 
 const file = 'app/dashboard/quiz/page.tsx';
-const source = fs.readFileSync(file, 'utf8');
-let out = source;
+let source = fs.readFileSync(file, 'utf8');
 
-// Previous automated UI patches wrote JSX with source-level escape characters.
-// Decode only the escape forms that are unambiguously artifacts of those patches.
-out = out
-  .replace(/\\</g, '<')
-  .replace(/\\>/g, '>')
-  .replace(/\\`/g, '`')
-  .replace(/\\\$\{/g, '${');
+// Some of the earlier automated patches escaped JSX punctuation more than once.
+// Decode only repeated source-level escapes that cannot be valid JSX syntax.
+source = source.replace(/\\+([<>`])/g, '$1');
+source = source.replace(/\\+\$\{/g, '${');
 
-if (!out.includes('return <main')) {
+// If an older patch left an escaped JSX tag behind, normalize it as well.
+source = source.replace(/\\+(?=<\/?[A-Za-z])/g, '');
+
+if (!source.includes('return <main')) {
   throw new Error('Quiz JSX repair did not find a JSX return expression');
 }
-if (out.includes('return \\<main')) {
-  throw new Error('Quiz JSX still contains escaped opening JSX');
+if (/return\s+\\+<main/.test(source) || /\\+<\/?[A-Za-z]/.test(source)) {
+  throw new Error('Quiz JSX still contains escaped JSX tags');
 }
-fs.writeFileSync(file, out);
-console.log('Quiz TSX source escapes repaired.');
+
+fs.writeFileSync(file, source);
+console.log('Quiz TSX source escapes repaired and verified.');
