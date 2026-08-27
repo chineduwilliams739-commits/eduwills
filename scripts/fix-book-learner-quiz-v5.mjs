@@ -38,7 +38,7 @@ async function verifyQuizQuestions(book:QuizBook,questions:QuizQuestion[],resear
   let text='';
   try{text=await worker(prompt,18000,'quiz')}catch{try{const r=await geminiFallback(prompt);text=r.response.text()}catch{return[]}}
   try{
-    const raw=String(text||'').trim();const a=raw.indexOf('{'),b=raw.lastIndexOf('}');const data=JSON.parse(a>=0&&b>a?raw.slice(a,b+1):raw);const ids=new Set(Array.isArray(data?.accepted)?data.accepted.filter((x:any)=>Number.isInteger(x)&&x>=0&&x<questions.length):[]);return questions.filter((_,i)=>ids.has(i));
+    const raw=String(text||'').trim();const a=raw.indexOf('{'),b=raw.lastIndexOf('}');const data=JSON.parse(a>=0&&b>a?raw.slice(a,b+1):raw);const ids=new Set(Array.isArray(data?.accepted)?data.accepted.filter((x)=>Number.isInteger(x)&&x>=0&&x<questions.length):[]);return questions.filter((_,i)=>ids.has(i));
   }catch{return[]}
 }
 `;
@@ -91,3 +91,8 @@ must(page.includes('Quiz generation could not finish') || page.includes('quizErr
 must(page.includes('Generating your quiz') || page.includes('Building your quiz'), 'Quiz loading UI missing');
 
 console.log('Book Learner v6 applied: exact-book evidence-gated verification, character grounding, fresh verified cache namespace, resumable partial caching, batched generation, retry support, and Quiz Studio UI.');
+
+// Apply the resilient v6 runtime after the canonical v5 grounding pass. The
+// deploy workflow already executes this v5 script, so this keeps the repair in
+// the authoritative build path without adding another fragile workflow step.
+await import('./repair-quiz-generation-grounding-v6.mjs');
