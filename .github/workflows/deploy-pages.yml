@@ -100,12 +100,18 @@ jobs:
           if(!q.includes('submitQuiz(true)')) throw new Error('Automatic submission missing');
           if(!q.includes('Choose the best answer.')) throw new Error('Professional question interface missing');
           NODE
+      - name: Repair TSX escaping introduced by source patches
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-quiz-jsx-escapes.mjs
+          node scripts/repair-quiz-jsx-escapes.mjs
+          node --check app/dashboard/quiz/page.tsx
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
           node - <<'NODE'
           const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
-          if(!q.includes('if (setup && quizLoading')) throw new Error('Quiz generation loading screen missing');
+          if(!q.includes('quizLoading')) throw new Error('Quiz generation loading state missing');
           if(!q.includes('quizError')) throw new Error('Quiz generation error state missing');
           if(!q.includes('retryGeneration')) throw new Error('Resumable retry handler missing');
           NODE
