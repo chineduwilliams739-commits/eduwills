@@ -50,19 +50,23 @@ jobs:
           node --check scripts/fix-book-learner-quiz-generation.mjs
           node scripts/fix-book-learner-quiz-generation.mjs
           if grep -q "title:'Selected book'" lib/quizAiClient.ts; then exit 1; fi
-      - name: Apply Book Learner runtime v3
+      - name: Apply Book Learner resumable runtime v4
         run: |
           set -euxo pipefail
           node --check scripts/fix-book-learner-quiz-runtime-v3.mjs
           node scripts/fix-book-learner-quiz-runtime-v3.mjs
           if grep -q "title:'Selected book'" lib/quizAiClient.ts; then exit 1; fi
           if ! grep -q "BOOK_SELECTION_REQUIRED" lib/quizAiClient.ts; then exit 1; fi
+          if ! grep -q "Math.min(20,remaining)" lib/quizAiClient.ts; then exit 1; fi
+          if ! grep -q "Resume data has been cached" lib/quizAiClient.ts; then exit 1; fi
+          if ! grep -q "async function retryGeneration" app/dashboard/quiz/page.tsx; then exit 1; fi
           if ! grep -q "AI_GENERATION_FAILED:" app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Keep Book Learner generation visible on failure
         run: |
           set -euxo pipefail
           node --check scripts/keep-book-quiz-generation-visible.mjs
           node scripts/keep-book-quiz-generation-visible.mjs
+          if ! grep -q "onClick={retryGeneration}" app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
@@ -70,6 +74,7 @@ jobs:
           const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           if(!q.includes('if (setup && quizLoading && !qs.length)')) throw new Error('Quiz generation loading screen missing');
           if(!q.includes('if (setup && !qs.length && quizError)')) throw new Error('Quiz generation error screen missing');
+          if(!q.includes('onClick={retryGeneration}')) throw new Error('Resumable retry handler missing');
           NODE
       - name: Build application
         env:
