@@ -14,8 +14,12 @@ const newSelection = "if(!books.length||books.some(b=>!String(b.title||'').trim(
 if (ai.includes(oldFallback)) ai = ai.replace(oldFallback, newSelection);
 
 const oldGrounding = 'Never invent unsupported facts or quotations.';
-const newGrounding = 'Never invent unsupported facts or quotations. CHARACTER_GROUNDING_RULE: Never infer a character\'s gender, sex, age, identity, relationship, family role, appearance, nationality, occupation, or other personal attribute from a character name, stereotype, or outside knowledge. State a character attribute only when it is explicitly supported by the selected book or clearly identified evidence for that exact book. If evidence is insufficient, do not assert the attribute and do not use it as the basis of a quiz question. Never substitute facts from another book, adaptation, summary, or similarly named work.';
-if (ai.includes(oldGrounding) && !ai.includes('CHARACTER_GROUNDING_RULE')) ai = ai.replace(oldGrounding, newGrounding);
+const newGrounding = 'Never invent unsupported facts or quotations. EXACT-BOOK RESEARCH EVIDENCE: all factual claims must be grounded in evidence for the exact selected book and author. CHARACTER_GROUNDING_RULE: Never infer gender, sex, age, identity, relationship, family role, appearance, nationality, occupation, or any other personal attribute from a character name, stereotype, or outside knowledge. State a character attribute only when it is explicitly supported by the selected book or clearly identified evidence for that exact book. If evidence is insufficient, do not assert the attribute and do not use it as the basis of a quiz question. Never substitute facts from another book, adaptation, summary, or similarly named work.';
+if (ai.includes(oldGrounding) && !ai.includes('EXACT-BOOK RESEARCH EVIDENCE')) ai = ai.replace(oldGrounding, newGrounding);
+
+// Use reasonably sized batches while supporting quizzes of up to 100 questions.
+if (ai.includes('Math.min(8,remaining)')) ai = ai.replaceAll('Math.min(8,remaining)', 'Math.min(20,remaining)');
+if (ai.includes('Math.min(8, remaining)')) ai = ai.replaceAll('Math.min(8, remaining)', 'Math.min(20, remaining)');
 
 // Persist every successfully validated partial batch so Retry can resume from it.
 const oldBatchEnd = "if(added===0)break}if(accepted.length<requested)throw new Error(`AI generated ${accepted.length} of ${requested} verified questions for ${book.title}. Please try again.`);await recordQuota();await writeSharedCache(key,accepted);return accepted.slice(0,requested)}";
@@ -29,9 +33,10 @@ must(ai.includes('BOOK_SELECTION_REQUIRED'), 'Strict book validation missing');
 must(!ai.includes("title:'Selected book',author:'Unknown'"), 'Obsolete fake selected-book fallback remains');
 must(ai.includes('Math.min(20, remaining)') || ai.includes('Math.min(20,remaining)'), 'Batched generation missing');
 must(ai.includes('CHARACTER_GROUNDING_RULE'), 'Character grounding guard missing');
+must(ai.includes('EXACT-BOOK RESEARCH EVIDENCE'), 'Exact-book evidence grounding missing');
 must(ai.includes('await writeSharedCache(key,accepted);'), 'Partial-question cache write missing');
 must(page.includes('retryGeneration'), 'Quiz retry handler missing');
 must(page.includes('Quiz generation could not finish') || page.includes('quizError'), 'Quiz generation error UI missing');
 must(page.includes('Generating your quiz') || page.includes('Building your quiz'), 'Quiz loading UI missing');
 
-console.log('Book Learner v5 applied and validated: strict book selection, character grounding, resumable partial caching, batched generation, retry support, and Quiz Studio UI.');
+console.log('Book Learner v5 applied and validated: strict book selection, exact-book evidence, character grounding, resumable partial caching, batched generation, retry support, and Quiz Studio UI.');
