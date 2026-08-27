@@ -55,12 +55,18 @@ jobs:
           set -euxo pipefail
           node --check scripts/fix-book-learner-quiz-runtime-v3.mjs
           node scripts/fix-book-learner-quiz-runtime-v3.mjs
-          if grep -q "title:'Selected book'" lib/quizAiClient.ts; then exit 1; fi
-          if ! grep -q "BOOK_SELECTION_REQUIRED" lib/quizAiClient.ts; then exit 1; fi
-          if ! grep -q "Math.min(20,remaining)" lib/quizAiClient.ts; then exit 1; fi
-          if ! grep -q "Resume data has been cached" lib/quizAiClient.ts; then exit 1; fi
-          if ! grep -q "async function retryGeneration" app/dashboard/quiz/page.tsx; then exit 1; fi
-          if ! grep -q "AI_GENERATION_FAILED:" app/dashboard/quiz/page.tsx; then exit 1; fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const ai=fs.readFileSync('lib/quizAiClient.ts','utf8');
+          const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          if(ai.includes("title:'Selected book'")) throw new Error('Obsolete selected-book fallback remains');
+          if(!ai.includes('BOOK_SELECTION_REQUIRED')) throw new Error('Strict book validation missing');
+          if(!ai.includes('Math.min(20,remaining)')) throw new Error('20-question batch generation missing');
+          if(!ai.includes('writeSharedCache(key,accepted)')) throw new Error('Partial-question cache write missing');
+          if(!ai.includes('AI_GENERATION_FAILED:')) throw new Error('Useful AI error propagation missing');
+          if(!q.includes('async function retryGeneration()')) throw new Error('Retry handler missing');
+          if(!q.includes('onClick={retryGeneration}')) throw new Error('Retry button is not wired');
+          NODE
       - name: Keep Book Learner generation visible on failure
         run: |
           set -euxo pipefail
