@@ -65,7 +65,6 @@ jobs:
           if(!ai.includes('writeSharedCache(key,accepted)')) throw new Error('Partial-question cache write missing');
           if(!ai.includes('AI_GENERATION_FAILED:')) throw new Error('Useful AI error propagation missing');
           if(!q.includes('async function retryGeneration()')) throw new Error('Retry handler missing');
-          if(!/retryGeneration/.test(q)) throw new Error('Retry implementation missing');
           NODE
       - name: Keep Book Learner generation visible on failure
         run: |
@@ -73,6 +72,19 @@ jobs:
           node --check scripts/keep-book-quiz-generation-visible.mjs
           node scripts/keep-book-quiz-generation-visible.mjs
           if ! grep -q 'retryGeneration' app/dashboard/quiz/page.tsx; then exit 1; fi
+      - name: Improve Book Learner grounding and Quiz Studio interface
+        run: |
+          set -euxo pipefail
+          node --check scripts/fix-book-learner-quiz-v5.mjs
+          node scripts/fix-book-learner-quiz-v5.mjs
+          node - <<'NODE'
+          const fs=require('fs');
+          const ai=fs.readFileSync('lib/quizAiClient.ts','utf8');
+          const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
+          if(!ai.includes('never infer gender')) throw new Error('Book character grounding guard missing');
+          if(!ai.includes('EXACT-BOOK RESEARCH EVIDENCE')) throw new Error('Exact-book evidence grounding missing');
+          if(!q.includes('Knowledge Challenge')) throw new Error('Professional Quiz Studio interface missing');
+          NODE
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
