@@ -3,9 +3,14 @@ import fs from 'node:fs';
 const path = 'app/dashboard/quiz/page.tsx';
 let source = fs.readFileSync(path, 'utf8');
 
-// Some earlier source-repair scripts escaped JSX punctuation while writing
-// strings into the TSX file. Those escapes are not valid JSX tokens.
-source = source.replaceAll('\\<', '<').replaceAll('\\>', '>').replaceAll('\\`', '`');
+// Earlier patch scripts accidentally persisted one or more backslashes before
+// JSX/template punctuation. Normalize all such runs, not just a single slash.
+source = source.replace(/\\+([<>`])/g, '$1');
+
+// JSX must contain real tags. Fail early if an escaped opening tag remains.
+if (/\\+<\/?[A-Za-z]/.test(source)) {
+  source = source.replace(/\\+<(?=\/?[A-Za-z])/g, '<');
+}
 
 fs.writeFileSync(path, source);
 
@@ -21,5 +26,6 @@ const required = [
 for (const marker of required) {
   if (!source.includes(marker)) throw new Error(`Quiz source repair verification failed: ${marker}`);
 }
+if (/\\+<\/?[A-Za-z]/.test(source)) throw new Error('Escaped JSX tags remain after repair');
 
-console.log('Quiz TSX escape repair applied and verified.');
+console.log('Quiz TSX escape repair v2 applied and verified.');
