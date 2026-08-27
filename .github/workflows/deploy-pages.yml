@@ -65,14 +65,15 @@ jobs:
           if(!ai.includes('writeSharedCache(key,accepted)')) throw new Error('Partial-question cache write missing');
           if(!ai.includes('AI_GENERATION_FAILED:')) throw new Error('Useful AI error propagation missing');
           if(!q.includes('async function retryGeneration()')) throw new Error('Retry handler missing');
-          if(!q.includes('onClick={retryGeneration}')) throw new Error('Retry button is not wired');
+          const retryWired=/onClick\s*=\s*\{\s*(?:retryGeneration|\(\)\s*=>\s*retryGeneration\(\)|\(\)\s*=>\s*\{\s*retryGeneration\(\)\s*\})\s*\}/.test(q);
+          if(!retryWired) throw new Error('Retry button is not functionally wired');
           NODE
       - name: Keep Book Learner generation visible on failure
         run: |
           set -euxo pipefail
           node --check scripts/keep-book-quiz-generation-visible.mjs
           node scripts/keep-book-quiz-generation-visible.mjs
-          if ! grep -q "onClick={retryGeneration}" app/dashboard/quiz/page.tsx; then exit 1; fi
+          if ! grep -Eq 'onClick[[:space:]]*=[[:space:]]*\{[[:space:]]*(retryGeneration|\(\)[[:space:]]*=>[[:space:]]*retryGeneration\(\))' app/dashboard/quiz/page.tsx; then exit 1; fi
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
@@ -80,7 +81,8 @@ jobs:
           const fs=require('fs'); const q=fs.readFileSync('app/dashboard/quiz/page.tsx','utf8');
           if(!q.includes('if (setup && quizLoading && !qs.length)')) throw new Error('Quiz generation loading screen missing');
           if(!q.includes('if (setup && !qs.length && quizError)')) throw new Error('Quiz generation error screen missing');
-          if(!q.includes('onClick={retryGeneration}')) throw new Error('Resumable retry handler missing');
+          const retryWired=/onClick\s*=\s*\{\s*(?:retryGeneration|\(\)\s*=>\s*retryGeneration\(\))/.test(q);
+          if(!retryWired) throw new Error('Resumable retry handler missing');
           NODE
       - name: Build application
         env:
