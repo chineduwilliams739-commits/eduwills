@@ -1,4 +1,4 @@
-const fs = require('fs');
+import fs from 'node:fs';
 
 const aiPath = 'lib/quizAiClient.ts';
 let ai = fs.readFileSync(aiPath, 'utf8');
