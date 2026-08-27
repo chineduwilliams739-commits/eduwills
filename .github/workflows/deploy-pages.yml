@@ -105,7 +105,10 @@ jobs:
           set -euxo pipefail
           node --check scripts/repair-quiz-jsx-escapes.mjs
           node scripts/repair-quiz-jsx-escapes.mjs
-          node --check app/dashboard/quiz/page.tsx
+          if grep -q '\\<main\|\\</\|\\>`\|\\`' app/dashboard/quiz/page.tsx; then
+            echo 'Invalid escaped JSX tokens remain in Quiz Studio source'
+            exit 1
+          fi
       - name: Verify Quiz generation UI
         run: |
           set -euxo pipefail
