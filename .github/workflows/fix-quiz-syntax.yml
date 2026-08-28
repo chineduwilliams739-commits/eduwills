@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
       - name: Repair malformed quiz client source
         shell: bash
         run: |
@@ -29,12 +31,12 @@ jobs:
           # Normalize escaped regex sequences that were written with an extra backslash.
           s = s.replace(r'[\\\\u0300-\\\\u036f]', r'[\\u0300-\\u036f]')
           s = s.replace(r'/\\\\s+/g', r'/\\s+/g')
-          s = s.replace(r'/\\\\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\\\\b/g', r'/\\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\\b/g')
-          s = s.replace(r'/\\\\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\\\\b/i', r'/\\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\\b/i')
+          s = s.replace(r'/\\\\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\\\\b/g', r'/\\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\\\\b/g')
+          s = s.replace(r'/\\\\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\\\\b/i', r'/\\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\\\\b/i')
           s = s.replace(r'/\\\\/$/g', r'/\\/$/g')
           p.write_text(s)
           PY
-          npx tsc --noEmit --pretty false
+          npm run build
       - name: Commit repair
         shell: bash
         run: |
