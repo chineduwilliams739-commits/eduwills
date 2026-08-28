@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, LockKeyhole, Phone } from 'lucide-react';
+import { ArrowLeft, LockKeyhole } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
 
 export default function LoginPage() {
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState<string | undefined>('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,15 +19,17 @@ export default function LoginPage() {
     e.preventDefault();
     setMessage('');
     const password = String(new FormData(e.currentTarget).get('password') || '');
-    if (phone.length !== 10) { setMessage('Enter exactly 10 digits after +234.'); return; }
+    if (!phone || !isValidPhoneNumber(phone)) { setMessage('Enter a valid phone number and select the correct country code.'); return; }
     setLoading(true);
     try {
       let authEmail = '';
       let username = '';
       let expectedUid = '';
       let indexed = false;
+      const legacyKey = phone.replace(/^\+/, '');
 
-      const indexSnap = await getDoc(doc(db, 'phoneIndex', phone));
+      let indexSnap = await getDoc(doc(db, 'phoneIndex', phone));
+      if (!indexSnap.exists()) indexSnap = await getDoc(doc(db, 'phoneIndex', legacyKey));
       if (indexSnap.exists()) {
         indexed = true;
         const index = indexSnap.data() as { uid?: string; authEmail?: string; username?: string };
@@ -34,7 +38,6 @@ export default function LoginPage() {
         expectedUid = index.uid || '';
       }
 
-      // Compatibility for accounts created before phoneIndex was introduced.
       if (!authEmail) {
         const legacyUsername = localStorage.getItem('eduwills_current_user') || '';
         if (legacyUsername) {
@@ -42,59 +45,38 @@ export default function LoginPage() {
           username = legacyUsername;
         }
       }
-
-      if (!authEmail) {
-        setMessage('No EDUWILLS account was found for that phone number. If this is an older account, open EDUWILLS on the device where you registered once so we can migrate its login record.');
-        setLoading(false);
-        return;
-      }
+      if (!authEmail) { setMessage('No EDUWILLS account was found for that phone number.'); setLoading(false); return; }
 
       const credential = await signInWithEmailAndPassword(auth, authEmail, password);
       const profileSnap = await getDoc(doc(db, 'users', credential.user.uid));
-      if (!profileSnap.exists()) {
-        await auth.signOut();
-        setMessage('Your login exists in Firebase, but your EDUWILLS profile is missing. Please contact the administrator.');
-        setLoading(false);
-        return;
-      }
+      if (!profileSnap.exists()) { await auth.signOut(); setMessage('Your Firebase login exists, but your EDUWILLS profile is missing. Please contact the administrator.'); setLoading(false); return; }
 
-      const profile = profileSnap.data() as { phone?: string; username?: string; authEmail?: string };
-      if (profile.phone !== phone) {
-        await auth.signOut();
-        setMessage('That phone number does not belong to the account matching this password.');
-        setLoading(false);
-        return;
-      }
+      const profile = profileSnap.data() as { phone?: string; phoneE164?: string; username?: string; authEmail?: string; email?: string; emailVerified?: boolean };
+      const profilePhone = profile.phoneE164 || (profile.phone ? `+${profile.phone}` : '');
+      if (profilePhone && profilePhone !== phone && profile.phone !== legacyKey) { await auth.signOut(); setMessage('That phone number is not linked to this account.'); setLoading(false); return; }
+      if (expectedUid && credential.user.uid !== expectedUid) { await auth.signOut(); setMessage('This phone number is not linked to that account.'); setLoading(false); return; }
 
-      if (expectedUid && credential.user.uid !== expectedUid) {
+      if (!credential.user.emailVerified && !String(authEmail).endsWith('@accounts.eduwills.app')) {
+        await sendEmailVerification(credential.user).catch(() => undefined);
         await auth.signOut();
-        setMessage('This phone number is not linked to that account.');
+        setMessage('Please verify your email before logging in. A fresh verification link has been sent to your email.');
         setLoading(false);
         return;
       }
 
       username = profile.username || username;
-      // Repair/migrate the missing phone index after a verified legacy login.
-      if (!indexed) {
-        await setDoc(doc(db, 'phoneIndex', phone), {
-          uid: credential.user.uid,
-          authEmail: profile.authEmail || authEmail,
-          username,
-          migratedAt: new Date().toISOString(),
-        }, { merge: true });
-      }
-
+      if (!indexed) await setDoc(doc(db, 'phoneIndex', phone), { uid: credential.user.uid, authEmail: profile.authEmail || profile.email || authEmail, username, phoneE164: phone, migratedAt: new Date().toISOString() }, { merge: true });
       localStorage.setItem('eduwills_current_user', username);
       localStorage.setItem('eduwills_current_uid', credential.user.uid);
       window.location.href = `${BASE}/dashboard/`;
     } catch (error: unknown) {
       const code = error instanceof Error ? error.message : '';
       if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) setMessage('Phone number or password is incorrect.');
-      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase rules are blocking the required account lookup. Publish the latest Firestore rules.');
+      else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase rules are blocking the required account lookup.');
       else setMessage('Unable to log in. Please check your details and try again.');
       setLoading(false);
     }
   }
 
-  return <main className="min-h-screen bg-paper px-5 py-6 sm:px-8"><div className="mx-auto max-w-5xl"><a href={`${BASE}/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17}/> Back to EDUWILLS</a><div className="mx-auto mt-10 max-w-md rounded-[2rem] border border-slate-200 bg-white p-7 shadow-soft sm:p-10"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-ink text-white"><LockKeyhole size={21}/></div><p className="mt-8 text-xs font-black uppercase tracking-[.2em] text-eduBlue">Welcome back</p><h1 className="mt-2 text-3xl font-black tracking-tight text-ink">Log in to EDUWILLS</h1><p className="mt-2 text-sm leading-6 text-slate-500">Use your registered phone number and password to continue.</p><form className="mt-8 space-y-5" onSubmit={submit}><label className="block text-sm font-bold text-ink">Phone number<div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-paper"><span className="flex items-center border-r border-slate-200 px-3 text-sm font-black text-slate-500">+234</span><div className="relative flex-1"><Phone className="absolute left-3 top-3.5 text-slate-400" size={17}/><input required type="tel" inputMode="numeric" value={phone} onChange={(e)=>setPhone(e.target.value.replace(/\D/g,'').slice(0,10))} maxLength={10} className="w-full bg-transparent py-3 pl-10 pr-3 outline-none" placeholder="8012345678"/></div></div><span className="mt-1 block text-xs font-normal text-slate-400">Enter exactly 10 digits after +234.</span></label><label className="block text-sm font-bold text-ink">Password<input name="password" required type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Your password"/></label><div className="text-right"><a href={`${BASE}/forgot-password/`} className="text-xs font-bold text-eduBlue">Forgot password?</a></div>{message&&<p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{message}</p>}<button disabled={loading} type="submit" className="w-full rounded-xl bg-ink px-5 py-3.5 font-black text-white disabled:opacity-60">{loading?'Logging in…':'Log in'}</button></form><p className="mt-6 text-center text-sm text-slate-500">New to EDUWILLS? <a href={`${BASE}/signup/`} className="font-bold text-eduBlue">Create an account</a></p></div></div></main>;
+  return <main className="min-h-screen bg-paper px-5 py-6 sm:px-8"><style>{`.eduwills-phone .PhoneInput{display:flex;align-items:center;width:100%}.eduwills-phone .PhoneInputCountry{padding:0 12px;border-right:1px solid #e2e8f0;min-height:48px;background:#f8fafc}.eduwills-phone .PhoneInputInput{min-width:0;flex:1;border:0;background:transparent;padding:12px;outline:0;font-size:.95rem}`}</style><div className="mx-auto max-w-5xl"><a href={`${BASE}/`} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17}/> Back to EDUWILLS</a><div className="mx-auto mt-10 max-w-md rounded-[2rem] border border-slate-200 bg-white p-7 shadow-soft sm:p-10"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-ink text-white"><LockKeyhole size={21}/></div><p className="mt-8 text-xs font-black uppercase tracking-[.2em] text-eduBlue">Welcome back</p><h1 className="mt-2 text-3xl font-black tracking-tight text-ink">Log in to EDUWILLS</h1><p className="mt-2 text-sm leading-6 text-slate-500">Use your registered phone number and password to continue.</p><form className="mt-8 space-y-5" onSubmit={submit}><label className="block text-sm font-bold text-ink">Phone number<div className="eduwills-phone mt-2 overflow-hidden rounded-xl border border-slate-200 bg-paper"><PhoneInput international defaultCountry="NG" countryCallingCodeEditable={false} value={phone} onChange={setPhone} placeholder="Enter your phone number"/></div><span className="mt-1 block text-xs font-normal text-slate-400">Select your country code from the selector.</span></label><label className="block text-sm font-bold text-ink">Password<input name="password" required type="password" className="mt-2 w-full rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Your password"/></label><div className="text-right"><a href={`${BASE}/forgot-password/`} className="text-xs font-bold text-eduBlue">Forgot password?</a></div>{message&&<p className="rounded-xl bg-red-50 px-4 py-3 text-sm leading-5 text-red-600">{message}</p>}<button disabled={loading} type="submit" className="w-full rounded-xl bg-ink px-5 py-3.5 font-black text-white disabled:opacity-60">{loading?'Logging in…':'Log in'}</button></form><p className="mt-6 text-center text-sm text-slate-500">New to EDUWILLS? <a href={`${BASE}/signup/`} className="font-bold text-eduBlue">Create an account</a></p></div></div></main>;
 }
