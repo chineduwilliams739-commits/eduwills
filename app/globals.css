@@ -19,7 +19,32 @@ body {
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
+
+select {
+  min-height: 52px;
+  border: 1px solid #c7d2fe;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #ecfeff 100%);
+  color: #334155;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.08);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+select:hover {
+  border-color: #818cf8;
+  box-shadow: 0 7px 20px rgba(30, 64, 175, 0.12);
+}
+select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14), 0 7px 20px rgba(30, 64, 175, 0.10);
+}
+select option {
+  background: #ffffff;
+  color: #334155;
+  font-weight: 700;
+}
 
 ::selection { background: #cfe0ff; color: var(--ink); }
 
