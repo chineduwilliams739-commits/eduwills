@@ -50,6 +50,11 @@ jobs:
           s=s.replace("replace(/\\\\\\\\/$/, '')", "replace(/\\/$/, '')")
           p.write_text(s, encoding='utf-8')
           PY
+      - name: Repair quiz page JSX and styled dropdowns
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-quiz-page-v12.mjs
+          node scripts/repair-quiz-page-v12.mjs
       - name: Verify stable quiz implementation
         run: |
           set -euxo pipefail
