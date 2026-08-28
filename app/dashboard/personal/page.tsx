@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, UserRound, Phone, AtSign, ShieldCheck, BookOpen, LogOut, Check, ArrowRight, RefreshCw } from 'lucide-react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { ArrowLeft, UserRound, Phone, AtSign, ShieldCheck, BookOpen, LogOut, Check, ArrowRight, RefreshCw, Mail, LockKeyhole, Send } from 'lucide-react';
+import { onAuthStateChanged, signOut, EmailAuthProvider, linkWithCredential, sendEmailVerification } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, where, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
@@ -37,6 +37,10 @@ export default function PersonalPage() {
   const [active, setActive] = useState(false);
   const [error, setError] = useState('');
   const [switching, setSwitching] = useState(false);
+  const [email, setEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailMessage, setEmailMessage] = useState('');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async u => {
@@ -65,7 +69,8 @@ export default function PersonalPage() {
         const fallback = categories.length ? categories : ['Book Learner'];
         const saved = normaliseCategories([d.activeCategory])[0];
         const activeCategory = saved && fallback.includes(saved) ? saved : fallback[0];
-        setUser({ ...d, uid: u.uid, categories: fallback, activeCategory });
+        setUser({ ...d, uid: u.uid, categories: fallback, activeCategory, authEmail: u.email || '' });
+        if (u.email) setEmail(u.email);
         setActive((d.activated === true || d.activationStatus === 'active' || d.williTokenActive === true) && (!d.activationExpiresAt || expiryMs(d.activationExpiresAt) > Date.now()));
       } catch (e) { console.error(e); setError('Could not load your profile. Please try again.'); }
       finally { setLoading(false); }
@@ -76,17 +81,16 @@ export default function PersonalPage() {
   const availableCategories = useMemo(() => Array.isArray(user?.categories) && user.categories.length ? user.categories : ['Book Learner'], [user]);
   const currentCategory = String(user?.activeCategory || availableCategories[0] || 'Book Learner');
   const firstName = user?.fullName?.split(' ')[0] || 'Learner';
+  const firebaseUser = auth.currentUser;
+  const hasEmail = !!firebaseUser?.email;
+  const emailVerified = !!firebaseUser?.emailVerified;
 
   async function switchCategory(category: string) {
     if (!user?.uid || switching || category === currentCategory) return;
     setSwitching(true); setError('');
     try {
       const categoryId = CATEGORY_IDS[category] || category.toLowerCase().replace(/\s+/g, '-');
-      await setDoc(doc(db, 'users', user.uid), {
-        activeCategory: category,
-        activeCategoryId: categoryId,
-        lastCategorySwitchAt: new Date(),
-      }, { merge: true });
+      await setDoc(doc(db, 'users', user.uid), { activeCategory: category, activeCategoryId: categoryId, lastCategorySwitchAt: new Date() }, { merge: true });
       localStorage.setItem('eduwills_active_category', category);
       localStorage.setItem('eduwills_active_category_id', categoryId);
       sessionStorage.setItem('eduwills_active_category', category);
@@ -99,13 +103,58 @@ export default function PersonalPage() {
     }
   }
 
+  async function addAndVerifyEmail() {
+    setEmailMessage('');
+    const normalized = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) { setEmailMessage('Enter a valid email address.'); return; }
+    if (emailPassword.length < 6) { setEmailMessage('Create a password with at least 6 characters for email sign-in and recovery.'); return; }
+    if (!auth.currentUser) { setEmailMessage('Your session has expired. Please sign in again.'); return; }
+    setEmailSaving(true);
+    try {
+      const credential = EmailAuthProvider.credential(normalized, emailPassword);
+      const linked = await linkWithCredential(auth.currentUser, credential);
+      await sendEmailVerification(linked.user);
+      await setDoc(doc(db, 'users', linked.user.uid), { email: normalized, emailVerified: false, emailAddedAt: new Date() }, { merge: true });
+      setUser((v: any) => ({ ...v, authEmail: normalized, email: normalized, emailVerified: false }));
+      setEmailMessage('Verification email sent. Open it and click the verification link. Your phone number and existing account remain unchanged.');
+      setEmailPassword('');
+    } catch (e: any) {
+      console.error(e);
+      const messages: Record<string,string> = {
+        'auth/email-already-in-use': 'That email is already attached to another account. Please use a different email address.',
+        'auth/credential-already-in-use': 'That email is already linked to another EDUWILLS account. Please use a different email address.',
+        'auth/requires-recent-login': 'For security, please sign out and sign in again with your phone number, then add the email.',
+        'auth/invalid-credential': 'The email or password could not be accepted. Check the details and try again.',
+      };
+      setEmailMessage(messages[e?.code] || 'Could not add the email. Please try again.');
+    } finally { setEmailSaving(false); }
+  }
+
+  async function resendVerification() {
+    setEmailMessage('');
+    try { if (!auth.currentUser?.email) { setEmailMessage('Add an email first.'); return; } await sendEmailVerification(auth.currentUser); setEmailMessage('A new verification email has been sent.'); }
+    catch (e: any) { setEmailMessage(e?.code === 'auth/too-many-requests' ? 'Please wait a little before requesting another verification email.' : 'Could not send the verification email.'); }
+  }
+
+  async function refreshEmailStatus() {
+    if (!auth.currentUser) return;
+    await auth.currentUser.reload();
+    const u = auth.currentUser;
+    setUser((v: any) => ({ ...v, authEmail: u.email || '', email: u.email || '', emailVerified: u.emailVerified }));
+    setEmailMessage(u.emailVerified ? 'Email verified successfully. You can now use it for account recovery and activation emails.' : 'Your email is not verified yet. Open the verification email first.');
+  }
+
   async function logout() { await signOut(auth); window.location.replace(`${BASE}/`); }
 
   return <main className="min-h-screen bg-paper px-4 py-5 pb-10 sm:px-8"><div className="mx-auto max-w-4xl">
     <a href={`${BASE}/dashboard/`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-sm"><ArrowLeft size={17}/> Dashboard</a>
     <div className="mt-6 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-soft">
-      <div className="bg-ink p-7 text-white sm:p-10"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10"><UserRound size={25}/></div><p className="mt-6 text-xs font-black uppercase tracking-[.2em] text-cyan-200">PERSONAL</p><h1 className="mt-2 text-3xl font-black tracking-tight">Hello {firstName}.</h1><p className="mt-2 text-sm leading-6 text-slate-300">{loading ? 'Loading your profile…' : 'Manage your account, learning category and activation status.'}</p></div>
+      <div className="bg-ink p-7 text-white sm:p-10"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10"><UserRound size={25}/></div><p className="mt-6 text-xs font-black uppercase tracking-[.2em] text-cyan-200">PERSONAL</p><h1 className="mt-2 text-3xl font-black tracking-tight">Hello {firstName}.</h1><p className="mt-2 text-sm leading-6 text-slate-300">{loading ? 'Loading your profile…' : 'Manage your account, email, learning category and activation status.'}</p></div>
       {error ? <div className="p-8 text-center text-sm font-bold text-red-600">{error}</div> : <>
+        <section className="border-b border-slate-100 p-6 sm:p-8"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-700">Email & recovery</p><h2 className="mt-1 text-xl font-black text-ink">Secure your account with email</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Existing phone-only accounts can add an email without creating a new account. Your current UID, phone number, quizzes and activation records stay with this account.</p></div><Mail className="text-cyan-600" size={25}/></div>
+          {hasEmail ? <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wider text-slate-400">Email address</p><p className="mt-1 break-all text-sm font-black text-ink">{firebaseUser?.email}</p></div><span className={`rounded-full px-3 py-1 text-[10px] font-black ${emailVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{emailVerified ? 'VERIFIED' : 'VERIFY PENDING'}</span></div><p className="mt-3 text-xs leading-5 text-slate-500">{emailVerified ? 'This verified email can be used for account recovery and activation-code delivery.' : 'Verify this email before purchasing an activation so EduWills can safely deliver your activation code.'}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={resendVerification} disabled={emailVerified} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 disabled:opacity-40"><Send size={14}/> Resend verification</button><button type="button" onClick={refreshEmailStatus} className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-black text-white"><RefreshCw size={14}/> Check verification</button></div></div> : <div className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-black uppercase tracking-wider text-slate-500">Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold normal-case outline-none"/></label><label className="text-xs font-black uppercase tracking-wider text-slate-500">Create email password<input type="password" autoComplete="new-password" value={emailPassword} onChange={e=>setEmailPassword(e.target.value)} placeholder="At least 6 characters" className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold normal-case outline-none"/></label></div><p className="mt-3 text-xs leading-5 text-slate-500">This links email/password sign-in to your existing phone account. It does not replace your phone number or create a second account.</p><button type="button" onClick={addAndVerifyEmail} disabled={emailSaving} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-5 py-3.5 text-sm font-black text-slate-950 disabled:opacity-50"><LockKeyhole size={16}/>{emailSaving ? 'Adding email…' : 'Add email & send verification'}</button></div>}
+          {emailMessage&&<div className="mt-3 rounded-xl border border-slate-200 bg-white p-4 text-xs font-bold leading-5 text-slate-600">{emailMessage}</div>}
+        </section>
         <section className="border-b border-slate-100 p-6 sm:p-8"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-700">Learning category</p><h2 className="mt-1 text-xl font-black text-ink">Switch EDUWILLS category</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Switch between every category assigned to your account. The selected category is saved to your account and becomes the active learning experience.</p></div><RefreshCw className={switching ? 'animate-spin text-cyan-600' : 'text-cyan-600'} size={24}/></div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">{availableCategories.map((category: string) => <button key={category} type="button" disabled={switching} onClick={() => switchCategory(category)} className={`rounded-2xl border px-4 py-4 text-left transition ${currentCategory === category ? 'border-cyan-500 bg-cyan-50 text-cyan-950 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300 hover:bg-slate-50'} disabled:cursor-wait disabled:opacity-70`}><div className="flex items-center justify-between gap-3"><span className="text-sm font-black">{category}</span>{currentCategory === category && <span className="inline-flex items-center gap-1 rounded-full bg-cyan-600 px-2.5 py-1 text-[10px] font-black text-white"><Check size={11}/> CURRENT</span>}</div><span className="mt-1 block text-xs font-bold text-slate-400">Open this category's learning dashboard</span></button>)}</div>
           <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-xs font-bold text-slate-600">Current category: <span className="text-ink">{currentCategory}</span>{switching ? ' · Switching…' : ''}</div>
