@@ -50,6 +50,11 @@ jobs:
           s = s.replace(r'replace(/\\/$/, \'\')', r'replace(/\/$/, \'\')')
           p.write_text(s, encoding='utf-8')
           PY
+      - name: Apply quiz runtime reliability fix v7
+        run: |
+          set -euxo pipefail
+          node --check scripts/fix-quiz-runtime-v7.mjs
+          node scripts/fix-quiz-runtime-v7.mjs
       - name: Repair quiz page JSX and styled dropdowns
         run: |
           set -euxo pipefail
