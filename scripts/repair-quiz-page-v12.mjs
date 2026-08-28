@@ -25,5 +25,13 @@ s = s.replace(/(<select\s+value=\{slot\}[^>]*?)\s+className="w-full appearance-n
 s = s.replace(/(<select\s+value=\{duration\}[^>]*?)\s+className="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3\.5 font-bold"/g, `$1 className="${styledClass}" data-eduwills-styled="true"`);
 s = s.replace(/(<select\s+value=\{difficulty\}[^>]*?)\s+className="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3\.5 font-bold"/g, `$1 className="${styledClass}" data-eduwills-styled="true"`);
 
+// Never allow a known malformed handler to reach the Next.js compiler.
+if (/onChange=\{\(e\)\s*=\s*className=/.test(s)) {
+  throw new Error('Malformed quiz dropdown handler remains');
+}
+if (!/return\s+<main\b/.test(s)) {
+  throw new Error('Quiz page JSX main is missing');
+}
+
 fs.writeFileSync(path, s);
-console.log('Quiz page v12 syntax/dropdown repair applied.');
+console.log('Quiz page v12 syntax/dropdown repair applied safely.');
