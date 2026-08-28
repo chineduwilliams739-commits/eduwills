@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "jose": "^6.1.0"
+    "@modelcontextprotocol/server": "2.0.0",
+    "jose": "^6.1.0",
+    "zod": "^4.4.3"
   }
 }
