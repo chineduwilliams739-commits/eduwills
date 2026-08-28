@@ -11,6 +11,7 @@ const OWNER_UID = 'A45uD8Cu27dI0y0iSWla4CZJBhn1';
 
 type Visitor = { visitorId: string; source?: string; firstSeenAt?: string; language?: string; path?: string };
 type Day = { day: string; visitors: number; sources: Record<string, number> };
+type StatIcon = React.ComponentType<React.ComponentProps<typeof Users>>;
 
 function dateKey(offset: number) {
   const d = new Date();
@@ -56,6 +57,12 @@ export default function AdminAnalyticsPage() {
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8);
   }, [days]);
   const max = Math.max(1, ...days.map(d => d.visitors));
+  const statCards: Array<[string, string | number, StatIcon]> = [
+    ['Today', today?.visitors || 0, Users],
+    ['14-day visitor records', fourteenTotal, Globe2],
+    ['ChatGPT today', today?.sources?.chatgpt || 0, Bot],
+    ['Top source', topSources[0]?.[0] || '—', BarChart3]
+  ];
 
   if (loading) return <main className="grid min-h-screen place-items-center bg-slate-950 text-white">Loading Analytics…</main>;
 
@@ -68,7 +75,7 @@ export default function AdminAnalyticsPage() {
       <div className="mt-7"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">EDUWILLS analytics</p><h1 className="mt-2 text-3xl font-black tracking-tight">Daily visitors & acquisition</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Unique visitors are counted once per browser per UTC day. No IP address is collected by this tracker.</p></div>
       {error && <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
       <section className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[['Today', today?.visitors || 0, Users], ['14-day visitor records', fourteenTotal, Globe2], ['ChatGPT today', today?.sources?.chatgpt || 0, Bot], ['Top source', topSources[0]?.[0] || '—', BarChart3]].map(([label,value,Icon]) => <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.04] p-5"><Icon size={19} className="text-cyan-300"/><p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></div>)}
+        {statCards.map(([label, value, Icon]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.04] p-5"><Icon size={19} className="text-cyan-300"/><p className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></div>)}
       </section>
       <section className="mt-6 rounded-2xl border border-white/10 bg-white/[.04] p-5 sm:p-7"><div className="flex items-center justify-between"><div><h2 className="text-lg font-black">Last 14 days</h2><p className="mt-1 text-xs text-slate-500">Unique visitors by UTC day</p></div><BarChart3 className="text-cyan-300"/></div><div className="mt-7 space-y-3">{days.map(d => <div key={d.day} className="grid grid-cols-[86px_1fr_42px] items-center gap-3 text-sm"><span className="font-bold text-slate-400">{d.day.slice(5)}</span><div className="h-3 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-cyan-400" style={{width:`${Math.max(2,(d.visitors/max)*100)}%`}}/></div><span className="text-right font-black">{d.visitors}</span></div>)}</div></section>
       <section className="mt-6 grid gap-6 lg:grid-cols-2"><div className="rounded-2xl border border-white/10 bg-white/[.04] p-5 sm:p-7"><div className="flex items-center gap-3"><UserPlus size={19} className="text-cyan-300"/><h2 className="font-black">Traffic sources</h2></div><div className="mt-5 space-y-3">{topSources.length ? topSources.map(([source,count]) => <div key={source} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3"><span className="font-semibold text-slate-300">{source}</span><span className="font-black">{count}</span></div>) : <p className="text-sm text-slate-500">No visitor data yet.</p>}</div></div><div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5 sm:p-7"><div className="flex items-center gap-3"><Bot size={19} className="text-cyan-300"/><h2 className="font-black">ChatGPT acquisition</h2></div><p className="mt-4 text-sm leading-6 text-slate-400">When users arrive from a ChatGPT link or app referral, the tracker labels the source as <strong className="text-white">chatgpt</strong>. This lets us measure whether the ChatGPT app is actually sending visitors to EduWills.</p><div className="mt-5 text-4xl font-black text-cyan-300">{days.reduce((n,d)=>n+(d.sources.chatgpt||0),0)}</div><p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">ChatGPT-sourced visitors in the last 14 days</p></div></section>
