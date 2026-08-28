@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import AnalyticsTracker from '@/components/AnalyticsTracker';
 
 export const metadata: Metadata = {
   title: 'EDUWILLS — AI Quiz Generator for WAEC, JAMB & NECO | Nigerian Students',
@@ -16,5 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (<html lang="en-NG"><body>{children}</body></html>);
+  return (<html lang="en-NG"><body><AnalyticsTracker />{children}</body></html>);
 }
