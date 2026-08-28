@@ -22,31 +22,34 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-
       - name: Restore EDUWILLS homepage
         run: |
           set -euxo pipefail
           node --check scripts/restore-homepage-final.mjs
           node scripts/restore-homepage-final.mjs
-
       - name: Apply stable EDUWILLS implementation
         run: |
           set -euxo pipefail
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
-
       - name: Apply safe Admin WilliToken implementation
         run: python3 scripts/apply-admin-willi-token-ui.py
-
+      - name: Repair generated quiz client syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/quizAiClientStable.ts')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("replace(/\\\\\\\\/$/, '')", "replace(/\\/$/, '')")
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Verify stable quiz implementation
         run: |
           set -euxo pipefail
@@ -55,24 +58,19 @@ jobs:
           test -f lib/verifiedBookGrounding.ts
           grep -q "quizAiClientStable" lib/quizAiClient.ts
           grep -q "Sànyà" lib/verifiedBookGrounding.ts
-
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
-
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
           NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY }}
         run: npm run build
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
-
       - name: Commit generated repairs
         shell: bash
         run: |
@@ -83,7 +81,6 @@ jobs:
           git add -A
           git commit -m "apply safe deployment repairs"
           git push
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
