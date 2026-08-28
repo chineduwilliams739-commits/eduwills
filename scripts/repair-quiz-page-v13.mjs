@@ -13,12 +13,12 @@ function QuizDropdown({ label, value, options, onChange }: { label: string; valu
   return (
     <div className="relative z-30">
       <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between rounded-2xl border border-indigo-100 bg-gradient-to-r from-white via-slate-50 to-cyan-50 px-4 py-3.5 text-left font-black text-slate-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100">
-        <span className="truncate">{current}</span><ChevronDown size={19} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="truncate">{current}</span><ChevronDown size={19} className={\`shrink-0 transition-transform \${open ? 'rotate-180' : ''}\`} />
       </button>
       {open && (
         <div role="listbox" aria-label={label} className="absolute left-0 right-0 top-[calc(100%+8px)] z-[100] max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
           {options.map((option) => (
-            <button key={option.value} type="button" role="option" aria-selected={option.value === value} onClick={() => { onChange(option.value); setOpen(false); }} className={`mb-1 flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition-colors hover:bg-indigo-50 ${option.value === value ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700'}`}>
+            <button key={option.value} type="button" role="option" aria-selected={option.value === value} onClick={() => { onChange(option.value); setOpen(false); }} className={\`mb-1 flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition-colors hover:bg-indigo-50 \${option.value === value ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700'}\`}>
               <span>{option.label}</span>{option.value === value && <Check size={17} />}
             </button>
           ))}
@@ -38,15 +38,14 @@ if (!s.includes('function QuizDropdown(')) {
 
 function parseOptions(body) {
   const out = [];
-  // Use RegExp constructor so this repair script remains valid JavaScript even when nested escaping is involved.
-  const re = new RegExp('<option\\s+value="([^"]*)"[^>]*>([\\s\\S]*?)<\\/option>', 'g');
+  const re = /<option\s+value="([^"]*)"[^>]*>([\s\S]*?)<\/option>/g;
   let m;
-  while ((m = re.exec(body))) out.push({ value: m[1], label: m[2].replace(/\\s+/g, ' ').trim() });
+  while ((m = re.exec(body))) out.push({ value: m[1], label: m[2].replace(/\s+/g, ' ').trim() });
   return out;
 }
 
 function replaceSelect(state, handler) {
-  const escapedState = state.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+  const escapedState = state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(`<select\\s+value=\\{${escapedState}\\}[\\s\\S]*?<\\/select>`, 'g');
   let changed = 0;
   s = s.replace(re, (whole) => {
@@ -65,7 +64,7 @@ total += replaceSelect('duration', 'setDuration');
 total += replaceSelect('difficulty', 'setDifficulty');
 
 if (total !== 3) throw new Error(`Expected to replace 3 Quiz Studio dropdowns, replaced ${total}`);
-if (/<select\\b/.test(s)) throw new Error('A native Quiz Studio select remains');
+if (/<select\b/.test(s)) throw new Error('A native Quiz Studio select remains');
 if (!s.includes('function QuizDropdown(')) throw new Error('QuizDropdown component missing');
 
 fs.writeFileSync(path, s, 'utf8');
