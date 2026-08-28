@@ -75,12 +75,13 @@ jobs:
           set -euxo pipefail
           node --check scripts/apply-quiz-exam-security-and-ui-v1.mjs
           node scripts/apply-quiz-exam-security-and-ui-v1.mjs
-      - name: Apply final safe quiz generation and dropdown repair
+      - name: Restore canonical quiz sources after all mutating repair scripts
         run: |
           set -euxo pipefail
-          node --check scripts/repair-quiz-generation-and-dropdowns-v11.mjs
-          node scripts/repair-quiz-generation-and-dropdowns-v11.mjs
-      - name: Canonicalize Quiz Studio JSX safely
+          git fetch origin 96fb0cf4bf2a8797337ba9bab4bc99f350424f39 3c44582f8dc7cb2aeb3a0806cd058da2d4e795a7
+          git checkout 96fb0cf4bf2a8797337ba9bab4bc99f350424f39 -- lib/quizAiClient.ts
+          git checkout 3c44582f8dc7cb2aeb3a0806cd058da2d4e795a7 -- app/dashboard/quiz/page.tsx
+      - name: Restore premium styled dropdowns safely
         run: |
           set -euxo pipefail
           python3 - <<'PY'
@@ -89,22 +90,29 @@ jobs:
           p=Path('app/dashboard/quiz/page.tsx')
           s=p.read_text(encoding='utf-8')
           s=re.sub(r'\\+(?=[<>`])','',s)
+          cls='appearance-none w-full rounded-2xl border border-indigo-100 bg-gradient-to-r from-white via-slate-50 to-cyan-50 px-4 py-3.5 pr-12 font-black text-slate-700 shadow-sm outline-none transition-all duration-200 hover:border-indigo-300 hover:shadow-md focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
+          def style(m):
+              attrs=m.group(1)
+              if 'data-eduwills-styled' in attrs:
+                  return m.group(0)
+              cm=re.search(r'className="([^"]*)"', attrs)
+              if cm:
+                  attrs=attrs[:cm.start(1)]+cm.group(1)+' '+cls+attrs[cm.end(1):]
+              else:
+                  attrs+=' className="'+cls+'"'
+              attrs+=' data-eduwills-styled="true"'
+              return '<select'+attrs+'>'
+          s=re.sub(r'<select\b([^>]*)>',style,s)
           p.write_text(s,encoding='utf-8')
-          if re.search(r'\\+(?=</?[A-Za-z])',s): raise SystemExit('Escaped JSX remains')
-          if re.search(r'\\+(?=`)',s): raise SystemExit('Escaped template delimiter remains')
-          if not re.search(r'return\s+<main\b',s): raise SystemExit('Quiz page JSX main missing')
           PY
           git diff --check
       - name: Validate final quiz implementation
         run: |
           set -euxo pipefail
-          node --check scripts/repair-quiz-generation-and-dropdowns-v11.mjs
-          grep -q 'v23-exact-book-resumable-v11' lib/quizAiClient.ts
-          grep -q 'EXACT-BOOK EVIDENCE' lib/quizAiClient.ts
-          grep -q 'Sànyà' lib/quizAiClient.ts
+          npx tsc --noEmit --pretty false
+          grep -q 'v20-cache-first-per-book' lib/quizAiClient.ts
           grep -q 'data-eduwills-styled' app/dashboard/quiz/page.tsx
-          grep -q 'visibilitychange' app/dashboard/quiz/page.tsx
-          grep -q 'submitQuiz(true)' app/dashboard/quiz/page.tsx
+          grep -q 'return <main' app/dashboard/quiz/page.tsx
       - name: Build application
         env:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
@@ -123,7 +131,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git diff --quiet; then exit 0; fi
           git add app/dashboard/quiz/page.tsx lib/quizAiClient.ts
-          git commit -m "fix quiz generation grounding and dropdowns"
+          git commit -m "restore stable quiz generation and dropdown styling"
           git push
   deploy:
     needs: build
