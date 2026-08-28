@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const path = 'app/dashboard/quiz/page.tsx';
 let s = fs.readFileSync(path, 'utf8');
 
-s = s.replace(/\\<(?=\/?[A-Za-z])/g, '<').replace(/\\>/g, '>').replace(/\\`/g, '`');
+s = s.replace(/\\\\<(?=\/?[A-Za-z])/g, '<').replace(/\\\\>/g, '>').replace(/\\\\`/g, '`');
 s = s.replace(/onChange=\{\(e\)\s*=\s*className="[^"]*"\s*data-eduwills-styled="true">\s*([^}]+)\}/g, 'onChange={(e) => $1}');
 
 const component = `
@@ -11,12 +11,12 @@ function QuizDropdown({ label, value, options, onChange }: { label: string; valu
   const [open, setOpen] = useState(false);
   const current = options.find((option) => option.value === value)?.label || options[0]?.label || 'Select';
   return (
-    <div className="relative z-30">
+    <div className="relative z-[80]">
       <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between rounded-2xl border border-indigo-100 bg-gradient-to-r from-white via-slate-50 to-cyan-50 px-4 py-3.5 text-left font-black text-slate-700 shadow-sm transition-all duration-200 hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100">
         <span className="truncate">{current}</span><ChevronDown size={19} className={\`shrink-0 transition-transform \${open ? 'rotate-180' : ''}\`} />
       </button>
       {open && (
-        <div role="listbox" aria-label={label} className="absolute left-0 right-0 top-[calc(100%+8px)] z-[100] max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+        <div role="listbox" aria-label={label} className="absolute left-0 right-0 top-[calc(100%+8px)] z-[200] max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
           {options.map((option) => (
             <button key={option.value} type="button" role="option" aria-selected={option.value === value} onClick={() => { onChange(option.value); setOpen(false); }} className={\`mb-1 flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition-colors hover:bg-indigo-50 \${option.value === value ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700'}\`}>
               <span>{option.label}</span>{option.value === value && <Check size={17} />}
@@ -44,25 +44,41 @@ function parseOptions(body) {
   return out;
 }
 
-function replaceSelect(state, handler) {
-  const escapedState = state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`<select\\s+value=\\{${escapedState}\\}[\\s\\S]*?<\\/select>`, 'g');
-  let changed = 0;
-  s = s.replace(re, (whole) => {
-    const body = whole.slice(whole.indexOf('>') + 1, whole.lastIndexOf('</select>'));
-    const options = parseOptions(body);
-    if (!options.length) throw new Error(`No options found for ${state} dropdown`);
-    changed += 1;
-    return `<QuizDropdown label="${state}" value={String(${state})} options={${JSON.stringify(options)}} onChange={${handler}} />`;
-  });
-  return changed;
+function replaceSelects() {
+  let total = 0;
+  const targets = new Map([
+    ['slot', '(v) => setSlot(v ? Number(v) : \'\')'],
+    ['duration', 'setDuration'],
+    ['difficulty', 'setDifficulty'],
+  ]);
+  let cursor = 0;
+  while (cursor < s.length) {
+    const start = s.indexOf('<select', cursor);
+    if (start < 0) break;
+    const openEnd = s.indexOf('>', start);
+    if (openEnd < 0) throw new Error('Unclosed select tag');
+    const close = s.indexOf('</select>', openEnd + 1);
+    if (close < 0) throw new Error('Unclosed select element');
+    const end = close + '</select>'.length;
+    const whole = s.slice(start, end);
+    const match = whole.match(/value=\{\s*(slot|duration|difficulty)\s*\}/);
+    if (match && targets.has(match[1])) {
+      const state = match[1];
+      const body = whole.slice(whole.indexOf('>') + 1, whole.lastIndexOf('</select>'));
+      const options = parseOptions(body);
+      if (!options.length) throw new Error(`No options found for ${state} dropdown`);
+      const replacement = `<QuizDropdown label="${state}" value={String(${state})} options={${JSON.stringify(options)}} onChange={${targets.get(state)}} />`;
+      s = s.slice(0, start) + replacement + s.slice(end);
+      cursor = start + replacement.length;
+      total += 1;
+    } else {
+      cursor = end;
+    }
+  }
+  return total;
 }
 
-let total = 0;
-total += replaceSelect('slot', "(v) => setSlot(v ? Number(v) : '')");
-total += replaceSelect('duration', 'setDuration');
-total += replaceSelect('difficulty', 'setDifficulty');
-
+const total = replaceSelects();
 if (total !== 3) throw new Error(`Expected to replace 3 Quiz Studio dropdowns, replaced ${total}`);
 if (/<select\b/.test(s)) throw new Error('A native Quiz Studio select remains');
 if (!s.includes('function QuizDropdown(')) throw new Error('QuizDropdown component missing');
