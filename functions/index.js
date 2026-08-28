@@ -101,3 +101,5 @@ exports.paystackWebhook = onRequest({ region: 'us-central1', timeoutSeconds: 30,
     return res.status(200).send('OK');
   } catch (e) { return res.status(e.message === 'PAYSTACK_NOT_CONFIGURED' ? 503 : 500).send(e.message || 'Webhook error'); }
 });
+
+Object.assign(exports, require('./activationPayments'));
