@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { ArrowLeft, Check, LockKeyhole, Phone, ShieldCheck } from 'lucide-react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
@@ -16,7 +18,7 @@ const options = [
 
 export default function SignUpPage() {
   const [selected, setSelected] = useState<string[]>(['book']);
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState<string | undefined>('');
   const [message, setMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,12 +27,6 @@ export default function SignUpPage() {
     const item = options.find((x) => x.id === id);
     if (!item || item.status !== 'Available now') return;
     setSelected((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
-  }
-
-  function handlePhone(value: string) {
-    const digits = value.replace(/\D/g, '').slice(0, 10);
-    setPhone(digits);
-    setMessage(digits.length > 0 && digits.length !== 10 ? 'Enter exactly 10 digits after +234.' : '');
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -42,7 +38,7 @@ export default function SignUpPage() {
     const password = String(form.get('password') || '');
     const confirm = String(form.get('confirmPassword') || '');
 
-    if (phone.length !== 10) { setMessage('Invalid phone number. Enter exactly 10 digits after +234.'); return; }
+    if (!phone || !isValidPhoneNumber(phone)) { setMessage('Enter a valid phone number and select the correct country code.'); return; }
     if (!fullName || !username || password.length < 6) { setMessage('Please complete your name, username and password. Password must be at least 6 characters.'); return; }
     if (!/^[a-z0-9._-]{3,30}$/.test(username)) { setMessage('Username can contain only letters, numbers, dots, underscores and hyphens.'); return; }
     if (password !== confirm) { setMessage('The passwords do not match.'); return; }
@@ -56,17 +52,17 @@ export default function SignUpPage() {
         uid: credential.user.uid,
         fullName,
         username,
-        phone,
-        phoneE164: `+234${phone}`,
+        phone: phone.replace(/^\+/, ''),
+        phoneE164: phone,
         authEmail,
         categories: selected,
         activated: false,
+        activationStatus: 'inactive',
         activationExpiresAt: null,
         createdAt: serverTimestamp(),
       };
       await setDoc(doc(db, 'users', credential.user.uid), userData);
-      // Phone lookup is deliberately a small index rather than exposing the full user document.
-      await setDoc(doc(db, 'phoneIndex', phone), { uid: credential.user.uid, authEmail, username });
+      await setDoc(doc(db, 'phoneIndex', phone), { uid: credential.user.uid, authEmail, username, phoneE164: phone });
 
       localStorage.setItem('eduwills_current_user', username);
       localStorage.setItem('eduwills_current_uid', credential.user.uid);
@@ -82,6 +78,7 @@ export default function SignUpPage() {
 
   return (
     <main className="min-h-screen bg-paper px-4 py-5 sm:px-6 sm:py-8">
+      <style>{`.eduwills-phone .PhoneInput{display:flex;align-items:center;width:100%}.eduwills-phone .PhoneInputCountry{padding:0 12px;border-right:1px solid #e2e8f0;min-height:48px;background:#f8fafc}.eduwills-phone .PhoneInputCountrySelect{font-weight:800}.eduwills-phone .PhoneInputInput{min-width:0;flex:1;border:0;background:transparent;padding:12px;outline:0;font-size:.95rem}.eduwills-phone .PhoneInputInput::placeholder{color:#94a3b8}`}</style>
       <div className="mx-auto w-full max-w-5xl">
         <a href={`${BASE}/`} className="mx-auto flex w-fit items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft size={17}/> Back to EDUWILLS</a>
         <div className="mx-auto mt-6 grid w-full max-w-5xl overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-soft sm:mt-8 sm:rounded-[2rem] lg:grid-cols-[.82fr_1.18fr]">
@@ -89,7 +86,7 @@ export default function SignUpPage() {
           <section className="min-w-0 p-5 sm:p-8 md:p-10"><div className="mx-auto w-full max-w-xl"><p className="text-xs font-black uppercase tracking-[.2em] text-eduBlue">Free registration</p><h2 className="mt-2 text-3xl font-black tracking-tight text-ink">Join EDUWILLS</h2><p className="mt-2 text-sm leading-6 text-slate-500">Create your account for free. You can activate it later.</p>
             <form className="mt-7 space-y-5" onSubmit={submit}>
               <div className="grid min-w-0 gap-4 sm:grid-cols-2"><label className="min-w-0 text-sm font-bold text-ink">Full name<input name="fullName" required className="mt-2 block w-full min-w-0 rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Your full name"/></label><label className="min-w-0 text-sm font-bold text-ink">Username<input name="username" required className="mt-2 block w-full min-w-0 rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Choose a username"/></label></div>
-              <label className="block text-sm font-bold text-ink">Phone number<div className="mt-2 flex w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-paper"><span className="flex shrink-0 items-center border-r border-slate-200 px-3 text-sm font-black text-slate-500">+234</span><div className="relative min-w-0 flex-1"><Phone className="absolute left-3 top-3.5 text-slate-400" size={17}/><input required name="phone" type="tel" inputMode="numeric" value={phone} onChange={(e)=>handlePhone(e.target.value)} maxLength={10} className="block w-full min-w-0 bg-transparent py-3 pl-10 pr-3 outline-none" placeholder="8012345678"/></div></div><span className={`mt-1 block text-xs font-normal ${phone && phone.length !== 10 ? 'text-red-500' : 'text-slate-400'}`}>{phone && phone.length !== 10 ? `Enter ${10-phone.length} more digit${10-phone.length===1?'':'s'}.` : 'Enter exactly 10 digits after +234.'}</span></label>
+              <label className="block text-sm font-bold text-ink">Phone number<div className="eduwills-phone mt-2 overflow-hidden rounded-xl border border-slate-200 bg-paper"><PhoneInput international defaultCountry="NG" countryCallingCodeEditable={false} value={phone} onChange={setPhone} placeholder="Enter your phone number"/></div><span className="mt-1 block text-xs font-normal text-slate-400">Select your country from the flag/country-code selector. The account stores the full international number.</span></label>
               <div><div className="mb-3 flex items-center justify-between"><span className="text-sm font-bold text-ink">Choose learning category</span><span className="text-xs font-bold text-slate-400">Available categories</span></div><div className="space-y-2">{options.map((item)=>{const active=selected.includes(item.id);const locked=item.status!=='Available now';return <button type="button" key={item.id} onClick={()=>toggle(item.id)} className={`flex w-full items-center justify-between rounded-xl border p-3.5 text-left transition sm:p-4 ${active?'border-blue-200 bg-blue-50/70':'border-slate-200 bg-white'} ${locked?'cursor-not-allowed opacity-60':'hover:border-blue-200'}`}><span className="flex min-w-0 items-center gap-3"><span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${active?'border-eduBlue bg-eduBlue text-white':'border-slate-300'}`}>{active&&<Check size={13}/>}</span><span className="min-w-0"><span className="block text-sm font-bold text-ink">{item.name}</span><span className="block text-xs text-slate-400">{locked?<span className="inline-flex items-center gap-1"><LockKeyhole size={11}/> {item.status}</span>:`Activation: ₦${item.price.toLocaleString()}`}</span></span></span><span className="shrink-0 pl-2 text-xs font-bold text-slate-500">{locked?'Locked':'Selected'}</span></button>})}</div></div>
               <div className="grid min-w-0 gap-4 sm:grid-cols-2"><label className="min-w-0 text-sm font-bold text-ink">Password<div className="relative mt-2"><input name="password" required minLength={6} type={showPassword?'text':'password'} className="block w-full min-w-0 rounded-xl border border-slate-200 bg-paper px-4 py-3 pr-16 outline-none focus:border-eduBlue" placeholder="Create a password"/><button type="button" onClick={()=>setShowPassword(!showPassword)} className="absolute right-3 top-3 text-xs font-bold text-eduBlue">{showPassword?'Hide':'Show'}</button></div></label><label className="min-w-0 text-sm font-bold text-ink">Confirm password<input name="confirmPassword" required minLength={6} type={showPassword?'text':'password'} className="mt-2 block w-full min-w-0 rounded-xl border border-slate-200 bg-paper px-4 py-3 outline-none focus:border-eduBlue" placeholder="Repeat password"/></label></div>
               <div className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4"><ShieldCheck className="mt-0.5 shrink-0 text-emerald-600" size={18}/><p className="text-xs leading-5 text-slate-500">Your account is created for free. Quiz, History and EDUWILLS AI remain locked until activation. Activation and Personal remain accessible.</p></div>
