@@ -5,37 +5,83 @@ import app, { auth } from '@/lib/firebase';
 import { groundedForBooks, verifiedResearch } from '@/lib/verifiedBookGrounding';
 
 export type QuizBook = { title: string; author: string };
-export type QuizQuestion = { question: string; options: string[]; answer: number; explanation?: string; evidence?: string };
+export type QuizQuestion = {
+  question: string;
+  options: string[];
+  answer: number;
+  explanation?: string;
+  evidence?: string;
+};
 export type BookSearchResult = { title: string; authors: string[]; source: string };
 
 const BASE = '/eduwills';
-const CACHE_VERSION = 'v21-grounded-generator';
+const CACHE_VERSION = 'v22-grounded-generator';
+
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 const gemini = getGenerativeModel(ai, {
   model: 'gemini-3.5-flash-lite',
-  generationConfig: { responseMimeType: 'application/json', temperature: 0.15, maxOutputTokens: 12000 }
+  generationConfig: {
+    responseMimeType: 'application/json',
+    temperature: 0.1,
+    maxOutputTokens: 12000,
+  },
 });
 
-const norm = (s: string) => String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
-const clean = (s: any) => String(s ?? '').replace(/```(?:json)?/gi, '').replace(/```/g, '').replace(/\\s+/g, ' ').trim();
-const fingerprint = (s: string) => norm(s).replace(/\\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\\b/g, '').replace(/\\s+/g, ' ').trim();
+const norm = (value: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const clean = (value: unknown) =>
+  String(value ?? '')
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const fingerprint = (value: string) =>
+  norm(value)
+    .replace(/\b(the|a|an|what|which|who|how|why|did|does|is|was|were|of|in|on|to|and|for|from|about|according)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const similar = (a: string, b: string) => {
   const x = new Set(fingerprint(a).split(' ').filter(Boolean));
   const y = new Set(fingerprint(b).split(' ').filter(Boolean));
   if (!x.size || !y.size) return false;
-  const hit = [...x].filter((v) => y.has(v)).length;
+  const hit = [...x].filter((word) => y.has(word)).length;
   return hit / Math.max(1, Math.min(x.size, y.size)) >= 0.84;
 };
-const valid = (q: any): q is QuizQuestion => !!q && typeof q.question === 'string' && q.question.length >= 20 && Array.isArray(q.options) && q.options.length === 4 && q.options.every((x: any) => typeof x === 'string' && x.trim()) && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4;
-const metadata = (q: QuizQuestion) => /\\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\\b/i.test(q.question);
+
+const valid = (q: unknown): q is QuizQuestion => {
+  const value = q as Partial<QuizQuestion> | null;
+  return Boolean(value)
+    && typeof value.question === 'string'
+    && value.question.trim().length >= 20
+    && Array.isArray(value.options)
+    && value.options.length === 4
+    && value.options.every((option) => typeof option === 'string' && option.trim())
+    && Number.isInteger(value.answer)
+    && Number(value.answer) >= 0
+    && Number(value.answer) < 4;
+};
+
+const metadata = (q: QuizQuestion) =>
+  /\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\b/i.test(q.question);
 
 async function gatewayUrl() {
   try {
-    const r = await fetch(`${BASE}/ai-gateway.json?v=21`, { cache: 'no-store' });
-    if (!r.ok) return '';
-    const d = await r.json();
-    return String(d?.url || '').replace(/\\/$/, '');
-  } catch { return ''; }
+    const response = await fetch(`${BASE}/ai-gateway.json?v=22`, { cache: 'no-store' });
+    if (!response.ok) return '';
+    const data = await response.json();
+    return String(data?.url || '').replace(/\/$/, '');
+  } catch {
+    return '';
+  }
 }
 
 async function gateway(prompt: string, timeout = 60000) {
@@ -43,20 +89,30 @@ async function gateway(prompt: string, timeout = 60000) {
   const user = auth.currentUser;
   if (!url) throw new Error('AI_GATEWAY_NOT_CONFIGURED');
   if (!user) throw new Error('AUTHENTICATION_REQUIRED');
+
   const token = await user.getIdToken();
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeout);
+
   try {
-    const r = await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ mode: 'quiz', prompt }),
-      signal: controller.signal
+      signal: controller.signal,
     });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(String(d?.error || `AI_GATEWAY_${r.status}`));
-    return String(d?.text || '');
-  } finally { window.clearTimeout(timer); }
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(String(data?.error || `AI_GATEWAY_${response.status}`));
+    }
+    return String(data?.text || '');
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 async function geminiText(prompt: string, timeout = 60000) {
@@ -64,106 +120,185 @@ async function geminiText(prompt: string, timeout = 60000) {
   try {
     return await Promise.race([
       gemini.generateContent(prompt),
-      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), timeout); })
-    ]).then((r: any) => r.response.text());
-  } finally { if (timer) clearTimeout(timer); }
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('GEMINI_TIMEOUT')), timeout);
+      }),
+    ]).then((result: any) => result.response.text());
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function parseQuestions(text: string): QuizQuestion[] {
   const raw = String(text || '').trim();
+  if (!raw) throw new Error('AI returned an empty response');
+
   let data: any;
-  try { data = JSON.parse(raw); }
-  catch {
-    const a = raw.indexOf('{');
-    const b = raw.lastIndexOf('}');
-    if (a >= 0 && b > a) data = JSON.parse(raw.slice(a, b + 1));
-    else {
-      const x = raw.indexOf('[');
-      const y = raw.lastIndexOf(']');
-      if (x < 0 || y <= x) throw new Error('AI returned unreadable JSON');
-      data = JSON.parse(raw.slice(x, y + 1));
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    const objectStart = raw.indexOf('{');
+    const objectEnd = raw.lastIndexOf('}');
+    const arrayStart = raw.indexOf('[');
+    const arrayEnd = raw.lastIndexOf(']');
+
+    try {
+      if (objectStart >= 0 && objectEnd > objectStart) {
+        data = JSON.parse(raw.slice(objectStart, objectEnd + 1));
+      } else if (arrayStart >= 0 && arrayEnd > arrayStart) {
+        data = JSON.parse(raw.slice(arrayStart, arrayEnd + 1));
+      } else {
+        throw new Error('AI returned unreadable JSON');
+      }
+    } catch {
+      throw new Error('AI returned unreadable JSON');
     }
   }
+
   const list = Array.isArray(data) ? data : data?.questions;
-  return (Array.isArray(list) ? list : []).map((q: any) => ({
-    question: clean(q?.question),
-    options: Array.isArray(q?.options) ? q.options.slice(0, 4).map(clean) : [],
-    answer: Number(q?.answer),
-    explanation: clean(q?.explanation),
-    evidence: clean(q?.evidence)
-  })).filter(valid);
+  return (Array.isArray(list) ? list : [])
+    .map((item: any) => ({
+      question: clean(item?.question),
+      options: Array.isArray(item?.options) ? item.options.slice(0, 4).map(clean) : [],
+      answer: Number(item?.answer),
+      explanation: clean(item?.explanation),
+      evidence: clean(item?.evidence),
+    }))
+    .filter(valid);
 }
 
 function curatedFor(books: QuizBook[]) {
   return verifiedResearch(books).slice(0, 70000);
 }
 
-export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
-  const q = value.trim();
-  if (!q) return [];
-  const e = encodeURIComponent(q);
+export async function searchBookAuthors(
+  kind: 'title' | 'author',
+  value: string,
+): Promise<BookSearchResult[]> {
+  const query = value.trim();
+  if (!query) return [];
+
+  const encoded = encodeURIComponent(query);
   const urls = kind === 'title'
-    ? [`https://openlibrary.org/search.json?title=${e}&limit=50&fields=title,author_name`, `https://www.googleapis.com/books/v1/volumes?q=intitle:${e}&maxResults=40`]
-    : [`https://openlibrary.org/search.json?author=${e}&limit=50&fields=title,author_name`, `https://www.googleapis.com/books/v1/volumes?q=inauthor:${e}&maxResults=40`];
-  const out: BookSearchResult[] = [];
+    ? [
+        `https://openlibrary.org/search.json?title=${encoded}&limit=50&fields=title,author_name`,
+        `https://www.googleapis.com/books/v1/volumes?q=intitle:${encoded}&maxResults=40`,
+      ]
+    : [
+        `https://openlibrary.org/search.json?author=${encoded}&limit=50&fields=title,author_name`,
+        `https://www.googleapis.com/books/v1/volumes?q=inauthor:${encoded}&maxResults=40`,
+      ];
+
+  const output: BookSearchResult[] = [];
   const seen = new Set<string>();
+
   await Promise.allSettled(urls.map(async (url) => {
     try {
-      const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) return;
-      const d: any = await r.json();
-      for (const x of [...(d.docs || []), ...(d.items || []).map((i: any) => ({ title: i.volumeInfo?.title, author_name: i.volumeInfo?.authors }))]) {
-        const title = clean(x.title);
-        const authors = Array.isArray(x.author_name) ? x.author_name.map(String) : [];
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) return;
+      const data: any = await response.json();
+      const rows = [
+        ...(data.docs || []),
+        ...(data.items || []).map((item: any) => ({
+          title: item.volumeInfo?.title,
+          author_name: item.volumeInfo?.authors,
+        })),
+      ];
+
+      for (const row of rows) {
+        const title = clean(row?.title);
+        const authors = Array.isArray(row?.author_name) ? row.author_name.map(String) : [];
         if (!title || !authors.length) continue;
         const key = `${norm(title)}|${authors.map(norm).join('|')}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({ title, authors, source: url.includes('openlibrary') ? 'Open Library' : 'Google Books' });
+        output.push({
+          title,
+          authors,
+          source: url.includes('openlibrary') ? 'Open Library' : 'Google Books',
+        });
       }
-    } catch {}
+    } catch {
+      // One catalogue failing must not prevent the other source from returning results.
+    }
   }));
-  return out.slice(0, 160);
+
+  return output.slice(0, 160);
 }
 
 export async function researchBooks(books: QuizBook[]): Promise<string> {
-  const verified = curatedFor(books);
-  const chunks: string[] = verified ? [verified] : [];
+  if (!books.length) return '';
+
+  const curated = curatedFor(books);
+  const chunks: string[] = curated ? [curated] : [];
+
   await Promise.all(books.map(async (book) => {
-    const t = encodeURIComponent(book.title);
-    const a = encodeURIComponent(book.author);
+    const title = encodeURIComponent(book.title);
+    const author = encodeURIComponent(book.author);
     const urls = [
-      `https://www.googleapis.com/books/v1/volumes?q=intitle:${t}+inauthor:${a}&maxResults=20`,
-      `https://openlibrary.org/search.json?title=${t}&author=${a}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`
+      `https://www.googleapis.com/books/v1/volumes?q=intitle:${title}+inauthor:${author}&maxResults=20`,
+      `https://openlibrary.org/search.json?title=${title}&author=${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,
     ];
-    const results = await Promise.allSettled(urls.map((u) => fetch(u, { cache: 'no-store' }).then((r) => r.ok ? r.json() : null)));
+
+    const results = await Promise.allSettled(
+      urls.map((url) =>
+        fetch(url, { cache: 'no-store' }).then((response) =>
+          response.ok ? response.json() : null,
+        ),
+      ),
+    );
+
     for (const result of results) {
       if (result.status !== 'fulfilled' || !result.value) continue;
-      const d: any = result.value;
-      for (const x of d.items || []) {
-        const v = x.volumeInfo || {};
-        if (v.description) chunks.push(`Exact-book catalogue description for ${book.title} by ${book.author}: ${v.description}`);
+      const data: any = result.value;
+
+      for (const item of data.items || []) {
+        const info = item.volumeInfo || {};
+        if (info.description) {
+          chunks.push(
+            `Exact-book catalogue description for ${book.title} by ${book.author}: ${info.description}`,
+          );
+        }
       }
-      for (const x of d.docs || []) {
-        if (x.first_sentence) chunks.push(`Exact-book first sentence: ${(x.first_sentence || []).join(' ')}`);
-        if (x.subject) chunks.push(`Exact-book subjects: ${(x.subject || []).slice(0, 80).join(', ')}`);
-        if (x.description) chunks.push(`Exact-book description: ${typeof x.description === 'string' ? x.description : JSON.stringify(x.description)}`);
+
+      for (const item of data.docs || []) {
+        if (item.first_sentence) {
+          chunks.push(`Exact-book first sentence: ${(item.first_sentence || []).join(' ')}`);
+        }
+        if (item.subject) {
+          chunks.push(`Exact-book subjects: ${(item.subject || []).slice(0, 80).join(', ')}`);
+        }
+        if (item.description) {
+          chunks.push(
+            `Exact-book description: ${typeof item.description === 'string' ? item.description : JSON.stringify(item.description)}`,
+          );
+        }
       }
     }
   }));
+
   return chunks.join('\n').slice(0, 90000);
 }
 
-function promptFor(book: QuizBook, count: number, difficulty: string, instructions: string, previous: string[], research: string) {
-  return `You are EDUWILLS Book Intelligence AI. Generate EXACTLY ${count} factual multiple-choice questions about ONLY this exact book: ${book.title} by ${book.author}.
+function promptFor(
+  book: QuizBook,
+  count: number,
+  difficulty: string,
+  instructions: string,
+  previous: string[],
+  research: string,
+) {
+  return `You are EDUWILLS Book Intelligence AI.
 
-IDENTITY LOCK: The title and author together define the book. Never substitute another work, adaptation, mythology source, similarly named book, city, person, or general knowledge.
+Generate EXACTLY ${count} factual multiple-choice questions about ONLY this exact book: ${book.title} by ${book.author}.
+
+IDENTITY LOCK: The title and author together identify the book. Never substitute another work, adaptation, mythology source, similarly named book, city, person, or general knowledge.
 
 EVIDENCE LOCK: Every question, every option, the correct answer, and the explanation must be supported by the exact-book evidence below. If the evidence does not establish a fact, do not use it. Never infer gender, age, occupation, family role, setting, chronology, relationship, appearance, nationality, or plot events from a name or stereotype.
 
-QUESTION QUALITY: At least 80% must test concrete book content: characters, relationships, events, actions, decisions, settings, prophecy, chronology, causes, consequences, chapter details, or distinctive book-specific facts. Avoid generic questions. Do not ask unsupported city/modern-life questions. Do not ask metadata questions unless explicitly requested.
+QUESTION QUALITY: At least 80% must test concrete book content: characters, relationships, events, actions, decisions, settings, chronology, causes, consequences, chapter details, or distinctive book-specific facts. Avoid generic questions. Do not ask unsupported modern-life or city questions. Do not ask metadata questions unless explicitly requested.
 
-FORMAT: Return ONLY JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"...","evidence":"..."}]}. Use exactly four plausible options and one correct answer. answer is zero-based. Do not prefix options with A/B/C/D. Do not duplicate previous questions.
+FORMAT: Return ONLY valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"...","evidence":"..."}]}. Use exactly four plausible options and one correct answer. answer is zero-based. Do not prefix options with A/B/C/D. Do not include markdown. Do not duplicate previous questions.
 
 DIFFICULTY: ${difficulty}.
 USER INSTRUCTIONS: ${instructions || 'Create a diverse quiz from the actual book content.'}
@@ -173,79 +308,149 @@ VERIFIED EXACT-BOOK EVIDENCE:
 ${research.slice(0, 65000)}`;
 }
 
-async function generateBatch(book: QuizBook, count: number, difficulty: string, instructions: string, previous: string[], research: string) {
+async function generateBatch(
+  book: QuizBook,
+  count: number,
+  difficulty: string,
+  instructions: string,
+  previous: string[],
+  research: string,
+) {
   const prompt = promptFor(book, count, difficulty, instructions, previous, research);
   let lastError: unknown;
+
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const text = await gateway(prompt, 60000);
       const parsed = parseQuestions(text);
       if (parsed.length) return parsed;
       lastError = new Error('Gateway returned no valid questions');
-    } catch (e) {
-      lastError = e;
+    } catch (error) {
+      lastError = error;
       try {
-        const parsed = parseQuestions(await geminiText(prompt, 60000));
+        const fallbackText = await geminiText(prompt, 60000);
+        const parsed = parseQuestions(fallbackText);
         if (parsed.length) return parsed;
-      } catch (fallbackError) { lastError = fallbackError; }
+      } catch (fallbackError) {
+        lastError = fallbackError;
+      }
     }
   }
+
   throw lastError instanceof Error ? lastError : new Error('AI generation failed');
 }
 
-export async function generateQuiz(books: QuizBook[], count: number, difficulty: string, instructions: string, recent: string[] = [], research = ''): Promise<QuizQuestion[]> {
+export async function generateQuiz(
+  books: QuizBook[],
+  count: number,
+  difficulty: string,
+  instructions: string,
+  recent: string[] = [],
+  research = '',
+): Promise<QuizQuestion[]> {
   const requested = Math.min(100, Math.max(1, Number(count) || 10));
   if (!books.length) throw new Error('No book selected.');
-  const verified = research || await researchBooks(books);
+
+  const evidence = research || await researchBooks(books);
   const output: QuizQuestion[] = [];
   const seen = new Set(recent.map(fingerprint).filter(Boolean));
 
+  // When multiple books are selected, distribute the requested questions across them.
   for (const book of books) {
     if (output.length >= requested) break;
+
     const remaining = requested - output.length;
-    const share = Math.min(remaining, Math.max(1, Math.ceil(requested / books.length)));
+    const share = Math.min(
+      remaining,
+      Math.max(1, Math.ceil(requested / books.length)),
+    );
     const local: QuizQuestion[] = [];
     let guard = 0;
+
     while (local.length < share && guard < 8) {
-      guard++;
-      const batch = Math.min(10, share - local.length);
-      const questions = await generateBatch(book, batch, difficulty, instructions, [...recent, ...output.map((q) => q.question)], verified);
+      guard += 1;
+      const batchSize = Math.min(10, share - local.length);
+      const questions = await generateBatch(
+        book,
+        batchSize,
+        difficulty,
+        instructions,
+        [...recent, ...output.map((question) => question.question)],
+        evidence,
+      );
+
       let added = 0;
-      for (const q of questions) {
-        const key = fingerprint(q.question);
-        if (!key || seen.has(key) || metadata(q) || local.some((x) => similar(x.question, q.question)) || output.some((x) => similar(x.question, q.question))) continue;
-        if (!groundedForBooks([book], q, verified)) continue;
-        local.push(q); output.push(q); seen.add(key); added++;
+      for (const question of questions) {
+        const key = fingerprint(question.question);
+        if (!key || seen.has(key)) continue;
+        if (metadata(question)) continue;
+        if (local.some((item) => similar(item.question, question.question))) continue;
+        if (output.some((item) => similar(item.question, question.question))) continue;
+        if (!groundedForBooks([book], question, evidence)) continue;
+
+        local.push(question);
+        output.push(question);
+        seen.add(key);
+        added += 1;
         if (local.length >= share || output.length >= requested) break;
       }
-      if (!added) {
-        if (guard >= 3) break;
-      }
+
+      if (!added && guard >= 3) break;
     }
   }
 
-  if (output.length < requested) throw new Error(`AI generated ${output.length} of ${requested} grounded questions. Please try again.`);
+  if (output.length < requested) {
+    throw new Error(
+      `AI generated ${output.length} of ${requested} grounded questions. Please try again.`,
+    );
+  }
+
   return output.slice(0, requested);
 }
 
 export async function askEduwills(prompt: string, history: string[] = []) {
   const conversation = [...history.slice(-8), `Learner: ${prompt}`].join('\n');
   const instruction = `You are EDUWILLS AI, a study assistant. Answer directly and accurately. If the learner asks about a specific book and the evidence is insufficient, say so instead of inventing details. Plain readable text only. Conversation:\n${conversation}`;
-  try { return clean(await gateway(instruction, 30000)); }
-  catch {
-    try { return clean(await geminiText(instruction, 30000)); }
-    catch { return 'EDUWILLS AI is temporarily busy. Please try again in a moment.'; }
+
+  try {
+    return clean(await gateway(instruction, 30000));
+  } catch {
+    try {
+      return clean(await geminiText(instruction, 30000));
+    } catch {
+      return 'EDUWILLS AI is temporarily busy. Please try again in a moment.';
+    }
   }
 }
 
-export async function explainFailure(book: string, question: string, chosen: string, correct: string) {
+export async function explainFailure(
+  book: string,
+  question: string,
+  chosen: string,
+  correct: string,
+) {
   const prompt = `Briefly explain why "${correct}" is correct for this question from ${book}: ${question}. The learner chose: ${chosen}. Use only the stated book context. Plain text only.`;
-  try { return clean(await gateway(prompt, 30000)); }
-  catch { return `The correct answer is ${correct}. Review the relevant evidence in ${book}.`; }
+  try {
+    return clean(await gateway(prompt, 30000));
+  } catch {
+    return `The correct answer is ${correct}. Review the relevant evidence in ${book}.`;
+  }
 }
 
-export async function generateRemarks(books: QuizBook[], score: number, total: number, percentage: number, difficulty: string, elapsed: number) {
-  const prompt = `Give one short encouraging performance remark for a learner who scored ${score}/${total} (${percentage}%) on a ${difficulty} quiz about ${books.map((b) => `${b.title} by ${b.author}`).join('; ')}. Mention one strength and one next step. Plain text only.`;
-  try { return clean(await gateway(prompt, 30000)); }
-  catch { return percentage >= 70 ? 'Good work. Your understanding is developing well; review the missed questions and strengthen the details you missed.' : 'Keep going. Review the missed questions and return to the relevant book sections before trying again.'; }
+export async function generateRemarks(
+  books: QuizBook[],
+  score: number,
+  total: number,
+  percentage: number,
+  difficulty: string,
+  elapsed: number,
+) {
+  const prompt = `Give one short encouraging performance remark for a learner who scored ${score}/${total} (${percentage}%) on a ${difficulty} quiz about ${books.map((book) => `${book.title} by ${book.author}`).join('; ')}. Mention one strength and one next step. Plain text only.`;
+  try {
+    return clean(await gateway(prompt, 30000));
+  } catch {
+    return percentage >= 70
+      ? 'Good work. Your understanding is developing well; review the missed questions and strengthen the details you missed.'
+      : 'Keep going. Review the missed questions and return to the relevant book sections before trying again.';
+  }
 }
