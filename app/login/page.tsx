@@ -11,6 +11,15 @@ import { auth, db } from '@/lib/firebase';
 const BASE = '/eduwills';
 const LEGACY_EMAIL_SUFFIX = '@accounts.eduwills.app';
 
+function normalisePhone(value: unknown): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('+')) return raw;
+  if (raw.startsWith('234') && raw.length >= 12) return `+${raw}`;
+  if (raw.startsWith('0') && raw.length >= 10) return `+234${raw.slice(1)}`;
+  return `+${raw}`;
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<'phone' | 'email'>('phone');
   const [phone, setPhone] = useState<string | undefined>('');
@@ -25,28 +34,12 @@ export default function LoginPage() {
       setMessage('Your Firebase login exists, but your EDUWILLS profile is missing. Please contact the administrator.');
       return false;
     }
-
-    const profile = profileSnap.data() as {
-      phone?: string;
-      phoneE164?: string;
-      username?: string;
-      authEmail?: string;
-      email?: string;
-    };
-
+    const profile = profileSnap.data() as { phone?: string; phoneE164?: string; username?: string; authEmail?: string; email?: string };
     const realEmail = String(authEmail || profile.authEmail || profile.email || '').toLowerCase();
-    const profilePhone = profile.phoneE164 || (profile.phone ? `+${profile.phone}` : '');
-
+    const profilePhone = normalisePhone(profile.phoneE164 || profile.phone);
     if (realEmail && !realEmail.endsWith(LEGACY_EMAIL_SUFFIX) && profilePhone) {
-      await setDoc(doc(db, 'phoneIndex', profilePhone), {
-        uid,
-        authEmail: realEmail,
-        username: profile.username || '',
-        phoneE164: profilePhone,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      await setDoc(doc(db, 'phoneIndex', profilePhone), { uid, authEmail: realEmail, username: profile.username || '', phoneE164: profilePhone, updatedAt: new Date().toISOString() }, { merge: true });
     }
-
     localStorage.setItem('eduwills_current_user', profile.username || '');
     localStorage.setItem('eduwills_current_uid', uid);
     window.location.href = `${BASE}/dashboard/`;
@@ -60,107 +53,69 @@ export default function LoginPage() {
 
     if (mode === 'email') {
       const normalizedEmail = email.trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-        setMessage('Enter a valid email address.');
-        return;
-      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { setMessage('Enter a valid email address.'); return; }
       setLoading(true);
       try {
         const credential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
-        if (String(credential.user.email || '').toLowerCase().endsWith(LEGACY_EMAIL_SUFFIX)) {
-          await signOut(auth);
-          setMessage('This account still uses an old internal email identifier. Please add and verify your real email first.');
-          return;
-        }
-        if (!credential.user.emailVerified) {
-          await sendEmailVerification(credential.user).catch(() => undefined);
-          await signOut(auth);
-          setMessage('Please verify your email before logging in. A fresh verification link has been sent.');
-          return;
-        }
+        if (String(credential.user.email || '').toLowerCase().endsWith(LEGACY_EMAIL_SUFFIX)) { await signOut(auth); setMessage('This account still uses an old internal email identifier. Please add and verify your real email first.'); return; }
+        if (!credential.user.emailVerified) { await sendEmailVerification(credential.user).catch(() => undefined); await signOut(auth); setMessage('Please verify your email before logging in. A fresh verification link has been sent.'); return; }
         await completeLogin(credential.user.uid, credential.user.email || normalizedEmail);
       } catch (error: unknown) {
         const code = error instanceof Error ? error.message : '';
         if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) setMessage('Email or password is incorrect.');
         else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase rules are blocking the required account lookup.');
         else setMessage('Unable to log in. Please check your details and try again.');
-      } finally {
-        setLoading(false);
-      }
+      } finally { setLoading(false); }
       return;
     }
 
-    if (!phone || !isValidPhoneNumber(phone)) {
-      setMessage('Enter a valid phone number and select the correct country code.');
-      return;
-    }
-
+    if (!phone || !isValidPhoneNumber(phone)) { setMessage('Enter a valid phone number and select the correct country code.'); return; }
     setLoading(true);
     try {
+      const normalizedPhone = normalisePhone(phone);
       let authEmail = '';
       let username = '';
       let expectedUid = '';
-      let indexed = false;
-      const legacyKey = phone.replace(/^\+/, '');
-      let indexSnap = await getDoc(doc(db, 'phoneIndex', phone));
-      if (!indexSnap.exists()) indexSnap = await getDoc(doc(db, 'phoneIndex', legacyKey));
+      let indexSnap = await getDoc(doc(db, 'phoneIndex', normalizedPhone));
+      if (!indexSnap.exists()) {
+        const legacyKey = normalizedPhone.replace(/^\+/, '');
+        indexSnap = await getDoc(doc(db, 'phoneIndex', legacyKey));
+      }
 
       if (indexSnap.exists()) {
-        indexed = true;
         const index = indexSnap.data() as { uid?: string; authEmail?: string; username?: string };
         authEmail = index.authEmail || '';
         username = index.username || '';
         expectedUid = index.uid || '';
+
+        // Never attempt Firebase login with the old generated identifier.
+        if (authEmail.toLowerCase().endsWith(LEGACY_EMAIL_SUFFIX) && expectedUid) {
+          const profileSnap = await getDoc(doc(db, 'users', expectedUid));
+          if (profileSnap.exists()) {
+            const profile = profileSnap.data() as { authEmail?: string; email?: string; username?: string; phone?: string; phoneE164?: string };
+            authEmail = profile.authEmail || profile.email || '';
+            username = profile.username || username;
+          }
+        }
       }
 
-      if (!authEmail) {
-        setMessage('No EDUWILLS account was found for that phone number.');
-        return;
-      }
+      if (!authEmail) { setMessage('No EDUWILLS account was found for that phone number.'); return; }
+      if (authEmail.toLowerCase().endsWith(LEGACY_EMAIL_SUFFIX)) { setMessage('This account needs a real email address before phone login can continue. Sign in with your verified email once, then phone login will be repaired automatically.'); return; }
 
       const credential = await signInWithEmailAndPassword(auth, authEmail, password);
       const profileSnap = await getDoc(doc(db, 'users', credential.user.uid));
-      if (!profileSnap.exists()) {
-        await signOut(auth);
-        setMessage('Your Firebase login exists, but your EDUWILLS profile is missing. Please contact the administrator.');
-        return;
-      }
-
+      if (!profileSnap.exists()) { await signOut(auth); setMessage('Your Firebase login exists, but your EDUWILLS profile is missing. Please contact the administrator.'); return; }
       const profile = profileSnap.data() as { phone?: string; phoneE164?: string; username?: string; authEmail?: string; email?: string };
-      const profilePhone = profile.phoneE164 || (profile.phone ? `+${profile.phone}` : '');
-      if (profilePhone && profilePhone !== phone && profile.phone !== legacyKey) {
-        await signOut(auth);
-        setMessage('That phone number is not linked to this account.');
-        return;
-      }
-      if (expectedUid && credential.user.uid !== expectedUid) {
-        await signOut(auth);
-        setMessage('This phone number is not linked to that account.');
-        return;
-      }
+      const profilePhone = normalisePhone(profile.phoneE164 || profile.phone);
+      if (profilePhone && profilePhone !== normalizedPhone) { await signOut(auth); setMessage('That phone number is not linked to this account.'); return; }
+      if (expectedUid && credential.user.uid !== expectedUid) { await signOut(auth); setMessage('This phone number is not linked to that account.'); return; }
 
       const currentAuthEmail = String(credential.user.email || authEmail).toLowerCase();
-      if (currentAuthEmail.endsWith(LEGACY_EMAIL_SUFFIX)) {
-        await signOut(auth);
-        setMessage('This account needs a real verified email before phone login can continue. Use “Sign in with email” after verifying your email.');
-        return;
-      }
-
-      if (!credential.user.emailVerified) {
-        await sendEmailVerification(credential.user).catch(() => undefined);
-        await signOut(auth);
-        setMessage('Please verify your email before logging in. A fresh verification link has been sent to your email.');
-        return;
-      }
+      if (currentAuthEmail.endsWith(LEGACY_EMAIL_SUFFIX)) { await signOut(auth); setMessage('This account needs a real verified email before phone login can continue.'); return; }
+      if (!credential.user.emailVerified) { await sendEmailVerification(credential.user).catch(() => undefined); await signOut(auth); setMessage('Please verify your email before logging in. A fresh verification link has been sent to your email.'); return; }
 
       username = profile.username || username;
-      await setDoc(doc(db, 'phoneIndex', phone), {
-        uid: credential.user.uid,
-        authEmail: currentAuthEmail,
-        username,
-        phoneE164: phone,
-        migratedAt: new Date().toISOString()
-      }, { merge: true });
+      await setDoc(doc(db, 'phoneIndex', normalizedPhone), { uid: credential.user.uid, authEmail: currentAuthEmail, username, phoneE164: normalizedPhone, migratedAt: new Date().toISOString() }, { merge: true });
       localStorage.setItem('eduwills_current_user', username);
       localStorage.setItem('eduwills_current_uid', credential.user.uid);
       window.location.href = `${BASE}/dashboard/`;
@@ -169,9 +124,7 @@ export default function LoginPage() {
       if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) setMessage('Phone number or password is incorrect.');
       else if (code.includes('permission-denied')) setMessage('Login is temporarily unavailable because Firebase rules are blocking the required account lookup.');
       else setMessage('Unable to log in. Please check your details and try again.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   return <main className="min-h-screen bg-paper px-5 py-6 sm:px-8">
