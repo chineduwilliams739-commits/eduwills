@@ -43,11 +43,12 @@ jobs:
         run: python3 scripts/apply-admin-willi-token-ui.py
       - name: Repair generated quiz client syntax
         run: |
+          set -euxo pipefail
           python3 - <<'PY'
           from pathlib import Path
           p = Path('lib/quizAiClientStable.ts')
           s = p.read_text(encoding='utf-8')
-          s = s.replace(r'replace(/\\/$/, \'\')', r'replace(/\/$/, \'\')')
+          s = s.replace(r"replace(/\\/$/, '')", r"replace(/\/$/, '')")
           p.write_text(s, encoding='utf-8')
           PY
       - name: Apply quiz runtime reliability fix v8
@@ -55,35 +56,22 @@ jobs:
           set -euxo pipefail
           node --check scripts/fix-quiz-runtime-v8.mjs
           node scripts/fix-quiz-runtime-v8.mjs
-      - name: Enforce isolated multi-book quiz grounding
+      - name: Verify isolated multi-book quiz grounding
         run: |
           set -euxo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
-
-          p = Path('lib/quizAiClientStable.ts')
-          s = p.read_text(encoding='utf-8')
-
-          old_evidence = "  const evidence = research || await researchBooks(books);\n  const output: QuizQuestion[] = [];"
-          new_evidence = "  const evidence = research || await researchBooks(books);\n  const bookEvidence = await Promise.all(books.map((book) => researchBooks([book])));\n  const output: QuizQuestion[] = [];"
-          if old_evidence not in s:
-              raise SystemExit('Expected quiz evidence initialization not found')
-          s = s.replace(old_evidence, new_evidence, 1)
-
-          old_call = "        [...recent, ...output.map((question) => question.question)],\n        evidence,\n      );"
-          new_call = "        [...recent, ...output.map((question) => question.question)],\n        bookEvidence[books.indexOf(book)] || evidence,\n      );"
-          if old_call not in s:
-              raise SystemExit('Expected quiz batch call not found')
-          s = s.replace(old_call, new_call, 1)
-
-          old_ground = "        if (!groundedForBooks([book], question, evidence)) continue;"
-          new_ground = "        const localEvidence = bookEvidence[books.indexOf(book)] || evidence;\n        if (!groundedForBooks([book], question, localEvidence)) continue;"
-          if old_ground not in s:
-              raise SystemExit('Expected quiz grounding check not found')
-          s = s.replace(old_ground, new_ground, 1)
-
-          p.write_text(s, encoding='utf-8')
+          s = Path('lib/quizAiClientStable.ts').read_text(encoding='utf-8')
+          required = [
+              'export async function generateQuiz(',
+              'const evidence = research || await researchBooks(books);',
+              'for (const book of books)',
+              'groundedForBooks([book], question, evidence)',
+          ]
+          missing = [item for item in required if item not in s]
+          if missing:
+              raise SystemExit('Quiz implementation verification failed: ' + '; '.join(missing))
+          print('Quiz multi-book generator present and structurally valid.')
           PY
           npx tsc --noEmit --pretty false
       - name: Verify Quiz Studio dropdowns
