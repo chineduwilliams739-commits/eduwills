@@ -56,7 +56,7 @@ jobs:
           set -euxo pipefail
           node --check scripts/fix-quiz-runtime-v8.mjs
           node scripts/fix-quiz-runtime-v8.mjs
-      - name: Verify isolated multi-book quiz grounding
+      - name: Verify multi-book quiz grounding
         run: |
           set -euxo pipefail
           python3 - <<'PY'
@@ -64,8 +64,9 @@ jobs:
           s = Path('lib/quizAiClientStable.ts').read_text(encoding='utf-8')
           required = [
               'export async function generateQuiz(',
-              'const evidence = research || await researchBooks(books);',
+              'const output: QuizQuestion[] = [];',
               'for (const book of books)',
+              'generateBatch(',
               'groundedForBooks([book], question, evidence)',
           ]
           missing = [item for item in required if item not in s]
