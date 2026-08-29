@@ -28,6 +28,11 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Patch activation redemption
+        run: |
+          set -euxo pipefail
+          node --check scripts/patch-activation-redeem.mjs
+          node scripts/patch-activation-redeem.mjs
       - name: Restore EDUWILLS homepage
         run: |
           set -euxo pipefail
