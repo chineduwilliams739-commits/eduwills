@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
 
 const VISITOR_KEY = 'eduwills_visitor_id_v1';
 const SOURCE_KEY = 'eduwills_first_source_v2';
@@ -57,14 +58,8 @@ function getCoarseLocation() {
     const language = navigator.language || 'unknown';
     let region = '';
     try { region = new Intl.Locale(language).region || ''; } catch {}
-    return {
-      region: region || 'unknown',
-      timezone: timezone.slice(0, 80),
-      language: language.slice(0, 35),
-    };
-  } catch {
-    return { region: 'unknown', timezone: 'unknown', language: 'unknown' };
-  }
+    return { region: region || 'unknown', timezone: timezone.slice(0, 80), language: language.slice(0, 35) };
+  } catch { return { region: 'unknown', timezone: 'unknown', language: 'unknown' }; }
 }
 
 export async function trackEduWillsEvent(event: string, properties: Record<string, unknown> = {}) {
@@ -74,6 +69,7 @@ export async function trackEduWillsEvent(event: string, properties: Record<strin
     const eventId = crypto.randomUUID();
     await setDoc(doc(db, 'siteAnalytics', day, 'events', eventId), {
       event: event.slice(0, 80), eventId, visitorId,
+      userId: auth.currentUser?.uid || null,
       firstSource: (() => { try { return localStorage.getItem(SOURCE_KEY) || 'unknown'; } catch { return 'unknown'; } })(),
       path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
       properties, createdAt: new Date().toISOString(),
@@ -91,17 +87,21 @@ export default function AnalyticsTracker() {
     const now = new Date().toISOString();
     const location = getCoarseLocation();
     const visitorRef = doc(collection(db, 'siteAnalytics', day, 'visitors'), visitorId);
-    setDoc(visitorRef, {
-      visitorId, day, firstSeenAt: now, lastSeenAt: now,
+
+    const writeVisitor = (userId?: string) => setDoc(visitorRef, {
+      visitorId, day, firstSeenAt: now, lastSeenAt: new Date().toISOString(),
       source: firstSource, currentSource, path,
       landingPath: (() => { try { return localStorage.getItem('eduwills_landing_path_v1') || path; } catch { return path; } })(),
-      language: location.language,
-      region: location.region,
-      timezone: location.timezone,
+      language: location.language, region: location.region, timezone: location.timezone,
       locationMethod: 'browser_locale_timezone',
+      ...(userId ? { userId, uid: userId } : {}),
     }, { merge: true }).catch(() => {});
+
+    writeVisitor(auth.currentUser?.uid);
+    const unsubscribe = onAuthStateChanged(auth, user => { if (user) writeVisitor(user.uid); });
     try { if (!localStorage.getItem('eduwills_landing_path_v1')) localStorage.setItem('eduwills_landing_path_v1', path); } catch {}
     trackEduWillsEvent('page_view');
+    return unsubscribe;
   }, []);
   return null;
 }
