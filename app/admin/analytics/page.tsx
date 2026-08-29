@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, Bot, Globe2, RefreshCw, Users, UserPlus, MapPin, GraduationCap, CreditCard, WalletCards } from 'lucide-react';
+import { ArrowLeft, BarChart3, Bot, Globe2, RefreshCw, Users, UserPlus, MapPin, CreditCard } from 'lucide-react';
 import { collection, getDocs, getDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
@@ -12,7 +12,7 @@ type Visitor = { visitorId?: string; source?: string; firstSeenAt?: string; lang
 type Day = { day: string; visitors: number; sources: Record<string, number>; locations: Record<string, number> };
 type Funnel = { registrations: number; quizUsers: number; activatedUsers: number; payingUsers: number; revenue: Record<string, number>; chatgptVisitors: number };
 
-afunction dateKey(offset: number) { const d = new Date(); d.setDate(d.getDate() - offset); return d.toISOString().slice(0, 10); }
+function dateKey(offset: number) { const d = new Date(); d.setDate(d.getDate() - offset); return d.toISOString().slice(0, 10); }
 function toMs(v: any) { if (!v) return 0; if (typeof v?.toMillis === 'function') return v.toMillis(); if (v?.seconds) return Number(v.seconds) * 1000; const n = Date.parse(String(v)); return Number.isFinite(n) ? n : 0; }
 function locationLabel(region?: string, timezone?: string) { const code = (region || '').toUpperCase(); let country = code; try { if (code && code !== 'UNKNOWN') country = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code; } catch {} if (!country || country.toLowerCase() === 'unknown') country = 'Unknown region'; return timezone && timezone !== 'unknown' ? `${country} · ${timezone}` : country; }
 function pct(a: number, b: number) { return b ? `${((a / b) * 100).toFixed(1)}%` : '0%'; }
