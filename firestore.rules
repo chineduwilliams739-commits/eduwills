@@ -25,7 +25,18 @@ service cloud.firestore {
     match /williTokens/{tokenId} {
       allow create: if isAdmin();
       allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername());
-      allow update: if isAdmin() || (signedIn() && resource.data.used == false && resource.data.username == currentUsername() && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (
+        signedIn()
+        && resource.data.used == false
+        && resource.data.redeemed != true
+        && resource.data.revoked != true
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.used == true
+        && request.resource.data.redeemed == true
+        && request.resource.data.redeemedBy == request.auth.uid
+      );
       allow delete: if isAdmin();
     }
     match /settings/{settingId} { allow read, write: if isAdmin(); }
@@ -58,42 +69,22 @@ service cloud.firestore {
       allow update: if signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid && request.resource.data.day == resource.data.day && request.resource.data.generated == resource.data.generated + 1 && request.resource.data.generated <= 5;
       allow delete: if isAdmin();
     }
-
-    // Analytics used by the current Admin Analytics page.
-    // Admins can read; the public site can create/update its own anonymous visitor record.
     match /siteAnalytics/{day}/visitors/{visitorId} {
       allow read: if isAdmin();
       allow create: if request.resource.data.visitorId == visitorId && request.resource.data.day == day;
-      allow update: if request.resource.data.visitorId == visitorId
-        && resource.data.visitorId == visitorId
-        && request.resource.data.firstSeenAt == resource.data.firstSeenAt
-        && request.resource.data.day == resource.data.day;
+      allow update: if request.resource.data.visitorId == visitorId && resource.data.visitorId == visitorId && request.resource.data.firstSeenAt == resource.data.firstSeenAt && request.resource.data.day == resource.data.day;
       allow delete: if isAdmin();
     }
-
     match /siteAnalytics/{day}/events/{eventId} {
       allow read: if isAdmin();
-      allow create: if request.resource.data.eventId == eventId
-        && request.resource.data.visitorId is string
-        && request.resource.data.event is string
-        && request.resource.data.createdAt is string;
+      allow create: if request.resource.data.eventId == eventId && request.resource.data.visitorId is string && request.resource.data.event is string && request.resource.data.createdAt is string;
       allow update, delete: if isAdmin();
     }
-
-    // Kept for compatibility with the newer analytics-event tracker.
     match /analyticsEvents/{eventId} {
-      allow create: if request.resource.data.keys().hasOnly([
-        'event', 'timestamp', 'source', 'medium', 'campaign', 'landingPage',
-        'referrer', 'country', 'region', 'timezone', 'language', 'location',
-        'path', 'sessionId', 'userId', 'metadata'
-      ])
-        && request.resource.data.event is string
-        && request.resource.data.event.size() <= 100
-        && request.resource.data.timestamp != null;
+      allow create: if request.resource.data.keys().hasOnly(['event','timestamp','source','medium','campaign','landingPage','referrer','country','region','timezone','language','location','path','sessionId','userId','metadata']) && request.resource.data.event is string && request.resource.data.event.size() <= 100 && request.resource.data.timestamp != null;
       allow read: if isAdmin();
       allow update, delete: if isAdmin();
     }
-
     match /{document=**} { allow read, write: if false; }
   }
 }
