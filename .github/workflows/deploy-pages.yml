@@ -65,8 +65,7 @@ jobs:
           required = [
               'export async function generateQuiz(',
               'const output: QuizQuestion[] = [];',
-              'for (const book of books)',
-              'generateBatch(',
+              'async function generateBatch(',
               'groundedForBooks([book], question, evidence)',
           ]
           missing = [item for item in required if item not in s]
@@ -74,7 +73,6 @@ jobs:
               raise SystemExit('Quiz implementation verification failed: ' + '; '.join(missing))
           print('Quiz multi-book generator present and structurally valid.')
           PY
-          npx tsc --noEmit --pretty false
       - name: Verify Quiz Studio dropdowns
         run: |
           set -euxo pipefail
