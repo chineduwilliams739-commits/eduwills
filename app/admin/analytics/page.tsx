@@ -10,12 +10,17 @@ const BASE = '/eduwills';
 const OWNER_UID = 'A45uD8Cu27dI0y0iSWla4CZJBhn1';
 type Visitor = { visitorId?: string; source?: string; firstSeenAt?: string; language?: string; path?: string; region?: string; timezone?: string };
 type Day = { day: string; visitors: number; sources: Record<string, number>; locations: Record<string, number> };
+type User = { uid?: string; activated?: boolean; activationStatus?: string; williTokenActive?: boolean; activationExpiresAt?: any };
+type WilliToken = { userId?: string; uid?: string; expiresAt?: any; createdAt?: any; durationMs?: number; revoked?: boolean; cancelled?: boolean };
 type Funnel = { registrations: number; quizUsers: number; activatedUsers: number; payingUsers: number; revenue: Record<string, number>; chatgptVisitors: number };
 
 function dateKey(offset: number) { const d = new Date(); d.setDate(d.getDate() - offset); return d.toISOString().slice(0, 10); }
 function toMs(v: any) { if (!v) return 0; if (typeof v?.toMillis === 'function') return v.toMillis(); if (v?.seconds) return Number(v.seconds) * 1000; const n = Date.parse(String(v)); return Number.isFinite(n) ? n : 0; }
 function locationLabel(region?: string, timezone?: string) { const code = (region || '').toUpperCase(); let country = code; try { if (code && code !== 'UNKNOWN') country = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || code; } catch {} if (!country || country.toLowerCase() === 'unknown') country = 'Unknown region'; return timezone && timezone !== 'unknown' ? `${country} · ${timezone}` : country; }
 function pct(a: number, b: number) { return b ? `${((a / b) * 100).toFixed(1)}%` : '0%'; }
+function tokenExpiry(token: WilliToken): Date | null { const explicit = token.expiresAt?.toDate?.(); if (explicit instanceof Date) return explicit; const created = token.createdAt?.toDate?.(); if (created instanceof Date && typeof token.durationMs === 'number') return new Date(created.getTime() + token.durationMs); return null; }
+function userActivationExpiry(user: User): Date | null { const v = user.activationExpiresAt; if (!v) return null; if (typeof v?.toDate === 'function') return v.toDate(); if (v?.seconds) return new Date(Number(v.seconds) * 1000); const d = new Date(String(v)); return Number.isFinite(d.getTime()) ? d : null; }
+function isUserActive(user: User, tokens: WilliToken[]): boolean { const uid = user.uid || ''; const explicitActive = user.activated === true || user.activationStatus === 'active' || user.williTokenActive === true; const userExpiry = userActivationExpiry(user); if (explicitActive && (!userExpiry || userExpiry.getTime() > Date.now())) return true; return tokens.some(token => { const owner = token.userId || token.uid; const expiry = tokenExpiry(token); return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > Date.now(); }); }
 
 export default function AdminAnalyticsPage() {
   const [days, setDays] = useState<Day[]>([]); const [funnel, setFunnel] = useState<Funnel>({ registrations: 0, quizUsers: 0, activatedUsers: 0, payingUsers: 0, revenue: {}, chatgptVisitors: 0 }); const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [error, setError] = useState('');
@@ -34,7 +39,8 @@ export default function AdminAnalyticsPage() {
       const fourteenStart = Date.now() - 14 * 86400000;
       const registrations = userSnap.docs.filter(d => { const x = d.data(); const t = toMs(x.createdAt || x.registeredAt || x.created_at); return t >= fourteenStart; }).length;
       const quizUsers = new Set(historySnap.docs.map(d => String(d.data()?.userId || '')).filter(Boolean)).size;
-      const activated = userSnap.docs.filter(d => { const x = d.data(); return x.activated === true || x.activationStatus === 'active' || x.williTokenActive === true; }).length;
+      const tokenData = tokenSnap.docs.map(d => d.data() as WilliToken);
+      const activated = userSnap.docs.filter(d => isUserActive({ uid: d.id, ...(d.data() as User) }, tokenData)).length;
       const paidUsers = new Set<string>(); const revenue: Record<string, number> = {};
       tokenSnap.docs.forEach(d => { const x = d.data(); if (String(x.paymentStatus || '').toLowerCase() === 'success' || x.source === 'paystack') { const uid = String(x.userId || x.uid || ''); if (uid) paidUsers.add(uid); const currency = String(x.paymentCurrency || x.currency || 'NGN').toUpperCase(); const amount = Number(x.paymentAmount ?? x.amount ?? 0); if (Number.isFinite(amount) && amount > 0) revenue[currency] = (revenue[currency] || 0) + amount; } });
       const chatgptVisitors = dayResults.reduce((n, d) => n + (d.sources.chatgpt || 0), 0);
