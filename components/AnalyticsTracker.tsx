@@ -24,7 +24,6 @@ function detectSource() {
     const params = new URLSearchParams(window.location.search);
     const explicit = params.get('utm_source') || params.get('source') || params.get('ref');
     if (explicit) return explicit.trim().toLowerCase().slice(0, 80);
-
     const ref = document.referrer;
     if (!ref) return 'direct';
     try {
@@ -38,12 +37,8 @@ function detectSource() {
       if (host.includes('youtube.')) return 'youtube';
       if (host.includes('whatsapp.')) return 'whatsapp';
       return host.slice(0, 80);
-    } catch {
-      return 'referral';
-    }
-  } catch {
-    return 'unknown';
-  }
+    } catch { return 'referral'; }
+  } catch { return 'unknown'; }
 }
 
 function getFirstSource(currentSource: string) {
@@ -52,34 +47,38 @@ function getFirstSource(currentSource: string) {
     if (existing) return existing;
     localStorage.setItem(SOURCE_KEY, currentSource);
     return currentSource;
+  } catch { return currentSource; }
+}
+
+/** Coarse, browser-derived location only. No IP address or precise GPS location is collected. */
+function getCoarseLocation() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
+    const language = navigator.language || 'unknown';
+    let region = '';
+    try { region = new Intl.Locale(language).region || ''; } catch {}
+    return {
+      region: region || 'unknown',
+      timezone: timezone.slice(0, 80),
+      language: language.slice(0, 35),
+    };
   } catch {
-    return currentSource;
+    return { region: 'unknown', timezone: 'unknown', language: 'unknown' };
   }
 }
 
-/**
- * Records a privacy-conscious product event. No IP address or raw auth token is stored.
- * Useful for connecting the acquisition funnel: ChatGPT/referral -> visit -> signup -> quiz -> activation -> payment.
- */
 export async function trackEduWillsEvent(event: string, properties: Record<string, unknown> = {}) {
   try {
     const visitorId = getVisitorId();
     const day = new Date().toISOString().slice(0, 10);
     const eventId = crypto.randomUUID();
     await setDoc(doc(db, 'siteAnalytics', day, 'events', eventId), {
-      event: event.slice(0, 80),
-      eventId,
-      visitorId,
-      firstSource: (() => {
-        try { return localStorage.getItem(SOURCE_KEY) || 'unknown'; } catch { return 'unknown'; }
-      })(),
+      event: event.slice(0, 80), eventId, visitorId,
+      firstSource: (() => { try { return localStorage.getItem(SOURCE_KEY) || 'unknown'; } catch { return 'unknown'; } })(),
       path: `${window.location.pathname}${window.location.search}`.slice(0, 500),
-      properties,
-      createdAt: new Date().toISOString(),
+      properties, createdAt: new Date().toISOString(),
     });
-  } catch {
-    // Analytics must never block the user's EduWills experience.
-  }
+  } catch {}
 }
 
 export default function AnalyticsTracker() {
@@ -90,30 +89,19 @@ export default function AnalyticsTracker() {
     const day = new Date().toISOString().slice(0, 10);
     const path = `${window.location.pathname}${window.location.search}`.slice(0, 500);
     const now = new Date().toISOString();
-
-    // One document per visitor per UTC day gives a unique-visitor count without IP collection.
+    const location = getCoarseLocation();
     const visitorRef = doc(collection(db, 'siteAnalytics', day, 'visitors'), visitorId);
     setDoc(visitorRef, {
-      visitorId,
-      day,
-      firstSeenAt: now,
-      lastSeenAt: now,
-      source: firstSource,
-      currentSource,
-      path,
-      landingPath: (() => {
-        try { return localStorage.getItem('eduwills_landing_path_v1') || path; } catch { return path; }
-      })(),
-      userAgent: navigator.userAgent.slice(0, 300),
-      language: navigator.language || 'unknown',
+      visitorId, day, firstSeenAt: now, lastSeenAt: now,
+      source: firstSource, currentSource, path,
+      landingPath: (() => { try { return localStorage.getItem('eduwills_landing_path_v1') || path; } catch { return path; } })(),
+      language: location.language,
+      region: location.region,
+      timezone: location.timezone,
+      locationMethod: 'browser_locale_timezone',
     }, { merge: true }).catch(() => {});
-
-    try {
-      if (!localStorage.getItem('eduwills_landing_path_v1')) localStorage.setItem('eduwills_landing_path_v1', path);
-    } catch {}
-
+    try { if (!localStorage.getItem('eduwills_landing_path_v1')) localStorage.setItem('eduwills_landing_path_v1', path); } catch {}
     trackEduWillsEvent('page_view');
   }, []);
-
   return null;
 }
