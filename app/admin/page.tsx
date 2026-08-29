@@ -16,8 +16,8 @@ const DURATIONS = [
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const makeToken = () => Array.from({ length: 10 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
 
-type User = { id: string; uid?: string; fullName?: string; username?: string; phone?: string; activated?: boolean; category?: string; categories?: string[]; educationLevel?: string; educationLevels?: string[]; schoolLevel?: string; schoolLevels?: string[]; activationExpiresAt?: any };
-type WilliToken = { id: string; token?: string; userId?: string; uid?: string; username?: string; categories?: string[]; duration?: string; durationMs?: number; createdAt?: any; expiresAt?: any; used?: boolean; redeemed?: boolean; revoked?: boolean };
+type User = { id: string; uid?: string; fullName?: string; username?: string; phone?: string; activated?: boolean; activationStatus?: string; williTokenActive?: boolean; category?: string; categories?: string[]; educationLevel?: string; educationLevels?: string[]; schoolLevel?: string; schoolLevels?: string[]; activationExpiresAt?: any };
+type WilliToken = { id: string; token?: string; userId?: string; uid?: string; username?: string; categories?: string[]; duration?: string; durationMs?: number; createdAt?: any; expiresAt?: any; used?: boolean; redeemed?: boolean; revoked?: boolean; cancelled?: boolean };
 type Book = { id: string; userId: string; slot?: number; title: string; author: string };
 type Tab = 'users' | 'tokens' | 'books' | 'accounts';
 
@@ -47,6 +47,27 @@ function expiryDate(token?: WilliToken): Date | null {
   const created = token.createdAt?.toDate?.();
   if (created instanceof Date && typeof token.durationMs === 'number') return new Date(created.getTime() + token.durationMs);
   return null;
+}
+
+function activationExpiry(user: User): Date | null {
+  const v = user.activationExpiresAt;
+  if (!v) return null;
+  if (typeof v?.toDate === 'function') return v.toDate();
+  if (v?.seconds) return new Date(Number(v.seconds) * 1000);
+  const d = new Date(String(v));
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
+function isUserActive(user: User, tokens: WilliToken[]): boolean {
+  const uid = user.uid || user.id;
+  const explicitActive = user.activated === true || user.activationStatus === 'active' || user.williTokenActive === true;
+  const userExpiry = activationExpiry(user);
+  if (explicitActive && (!userExpiry || userExpiry.getTime() > Date.now())) return true;
+  return tokens.some(token => {
+    const owner = token.userId || token.uid;
+    const expiry = expiryDate(token);
+    return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > Date.now();
+  });
 }
 
 function formatDate(date: Date | null) {
@@ -222,10 +243,10 @@ export default function AdminPage() {
   };
 
   const exportUsers = () => {
-    const rows = [['Name', 'Username', 'Phone', 'Categories', 'Activated', 'WilliToken expiry']];
+    const rows = [['Name', 'Username', 'Phone', 'Categories', 'Status', 'WilliToken expiry']];
     users.forEach(u => {
-      const latest = userTokens(u.uid || u.id).find(t => !t.revoked && (expiryDate(t)?.getTime() || 0) > Date.now());
-      rows.push([u.fullName || '', u.username || '', u.phone || '', getCategories(u).join(' | '), u.activated ? 'Yes' : 'No', formatDate(expiryDate(latest))]);
+      const latest = userTokens(u.uid || u.id).find(t => !t.revoked && !t.cancelled && (expiryDate(t)?.getTime() || 0) > Date.now());
+      rows.push([u.fullName || '', u.username || '', u.phone || '', getCategories(u).join(' | '), isUserActive(u, tokens) ? 'Active' : 'Inactive', formatDate(expiryDate(latest))]);
     });
     const csv = rows.map(r => r.map(v => `\"${String(v).replace(/\"/g, '\"\"')}\"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -266,7 +287,7 @@ export default function AdminPage() {
           <section className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6">
             <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-300">Users</p><h2 className="mt-1 text-2xl font-black">User management</h2><p className="mt-1 text-sm text-slate-400">{users.length} registered users</p></div><button onClick={exportUsers} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-black"><Download size={16} /> Export</button></div>
             <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4"><Search size={18} className="text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, username, phone or category" className="w-full bg-transparent py-3.5 text-sm outline-none" /></div>
-            <div className="mt-4 max-h-[520px] space-y-2 overflow-y-auto">{filteredUsers.map(u => { const uid = u.uid || u.id; const cats = getCategories(u); const live = userTokens(uid).find(t => !t.revoked && (expiryDate(t)?.getTime() || 0) > Date.now()); return <button key={u.id} onClick={() => setSelectedUid(uid)} className={`block w-full rounded-2xl border p-4 text-left ${selectedUid === uid ? 'border-cyan-300/60 bg-cyan-400/10' : 'border-white/10 bg-slate-900/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-black">{u.fullName || 'Unnamed user'}</p><p className="text-xs text-slate-400">{u.username ? `@${u.username}` : uid}</p></div><div className="flex flex-wrap justify-end gap-1">{cats.map(c => <span key={c} className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-cyan-200">{c}</span>)}{live && <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[11px] font-bold text-emerald-300">Token live</span>}</div></div></button>; })}</div>
+            <div className="mt-4 max-h-[520px] space-y-2">{filteredUsers.map(u => { const uid = u.uid || u.id; const cats = getCategories(u); const active = isUserActive(u, tokens); return <button key={u.id} onClick={() => setSelectedUid(uid)} className={`block w-full rounded-2xl border p-4 text-left ${selectedUid === uid ? 'border-cyan-300/60 bg-cyan-400/10' : 'border-white/10 bg-slate-900/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-black">{u.fullName || 'Unnamed user'}</p><p className="text-xs text-slate-400">{u.username ? `@${u.username}` : uid}</p></div><div className="flex flex-wrap justify-end gap-1">{cats.map(c => <span key={c} className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-cyan-200">{c}</span>)}<span className={`rounded-full px-2.5 py-1 text-[11px] font-black ${active ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-400/20' : 'bg-slate-500/15 text-slate-300 ring-1 ring-slate-400/20'}`}>{active ? 'ACTIVE' : 'INACTIVE'}</span></div></div></button>; })}</div>
           </section>
         )}
 
