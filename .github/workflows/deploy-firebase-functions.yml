@@ -28,6 +28,20 @@ jobs:
         working-directory: functions
         run: npm install --no-audit --no-fund
 
+      - name: Register cleanup scheduler
+        working-directory: functions
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const file = 'index.js';
+          let s = fs.readFileSync(file, 'utf8');
+          const line = "Object.assign(exports, require('./cleanupWilliTokens'));";
+          if (!s.includes(line)) {
+            s = s.trimEnd() + "\n" + line + "\n";
+            fs.writeFileSync(file, s);
+          }
+          NODE
+
       - name: Deploy Firebase Functions
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
