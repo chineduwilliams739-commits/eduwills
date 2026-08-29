@@ -55,11 +55,45 @@ jobs:
           set -euxo pipefail
           node --check scripts/fix-quiz-runtime-v8.mjs
           node scripts/fix-quiz-runtime-v8.mjs
-      - name: Repair Quiz Studio dropdowns v13
+      - name: Enforce isolated multi-book quiz grounding
         run: |
           set -euxo pipefail
-          node --check scripts/repair-quiz-page-v13.mjs
-          node scripts/repair-quiz-page-v13.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('lib/quizAiClientStable.ts')
+          s = p.read_text(encoding='utf-8')
+
+          old_evidence = "  const evidence = research || await researchBooks(books);\n  const output: QuizQuestion[] = [];"
+          new_evidence = "  const evidence = research || await researchBooks(books);\n  const bookEvidence = await Promise.all(books.map((book) => researchBooks([book])));\n  const output: QuizQuestion[] = [];"
+          if old_evidence not in s:
+              raise SystemExit('Expected quiz evidence initialization not found')
+          s = s.replace(old_evidence, new_evidence, 1)
+
+          old_call = "        [...recent, ...output.map((question) => question.question)],\n        evidence,\n      );"
+          new_call = "        [...recent, ...output.map((question) => question.question)],\n        bookEvidence[books.indexOf(book)] || evidence,\n      );"
+          if old_call not in s:
+              raise SystemExit('Expected quiz batch call not found')
+          s = s.replace(old_call, new_call, 1)
+
+          old_ground = "        if (!groundedForBooks([book], question, evidence)) continue;"
+          new_ground = "        const localEvidence = bookEvidence[books.indexOf(book)] || evidence;\n        if (!groundedForBooks([book], question, localEvidence)) continue;"
+          if old_ground not in s:
+              raise SystemExit('Expected quiz grounding check not found')
+          s = s.replace(old_ground, new_ground, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+          npx tsc --noEmit --pretty false
+      - name: Verify Quiz Studio dropdowns
+        run: |
+          set -euxo pipefail
+          grep -q "function QuizDropdown" app/dashboard/quiz/page.tsx
+          if grep -q '<select' app/dashboard/quiz/page.tsx; then
+            echo 'Unexpected native select remains in Quiz Studio'
+            exit 1
+          fi
       - name: Verify stable quiz implementation
         run: |
           set -euxo pipefail
