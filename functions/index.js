@@ -57,8 +57,10 @@ exports.paystackInitialize = onRequest({ region: 'us-central1', timeoutSeconds: 
     if (!['NGN', 'USD'].includes(currency)) return json(res, 400, { error: 'Unsupported currency' });
     if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > 366 * 86400000) return json(res, 400, { error: 'Invalid duration' });
     const user = await getAuth().getUser(decoded.uid);
+    const customerEmail = String(user.email || '').trim().toLowerCase();
+    if (!customerEmail || customerEmail.endsWith('@accounts.eduwills.app')) return json(res, 400, { error: 'REAL_EMAIL_REQUIRED', message: 'Please add and verify your real email address before making an activation payment.' });
     const reference = `EW-${decoded.uid.slice(0, 8)}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const payload = { email: user.email || `${decoded.uid}@accounts.eduwills.app`, amount: Math.round(amount), currency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid: decoded.uid, categories, durationMs, product: 'eduwills_activation' } };
+    const payload = { email: customerEmail, amount: Math.round(amount), currency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid: decoded.uid, categories, durationMs, product: 'eduwills_activation' } };
     const r = await fetch('https://api.paystack.co/transaction/initialize', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await r.json();
     if (!r.ok || !data.status) return json(res, 502, { error: 'PAYSTACK_INITIALIZATION_FAILED', detail: data.message || 'Could not initialize payment.' });
@@ -82,7 +84,7 @@ exports.paystackWebhook = onRequest({ region: 'us-central1', timeoutSeconds: 30,
     const uid = String(meta.uid || '');
     const durationMs = Number(meta.durationMs || 2592000000);
     const amount = Number(tx.amount || 0);
-    const currency = String(tx.currency || 'NGN').toUpperCase();
+    const currency = String(tx.currency || '').toUpperCase();
     if (!uid || !Number.isFinite(durationMs) || durationMs <= 0 || amount <= 0 || !['NGN', 'USD'].includes(currency)) return res.status(400).send('Invalid payment metadata');
     const db = getFirestore();
     const userRef = db.collection('users').doc(uid);
