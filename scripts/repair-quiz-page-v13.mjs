@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const path = 'app/dashboard/quiz/page.tsx';
 let s = fs.readFileSync(path, 'utf8');
 
-// Clean escaped JSX characters produced by previous repair attempts.
+// Normalize escaped JSX characters from previous repair attempts.
 s = s.replaceAll('\\<', '<');
 s = s.replaceAll('\\>', '>');
 s = s.replaceAll('\\`', '`');
@@ -17,7 +17,10 @@ s = s.replace(
 const component = `
 function QuizDropdown({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
-  const current = options.find((option) => option.value === value)?.label || options[0]?.label || 'Select';
+  const current =
+    options.find((option) => option.value === value)?.label ||
+    options[0]?.label ||
+    'Select';
 
   return (
     <div className="relative z-30">
@@ -31,7 +34,11 @@ function QuizDropdown({ label, value, options, onChange }: { label: string; valu
         <span className="truncate">{current}</span>
         <ChevronDown
           size={19}
-          className={open ? 'shrink-0 transition-transform rotate-180' : 'shrink-0 transition-transform'}
+          className={
+            open
+              ? 'shrink-0 transition-transform rotate-180'
+              : 'shrink-0 transition-transform'
+          }
         />
       </button>
 
@@ -68,6 +75,104 @@ function QuizDropdown({ label, value, options, onChange }: { label: string; valu
 }
 `;
 
+function parseOptions(body) {
+  const out = [];
+
+  // Supports both single and double quoted option values.
+  const re =
+    /<option\b[^>]*\bvalue\s*=\s*(['"])(.*?)\1[^>]*>([\s\S]*?)<\/option>/gi;
+
+  let match;
+
+  while ((match = re.exec(body)) !== null) {
+    const value = match[2];
+    const label = match[3]
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    out.push({
+      value,
+      label,
+    });
+  }
+
+  return out;
+}
+
+function findSelectForState(state) {
+  const marker = new RegExp(
+    `<select\\b[^>]*\\bvalue\\s*=\\s*\\{\\s*${state}\\s*\\}[^>]*>[\\s\\S]*?<\\/select>`,
+    'i'
+  );
+
+  const match = s.match(marker);
+
+  if (match) {
+    return match[0];
+  }
+
+  // Fallback: value may not be immediately after <select.
+  const allSelects = s.match(/<select\b[\s\S]*?<\/select>/gi) || [];
+
+  for (const select of allSelects) {
+    if (
+      new RegExp(
+        `value\\s*=\\s*\\{\\s*${state}\\s*\\}`,
+        'i'
+      ).test(select)
+    ) {
+      return select;
+    }
+  }
+
+  return null;
+}
+
+function replaceSelect(state, handler) {
+  // If this dropdown has already been repaired, don't try to repair it again.
+  if (
+    new RegExp(
+      `<QuizDropdown\\b[^>]*\\blabel=["']${state}["']`,
+      'i'
+    ).test(s)
+  ) {
+    console.log(`${state} dropdown already uses QuizDropdown; skipping.`);
+    return 1;
+  }
+
+  const whole = findSelectForState(state);
+
+  if (!whole) {
+    throw new Error(
+      `Could not find native select for ${state} dropdown`
+    );
+  }
+
+  const options = parseOptions(whole);
+
+  if (!options.length) {
+    throw new Error(
+      `No options found for ${state} dropdown. Select found but it contains no supported <option> elements.`
+    );
+  }
+
+  const replacement =
+    `<QuizDropdown label="${state}" ` +
+    `value={String(${state})} ` +
+    `options={${JSON.stringify(options)}} ` +
+    `onChange={${handler}} />`;
+
+  s = s.replace(whole, replacement);
+
+  console.log(
+    `Replaced ${state} dropdown with ${options.length} options.`
+  );
+
+  return 1;
+}
+
+// Insert the component only when it is not already present.
 if (!s.includes('function QuizDropdown(')) {
   const marker =
     "function cleanText(text: string) { return String(text || '').replace(/```[\\s\\S]*?```/g, ' ').replace(/`[^`]*`/g, ' ').replace(/\\s+/g, ' ').trim();";
@@ -82,55 +187,6 @@ if (!s.includes('function QuizDropdown(')) {
     s.slice(0, at + marker.length) +
     component +
     s.slice(at + marker.length);
-}
-
-function parseOptions(body) {
-  const out = [];
-  const re = /<option\s+value="([^"]*)"[^>]*>([\s\S]*?)<\/option>/g;
-
-  let match;
-
-  while ((match = re.exec(body)) !== null) {
-    out.push({
-      value: match[1],
-      label: match[2].replace(/\s+/g, ' ').trim(),
-    });
-  }
-
-  return out;
-}
-
-function replaceSelect(state, handler) {
-  const escapedState = state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const re = new RegExp(
-    `<select\\s+value=\\{${escapedState}\\}[\\s\\S]*?<\\/select>`,
-    'g'
-  );
-
-  let changed = 0;
-
-  s = s.replace(re, (whole) => {
-    const openTagEnd = whole.indexOf('>');
-    const closeTagStart = whole.lastIndexOf('</select>');
-
-    if (openTagEnd < 0 || closeTagStart < 0) {
-      throw new Error(`Malformed select for ${state} dropdown`);
-    }
-
-    const body = whole.slice(openTagEnd + 1, closeTagStart);
-    const options = parseOptions(body);
-
-    if (!options.length) {
-      throw new Error(`No options found for ${state} dropdown`);
-    }
-
-    changed += 1;
-
-    return `<QuizDropdown label="${state}" value={String(${state})} options={${JSON.stringify(options)}} onChange={${handler}} />`;
-  });
-
-  return changed;
 }
 
 let total = 0;
@@ -152,12 +208,14 @@ total += replaceSelect(
 
 if (total !== 3) {
   throw new Error(
-    `Expected to replace 3 Quiz Studio dropdowns, replaced ${total}`
+    `Expected to process 3 Quiz Studio dropdowns, processed ${total}`
   );
 }
 
-if (/<select\b/.test(s)) {
-  throw new Error('A native Quiz Studio select remains');
+if (/<select\b/i.test(s)) {
+  throw new Error(
+    'A native Quiz Studio select remains after repair'
+  );
 }
 
 if (!s.includes('function QuizDropdown(')) {
@@ -167,5 +225,5 @@ if (!s.includes('function QuizDropdown(')) {
 fs.writeFileSync(path, s, 'utf8');
 
 console.log(
-  'Quiz page v13 applied: functional custom dropdowns for slot, duration, and difficulty.'
+  'Quiz page v13 applied successfully: functional custom dropdowns for slot, duration, and difficulty.'
 );
