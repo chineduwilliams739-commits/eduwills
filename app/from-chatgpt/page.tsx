@@ -49,9 +49,23 @@ export default function FromChatGPTPage() {
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-slate-500"><span>✓ Book-based quizzes</span><span>✓ Exam revision</span><span>✓ Instant practice</span></div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-md">
+          <div className="relative mx-auto w-full max-w-md min-h-[430px] sm:min-h-[470px]">
             <div className="absolute -inset-5 rounded-[2.5rem] bg-blue-200/40 blur-2xl" />
-            <div className="relative rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 sm:p-5">
+            <div className="absolute -left-7 top-12 z-0 hidden w-56 -rotate-6 rounded-[1.5rem] border border-indigo-100 bg-white/95 p-4 shadow-xl sm:block lg:-left-14">
+              <div className="flex items-center justify-between"><span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-indigo-600">JAMB CBT</span><span className="text-lg">🎯</span></div>
+              <p className="mt-5 text-sm font-black text-slate-800">JAMB Mock Test</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Timed UTME-style practice with objective questions.</p>
+              <div className="mt-4 h-2 rounded-full bg-indigo-50"><div className="h-full w-[72%] rounded-full bg-indigo-400" /></div>
+              <p className="mt-2 text-[9px] font-bold text-slate-400">Question 36 of 50</p>
+            </div>
+            <div className="absolute -right-7 bottom-12 z-0 hidden w-56 rotate-6 rounded-[1.5rem] border border-amber-100 bg-white/95 p-4 shadow-xl sm:block lg:-right-14">
+              <div className="flex items-center justify-between"><span className="rounded-full bg-amber-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700">BECE</span><span className="text-lg">📘</span></div>
+              <p className="mt-5 text-sm font-black text-slate-800">BECE Practice</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Junior Secondary revision for subjects and school assessments.</p>
+              <div className="mt-4 flex gap-1.5"><span className="h-2 flex-1 rounded-full bg-amber-200" /><span className="h-2 flex-1 rounded-full bg-amber-200" /><span className="h-2 flex-1 rounded-full bg-slate-100" /></div>
+              <p className="mt-2 text-[9px] font-bold text-slate-400">Revision progress · 66%</p>
+            </div>
+            <div className="relative z-10 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 sm:p-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-eduBlue">Practice quiz</p><p className="mt-1 text-sm font-black">Literature • Question 1 of 10</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-600">AI Quiz</span></div>
               <p className="mt-6 text-lg font-black leading-7">Who wrote <em>Things Fall Apart</em>?</p>
               <div className="mt-5 space-y-2.5">{['Chinua Achebe', 'Wole Soyinka', 'Chimamanda Ngozi Adichie', 'Ben Okri'].map((answer, i) => <div key={answer} className={`flex items-center gap-3 rounded-xl border p-3.5 text-sm font-bold ${i === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-100 bg-slate-50 text-slate-600'}`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-xs font-black shadow-sm">{String.fromCharCode(65 + i)}</span>{answer}{i === 0 && <span className="ml-auto text-xs font-black">✓</span>}</div>)}</div>
