@@ -33,6 +33,11 @@ jobs:
           set -euxo pipefail
           node --check scripts/patch-activation-redeem.mjs
           node scripts/patch-activation-redeem.mjs
+      - name: Fix Paystack client checkout call
+        run: |
+          set -euxo pipefail
+          node --check scripts/fix-paystack-client-call.mjs
+          node scripts/fix-paystack-client-call.mjs
       - name: Restore EDUWILLS homepage
         run: |
           set -euxo pipefail
@@ -75,7 +80,7 @@ jobs:
           ]
           missing = [item for item in required if item not in s]
           if missing:
-              raise SystemExit('Quiz implementation verification failed: ' + '; '.join(missing))
+            raise SystemExit('Quiz implementation verification failed: ' + '; '.join(missing))
           print('Quiz multi-book generator present and structurally valid.')
           PY
       - name: Verify Quiz Studio dropdowns
