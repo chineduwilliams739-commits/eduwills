@@ -26,8 +26,32 @@ for (let i = brace; i < s.length; i++) {
 }
 if (end < 0) throw new Error('Could not locate end of activation pay function.');
 
-const replacement = `async function pay() {\n    if (!selected.length) return setMessage('Select at least one learning category.');\n    const current = auth.currentUser;\n    if (!current) return setMessage('Please sign in again.');\n    await current.reload();\n    if (!current.email || !current.emailVerified) return setMessage('Please add and verify your email in Personal before paying. Your activation code will be sent there.');\n    setPaying(true);\n    setMessage('');\n    try {\n      const functions = getFunctions(undefined, 'us-central1');\n      const initialize = httpsCallable(functions, 'paystackInitializeCallable');\n      const result = await initialize({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 });\n      const data = result.data as { authorization_url?: string };\n      if (!data.authorization_url) throw new Error('Paystack did not return a checkout URL.');\n      window.location.assign(data.authorization_url);\n    } catch (e) {\n      const error = e as { code?: string; message?: string };\n      const message = error?.message || '';\n      if (error?.code === 'functions/failed-precondition' && message.includes('PAYSTACK_NOT_CONFIGURED')) setMessage('Paystack Test Mode is not configured on the payment server yet.');\n      else setMessage(message || 'Could not open Paystack checkout. Please refresh and try again.');\n    } finally {\n      setPaying(false);\n    }\n  }`;
+const replacement = `async function pay() {
+    if (!selected.length) return setMessage('Select at least one learning category.');
+    const current = auth.currentUser;
+    if (!current) return setMessage('Please sign in again.');
+    await current.reload();
+    if (!current.email || !current.emailVerified) return setMessage('Please add and verify your email in Personal before paying. Your activation code will be sent there.');
+    setPaying(true);
+    setMessage('');
+    try {
+      const functions = getFunctions(undefined, 'us-central1');
+      const initialize = httpsCallable(functions, 'paystackInitializeCallable');
+      const result = await initialize({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 });
+      const data = result.data as { authorization_url?: string };
+      if (!data.authorization_url) throw new Error('Paystack did not return a checkout URL.');
+      window.location.assign(data.authorization_url);
+    } catch (e) {
+      const error = e as { code?: string; message?: string };
+      const message = error?.message || '';
+      if (error?.code === 'functions/failed-precondition' && message.includes('PAYSTACK_NOT_CONFIGURED')) setMessage('Paystack Test Mode is not configured on the payment server yet.');
+      else if (error?.code === 'functions/unauthenticated') setMessage('Your login session expired. Please sign in again.');
+      else setMessage(message || 'Could not open Paystack checkout. Please refresh and try again.');
+    } finally {
+      setPaying(false);
+    }
+  }`;
 
 s = s.slice(0, start) + replacement + s.slice(end);
 fs.writeFileSync(file, s, 'utf8');
-console.log('Paystack activation now uses Firebase callable checkout initialization.');
+console.log('Paystack activation client patched: Firebase callable checkout initialization v2.');
