@@ -10,7 +10,6 @@ declare global { interface Window { PaystackPop?: any } }
 
 const BASE = '/eduwills';
 const PAYMENT_CONFIG_URL = `${BASE}/payment-backend.json`;
-const PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 const NGN_AMOUNT = 4000;
 const USD_AMOUNT = 5;
 
@@ -21,16 +20,21 @@ export default function ActivationPaymentPage() {
   const [message, setMessage] = useState('');
   const [activated, setActivated] = useState(false);
   const [paymentBackend, setPaymentBackend] = useState('');
+  const [paystackLoaded, setPaystackLoaded] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, u => {
       if (!u) { window.location.replace(`${BASE}/login/`); return; }
       setUid(u.uid);
     });
+
     const script = document.createElement('script');
     script.src = 'https://js.paystack.co/v2/inline.js';
     script.async = true;
+    script.onload = () => setPaystackLoaded(true);
+    script.onerror = () => setMessage('Paystack checkout could not be loaded. Please check your internet connection and refresh.');
     document.body.appendChild(script);
+
     return () => { unsub(); script.remove(); };
   }, []);
 
@@ -55,6 +59,10 @@ export default function ActivationPaymentPage() {
         setMessage('🎉 Congratulations! Your EduWills account has been successfully activated. You can now use your activated learning features.');
         return true;
       }
+      if (data?.pendingActivationPaymentStatus === 'success' && data?.pendingActivationCode) {
+        setMessage('✅ Payment confirmed. Your activation code has been generated and sent to your email. Redeem the code to activate your EduWills account.');
+        return true;
+      }
     }
     return false;
   }
@@ -63,7 +71,7 @@ export default function ActivationPaymentPage() {
     setMessage('');
     if (!uid) return setMessage('Your account is still loading. Please wait a moment.');
     if (!paymentBackend) return setMessage('The secure payment service is not ready yet. Please refresh and try again.');
-    if (!PUBLIC_KEY) return setMessage('Paystack is not configured yet. The Admin must add the EduWills Paystack public key to the deployment secrets.');
+    if (!paystackLoaded || !window.PaystackPop) return setMessage('Paystack checkout is still loading. Please wait a moment and try again.');
     setWorking(true);
     try {
       const idToken = await auth.currentUser?.getIdToken();
@@ -72,16 +80,23 @@ export default function ActivationPaymentPage() {
       const response = await fetch(`${paymentBackend}/paystack/initialize`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, currency, categories: ['Book Learner'], country: currency === 'NGN' ? 'NG' : 'INT' })
+        body: JSON.stringify({
+          amount,
+          currency,
+          paymentCurrency: currency,
+          categories: ['Book Learner'],
+          country: currency === 'NGN' ? 'NG' : 'INT'
+        })
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error || 'Payment initialization failed.');
+      if (!response.ok) throw new Error(data?.error || `Payment initialization failed (${response.status}).`);
       if (!data?.access_code) throw new Error('Paystack did not return a checkout code.');
-      if (!window.PaystackPop) throw new Error('Paystack checkout is still loading. Please try again.');
+
       const popup = new window.PaystackPop();
       popup.resumeTransaction(data.access_code);
+
       const success = await waitForActivation();
-      if (!success) setMessage('Payment was initiated successfully, but activation is still being confirmed. Please wait a little and refresh your dashboard.');
+      if (!success) setMessage('Payment was initiated successfully, but confirmation is still pending. If you completed payment, wait a little and refresh your dashboard.');
     } catch (e: any) {
       setMessage(e?.message || 'Could not start payment.');
     } finally {
