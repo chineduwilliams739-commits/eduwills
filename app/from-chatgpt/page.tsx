@@ -28,8 +28,8 @@ const steps = [
 
 export default function FromChatGPTPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-paper text-ink">
-      <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+    <main className="min-h-screen overflow-x-hidden bg-paper text-ink">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <a href={`${base}/`} className="text-xl font-black tracking-tight">EDUWILLS<span className="text-eduBlue">.</span></a>
           <a href={`${base}/signup/`} className="rounded-xl bg-eduBlue px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-500/20">Start learning</a>
@@ -49,28 +49,32 @@ export default function FromChatGPTPage() {
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-slate-500"><span>✓ Book-based quizzes</span><span>✓ Exam revision</span><span>✓ Instant practice</span></div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-md min-h-[500px] sm:min-h-[540px]">
-            <div className="absolute -inset-5 rounded-[2.5rem] bg-blue-200/40 blur-2xl" />
-            <div className="absolute left-0 top-3 z-0 w-52 -rotate-7 rounded-[1.5rem] border-2 border-indigo-200 bg-indigo-50 p-4 shadow-2xl sm:-left-10 sm:w-60">
-              <div className="flex items-center justify-between"><span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">JAMB CBT</span><span className="text-xl">🎯</span></div>
-              <p className="mt-5 text-sm font-black text-slate-900">JAMB Mock Test</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600">Timed UTME-style practice with objective questions.</p>
-              <div className="mt-4 h-2.5 rounded-full bg-indigo-200"><div className="h-full w-[72%] rounded-full bg-indigo-600" /></div>
-              <p className="mt-2 text-[10px] font-black text-indigo-700">Question 36 of 50</p>
-            </div>
-            <div className="absolute right-0 top-28 z-0 w-52 rotate-7 rounded-[1.5rem] border-2 border-amber-200 bg-amber-50 p-4 shadow-2xl sm:-right-10 sm:w-60">
-              <div className="flex items-center justify-between"><span className="rounded-full bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">BECE</span><span className="text-xl">📘</span></div>
-              <p className="mt-5 text-sm font-black text-slate-900">BECE Practice</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600">Junior Secondary revision for subjects and school assessments.</p>
-              <div className="mt-4 flex gap-1.5"><span className="h-2.5 flex-1 rounded-full bg-amber-400" /><span className="h-2.5 flex-1 rounded-full bg-amber-400" /><span className="h-2.5 flex-1 rounded-full bg-slate-200" /></div>
-              <p className="mt-2 text-[10px] font-black text-amber-700">Revision progress · 66%</p>
-            </div>
-            <div className="absolute left-1/2 top-28 z-10 w-[calc(100%-42px)] -translate-x-1/2 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/15 sm:top-36 sm:w-[calc(100%-60px)] sm:p-5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-eduBlue">Practice quiz</p><p className="mt-1 text-sm font-black">Literature • Question 1 of 10</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-600">AI Quiz</span></div>
-              <p className="mt-6 text-lg font-black leading-7">Who wrote <em>Things Fall Apart</em>?</p>
-              <div className="mt-5 space-y-2.5">{['Chinua Achebe', 'Wole Soyinka', 'Chimamanda Ngozi Adichie', 'Ben Okri'].map((answer, i) => <div key={answer} className={`flex items-center gap-3 rounded-xl border p-3.5 text-sm font-bold ${i === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-100 bg-slate-50 text-slate-600'}`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-xs font-black shadow-sm">{String.fromCharCode(65 + i)}</span>{answer}{i === 0 && <span className="ml-auto text-xs font-black">✓</span>}</div>)}</div>
-              <div className="mt-5 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-500"><strong className="text-slate-700">Explanation:</strong> Chinua Achebe wrote the novel, first published in 1958.</div>
-              <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400"><span>10 questions</span><span>Keep going →</span></div>
+          <div className="relative mx-auto w-full max-w-[520px] px-2 pb-2 pt-2 sm:px-4 lg:min-h-[570px]">
+            <div className="pointer-events-none absolute inset-4 rounded-[2.5rem] bg-blue-200/40 blur-2xl" />
+            <div className="relative grid gap-5 sm:grid-cols-2 sm:items-start lg:block lg:min-h-[550px]">
+              <div className="relative z-0 rounded-[1.5rem] border-2 border-indigo-300 bg-indigo-50 p-5 shadow-xl sm:translate-y-8 sm:-rotate-3 lg:absolute lg:left-0 lg:top-10 lg:w-56">
+                <div className="flex items-center justify-between"><span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">JAMB CBT</span><span className="text-xl">🎯</span></div>
+                <p className="mt-5 text-sm font-black text-slate-900">JAMB Mock Test</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Timed UTME-style practice with objective questions.</p>
+                <div className="mt-4 h-2.5 rounded-full bg-indigo-200"><div className="h-full w-[72%] rounded-full bg-indigo-600" /></div>
+                <p className="mt-2 text-[10px] font-black text-indigo-700">Question 36 of 50</p>
+              </div>
+
+              <div className="relative z-0 rounded-[1.5rem] border-2 border-amber-300 bg-amber-50 p-5 shadow-xl sm:translate-y-8 sm:rotate-3 lg:absolute lg:right-0 lg:top-44 lg:w-56">
+                <div className="flex items-center justify-between"><span className="rounded-full bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">BECE</span><span className="text-xl">📘</span></div>
+                <p className="mt-5 text-sm font-black text-slate-900">BECE Practice</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Junior Secondary revision for subjects and school assessments.</p>
+                <div className="mt-4 flex gap-1.5"><span className="h-2.5 flex-1 rounded-full bg-amber-400" /><span className="h-2.5 flex-1 rounded-full bg-amber-400" /><span className="h-2.5 flex-1 rounded-full bg-slate-200" /></div>
+                <p className="mt-2 text-[10px] font-black text-amber-700">Revision progress · 66%</p>
+              </div>
+
+              <div className="relative z-10 mx-auto w-full max-w-[390px] rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.18)] sm:col-span-2 sm:mt-0 lg:absolute lg:left-1/2 lg:top-20 lg:w-[350px] lg:-translate-x-1/2 lg:p-5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-eduBlue">Practice quiz</p><p className="mt-1 text-sm font-black">Literature • Question 1 of 10</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-600">AI Quiz</span></div>
+                <p className="mt-5 text-lg font-black leading-7">Who wrote <em>Things Fall Apart</em>?</p>
+                <div className="mt-4 space-y-2">{['Chinua Achebe', 'Wole Soyinka', 'Chimamanda Ngozi Adichie', 'Ben Okri'].map((answer, i) => <div key={answer} className={`flex items-center gap-3 rounded-xl border p-3 text-sm font-bold ${i === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-100 bg-slate-50 text-slate-600'}`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-xs font-black shadow-sm">{String.fromCharCode(65 + i)}</span><span className="min-w-0 break-words">{answer}</span>{i === 0 && <span className="ml-auto shrink-0 text-xs font-black">✓</span>}</div>)}</div>
+                <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-500"><strong className="text-slate-700">Explanation:</strong> Chinua Achebe wrote the novel, first published in 1958.</div>
+                <div className="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400"><span>10 questions</span><span>Keep going →</span></div>
+              </div>
             </div>
           </div>
         </div>
