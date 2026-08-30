@@ -38,6 +38,11 @@ jobs:
           set -euxo pipefail
           node --check scripts/fix-paystack-client-call.mjs
           node scripts/fix-paystack-client-call.mjs
+      - name: Apply Paystack return and support UI
+        run: |
+          set -euxo pipefail
+          node --check scripts/patch-paystack-return-and-support.mjs
+          node scripts/patch-paystack-return-and-support.mjs
       - name: Restore EDUWILLS homepage
         run: |
           set -euxo pipefail
