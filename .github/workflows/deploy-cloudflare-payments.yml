@@ -1,6 +1,11 @@
 name: Deploy EduWills Free Payment Backend
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/payments/**'
+      - '.github/workflows/deploy-cloudflare-payments.yml'
   workflow_dispatch:
 
 permissions:
