@@ -49,23 +49,23 @@ export default function FromChatGPTPage() {
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-slate-500"><span>✓ Book-based quizzes</span><span>✓ Exam revision</span><span>✓ Instant practice</span></div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-md min-h-[430px] sm:min-h-[470px]">
+          <div className="relative mx-auto w-full max-w-md min-h-[500px] sm:min-h-[540px]">
             <div className="absolute -inset-5 rounded-[2.5rem] bg-blue-200/40 blur-2xl" />
-            <div className="absolute -left-7 top-12 z-0 hidden w-56 -rotate-6 rounded-[1.5rem] border border-indigo-100 bg-white/95 p-4 shadow-xl sm:block lg:-left-14">
-              <div className="flex items-center justify-between"><span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-indigo-600">JAMB CBT</span><span className="text-lg">🎯</span></div>
-              <p className="mt-5 text-sm font-black text-slate-800">JAMB Mock Test</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">Timed UTME-style practice with objective questions.</p>
-              <div className="mt-4 h-2 rounded-full bg-indigo-50"><div className="h-full w-[72%] rounded-full bg-indigo-400" /></div>
-              <p className="mt-2 text-[9px] font-bold text-slate-400">Question 36 of 50</p>
+            <div className="absolute left-0 top-3 z-0 w-52 -rotate-7 rounded-[1.5rem] border-2 border-indigo-200 bg-indigo-50 p-4 shadow-2xl sm:-left-10 sm:w-60">
+              <div className="flex items-center justify-between"><span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">JAMB CBT</span><span className="text-xl">🎯</span></div>
+              <p className="mt-5 text-sm font-black text-slate-900">JAMB Mock Test</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Timed UTME-style practice with objective questions.</p>
+              <div className="mt-4 h-2.5 rounded-full bg-indigo-200"><div className="h-full w-[72%] rounded-full bg-indigo-600" /></div>
+              <p className="mt-2 text-[10px] font-black text-indigo-700">Question 36 of 50</p>
             </div>
-            <div className="absolute -right-7 bottom-12 z-0 hidden w-56 rotate-6 rounded-[1.5rem] border border-amber-100 bg-white/95 p-4 shadow-xl sm:block lg:-right-14">
-              <div className="flex items-center justify-between"><span className="rounded-full bg-amber-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700">BECE</span><span className="text-lg">📘</span></div>
-              <p className="mt-5 text-sm font-black text-slate-800">BECE Practice</p>
-              <p className="mt-1 text-xs leading-5 text-slate-500">Junior Secondary revision for subjects and school assessments.</p>
-              <div className="mt-4 flex gap-1.5"><span className="h-2 flex-1 rounded-full bg-amber-200" /><span className="h-2 flex-1 rounded-full bg-amber-200" /><span className="h-2 flex-1 rounded-full bg-slate-100" /></div>
-              <p className="mt-2 text-[9px] font-bold text-slate-400">Revision progress · 66%</p>
+            <div className="absolute right-0 top-28 z-0 w-52 rotate-7 rounded-[1.5rem] border-2 border-amber-200 bg-amber-50 p-4 shadow-2xl sm:-right-10 sm:w-60">
+              <div className="flex items-center justify-between"><span className="rounded-full bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white">BECE</span><span className="text-xl">📘</span></div>
+              <p className="mt-5 text-sm font-black text-slate-900">BECE Practice</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Junior Secondary revision for subjects and school assessments.</p>
+              <div className="mt-4 flex gap-1.5"><span className="h-2.5 flex-1 rounded-full bg-amber-400" /><span className="h-2.5 flex-1 rounded-full bg-amber-400" /><span className="h-2.5 flex-1 rounded-full bg-slate-200" /></div>
+              <p className="mt-2 text-[10px] font-black text-amber-700">Revision progress · 66%</p>
             </div>
-            <div className="relative z-10 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 sm:p-5">
+            <div className="absolute left-1/2 top-28 z-10 w-[calc(100%-42px)] -translate-x-1/2 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/15 sm:top-36 sm:w-[calc(100%-60px)] sm:p-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-eduBlue">Practice quiz</p><p className="mt-1 text-sm font-black">Literature • Question 1 of 10</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-600">AI Quiz</span></div>
               <p className="mt-6 text-lg font-black leading-7">Who wrote <em>Things Fall Apart</em>?</p>
               <div className="mt-5 space-y-2.5">{['Chinua Achebe', 'Wole Soyinka', 'Chimamanda Ngozi Adichie', 'Ben Okri'].map((answer, i) => <div key={answer} className={`flex items-center gap-3 rounded-xl border p-3.5 text-sm font-bold ${i === 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-100 bg-slate-50 text-slate-600'}`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-xs font-black shadow-sm">{String.fromCharCode(65 + i)}</span>{answer}{i === 0 && <span className="ml-auto text-xs font-black">✓</span>}</div>)}</div>
@@ -81,19 +81,11 @@ export default function FromChatGPTPage() {
         <div className="mt-9 grid gap-5 md:grid-cols-3">{features.map(([icon, title, text]) => <article key={title} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm"><span className="text-2xl">{icon}</span><h3 className="mt-5 text-xl font-black">{title}</h3><p className="mt-3 leading-7 text-slate-600">{text}</p></article>)}</div>
       </section>
 
-      <section className="border-y border-slate-200 bg-slate-50 px-5 py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl"><div className="text-center"><p className="text-xs font-black uppercase tracking-[.2em] text-eduBlue">How it works</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">Three simple steps to better practice.</h2></div><div className="mt-10 grid gap-5 md:grid-cols-3">{steps.map(([number, title, text]) => <article key={number} className="rounded-[1.75rem] border border-slate-200 bg-white p-6"><span className="text-sm font-black text-eduBlue">{number}</span><h3 className="mt-4 text-xl font-black">{title}</h3><p className="mt-3 leading-7 text-slate-600">{text}</p></article>)}</div></div>
-      </section>
+      <section className="border-y border-slate-200 bg-slate-50 px-5 py-16 sm:py-20"><div className="mx-auto max-w-6xl"><div className="text-center"><p className="text-xs font-black uppercase tracking-[.2em] text-eduBlue">How it works</p><h2 className="mt-3 text-3xl font-black sm:text-4xl">Three simple steps to better practice.</h2></div><div className="mt-10 grid gap-5 md:grid-cols-3">{steps.map(([number, title, text]) => <article key={number} className="rounded-[1.75rem] border border-slate-200 bg-white p-6"><span className="text-sm font-black text-eduBlue">{number}</span><h3 className="mt-4 text-xl font-black">{title}</h3><p className="mt-3 leading-7 text-slate-600">{text}</p></article>)}</div></div></section>
 
-      <section className="mx-auto max-w-6xl px-5 py-16 sm:py-20">
-        <div className="rounded-[2rem] bg-ink px-7 py-10 text-white sm:px-12 sm:py-14"><div className="grid items-center gap-8 lg:grid-cols-[1fr_auto]"><div><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">Ready to practise?</p><h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight sm:text-4xl">Stop just reading. Start testing what you know.</h2><p className="mt-4 max-w-2xl leading-7 text-slate-300">Create your EDUWILLS account and start turning your study time into active practice.</p></div><a href={`${base}/signup/`} className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3.5 font-black text-ink transition hover:-translate-y-0.5">Create your account →</a></div></div>
-      </section>
+      <section className="mx-auto max-w-6xl px-5 py-16 sm:py-20"><div className="rounded-[2rem] bg-ink px-7 py-10 text-white sm:px-12 sm:py-14"><div className="grid items-center gap-8 lg:grid-cols-[1fr_auto]"><div><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">Ready to practise?</p><h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight sm:text-4xl">Stop just reading. Start testing what you know.</h2><p className="mt-4 max-w-2xl leading-7 text-slate-300">Create your EDUWILLS account and start turning your study time into active practice.</p></div><a href={`${base}/signup/`} className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3.5 font-black text-ink transition hover:-translate-y-0.5">Create your account →</a></div></div></section>
 
-      <section className="mx-auto max-w-4xl px-5 pb-16 sm:pb-20"><h2 className="text-2xl font-black">Frequently asked questions</h2><div className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-5">{[
-        ['What can I practise?', 'You can use EDUWILLS for books, subjects and educational topics, including revision for WAEC, JAMB, NECO and school assessments.'],
-        ['Do I need to know exactly what to search for?', 'No. Start with the book, subject or topic you want to study and follow the available options in EDUWILLS.'],
-        ['Is EDUWILLS affiliated with WAEC, JAMB or NECO?', 'No. EDUWILLS is an independent study tool and is not affiliated with those examination bodies.'],
-      ].map(([q, a]) => <details key={q} className="group py-5"><summary className="cursor-pointer list-none font-black">{q}<span className="float-right text-slate-400">+</span></summary><p className="mt-3 max-w-3xl leading-7 text-slate-600">{a}</p></details>)}</div></section>
+      <section className="mx-auto max-w-4xl px-5 pb-16 sm:pb-20"><h2 className="text-2xl font-black">Frequently asked questions</h2><div className="mt-6 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-5">{[['What can I practise?', 'You can use EDUWILLS for books, subjects and educational topics, including revision for WAEC, JAMB, NECO and school assessments.'], ['Do I need to know exactly what to search for?', 'No. Start with the book, subject or topic you want to study and follow the available options in EDUWILLS.'], ['Is EDUWILLS affiliated with WAEC, JAMB or NECO?', 'No. EDUWILLS is an independent study tool and is not affiliated with those examination bodies.']].map(([q, a]) => <details key={q} className="group py-5"><summary className="cursor-pointer list-none font-black">{q}<span className="float-right text-slate-400">+</span></summary><p className="mt-3 max-w-3xl leading-7 text-slate-600">{a}</p></details>)}</div></section>
 
       <footer className="border-t border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">EDUWILLS is an independent study tool and is not affiliated with WAEC, JAMB or NECO.</footer>
     </main>
