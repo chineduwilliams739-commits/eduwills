@@ -39,6 +39,7 @@ if (successStart >= 0 && !a.slice(successStart).includes('Your activation code i
     a = a.slice(0, successStart) + block + a.slice(end);
   }
 }
+a = addBeforeMainClose(a, '<ContactSupport />');
 a = addBeforeMainClose(a, '<ContactSupport box />');
 fs.writeFileSync(activation, a, 'utf8');
 
