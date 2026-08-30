@@ -1,0 +1,39 @@
+name: Repair EduWills dashboard session
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply session and activation support repair
+        run: |
+          set -euxo pipefail
+          node --check scripts/repair-dashboard-session.mjs
+          node scripts/repair-dashboard-session.mjs
+      - name: Commit repair if needed
+        run: |
+          set -euxo pipefail
+          if git diff --quiet; then
+            echo 'No repair changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/page.tsx app/dashboard/activation/page.tsx
+          git commit -m 'Repair dashboard session after payment redirect'
+          git push
