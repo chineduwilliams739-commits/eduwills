@@ -51,5 +51,13 @@ jobs:
           node -e "const fs=require('fs'); const p=process.env.RUNNER_TEMP + '/firebase-service-account.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!x.project_id || !x.client_email || !x.private_key) throw new Error('Firebase service account secret is missing required fields');"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
+      - name: Configure Firebase Paystack parameter
+        env:
+          PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+        run: |
+          test -n "$PAYSTACK_SECRET_KEY"
+          printf 'PAYSTACK_SECRET_KEY=%s\n' "$PAYSTACK_SECRET_KEY" > functions/.env.eduwills
+          chmod 600 functions/.env.eduwills
+
       - name: Deploy Firebase Functions
         run: firebase deploy --only functions --project eduwills --non-interactive
