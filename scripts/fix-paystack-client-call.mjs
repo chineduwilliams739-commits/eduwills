@@ -2,13 +2,7 @@ import fs from 'node:fs';
 
 const file = 'app/dashboard/activation/page.tsx';
 let s = fs.readFileSync(file, 'utf8');
-
-if (!s.includes("const PAYMENT_BACKEND_CONFIG")) {
-  s = s.replace(
-    "const PAYMENT_API = 'https://us-central1-eduwills.cloudfunctions.net';",
-    "const PAYMENT_BACKEND_CONFIG = `${BASE}/payment-backend.json`;"
-  );
-}
+const WORKER_URL = 'https://eduwills-payments.williamschinedu169.workers.dev';
 
 const start = s.indexOf('  async function pay()');
 if (start < 0) throw new Error('Could not locate activation pay function.');
@@ -38,14 +32,11 @@ const replacement = `  async function pay() {
     setPaying(true);
     setMessage('');
     try {
-      const configResponse = await fetch(PAYMENT_BACKEND_CONFIG, { cache: 'no-store' });
-      const config: any = await configResponse.json().catch(() => ({}));
-      const backend = String(config?.baseUrl || '').replace(/\\/$/, '');
-      if (!configResponse.ok || !backend) throw new Error('The secure payment service is not configured. Please refresh and try again.');
-
       const jwt = await current.getIdToken(true);
-      const response = await fetch(backend + '/paystack/initialize', {
+      const response = await fetch('${WORKER_URL}/paystack/initialize', {
         method: 'POST',
+        mode: 'cors',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + jwt },
         body: JSON.stringify({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 })
       });
@@ -66,4 +57,4 @@ const replacement = `  async function pay() {
 s = s.slice(0, start) + replacement + s.slice(end);
 s = s.replace("import { getFunctions, httpsCallable } from 'firebase/functions';\n", '');
 fs.writeFileSync(file, s, 'utf8');
-console.log('Paystack activation client patched: Cloudflare Worker initialization.');
+console.log('Paystack activation client patched: direct Cloudflare Worker initialization.');
