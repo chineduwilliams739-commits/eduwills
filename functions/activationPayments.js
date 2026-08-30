@@ -20,6 +20,22 @@ const makeCode = () => Array.from({ length: 10 }, () => ALPHABET[Math.floor(Math
 function requirePaystack() { const key = PAYSTACK_SECRET_KEY.value(); if (!key) throw new Error('PAYSTACK_NOT_CONFIGURED'); return key; }
 function requireResend() { const key = RESEND_API_KEY.value(); if (!key) throw new Error('RESEND_NOT_CONFIGURED'); return key; }
 
+async function findUserAttribution(db, uid) {
+  try {
+    for (let i = 0; i < 14; i++) {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - i);
+      const day = d.toISOString().slice(0, 10);
+      const snap = await db.collection('siteAnalytics').doc(day).collection('visitors').where('userId', '==', uid).limit(1).get();
+      if (!snap.empty) {
+        const v = snap.docs[0].data() || {};
+        return { visitorId: String(v.visitorId || snap.docs[0].id || ''), source: String(v.firstSource || v.source || 'unknown').slice(0, 80), landingPath: String(v.landingPath || v.path || '').slice(0, 500), region: String(v.region || 'unknown').slice(0, 20), timezone: String(v.timezone || 'unknown').slice(0, 80) };
+      }
+    }
+  } catch {}
+  return { visitorId: '', source: 'unknown', landingPath: '', region: 'unknown', timezone: 'unknown' };
+}
+
 async function fxRate(from, to) {
   if (from === to) return 1;
   const response = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(from)}`);
@@ -78,8 +94,9 @@ exports.paystackInitialize = onRequest({ region: 'us-central1', timeoutSeconds: 
     if (!categories.length || !Number.isFinite(requestedAmount) || requestedAmount <= 0) return json(res, 400, { error: 'Invalid activation request.' });
     if (!PAYSTACK_CURRENCIES.has(quoteCurrency)) return json(res, 400, { error: 'Unsupported Paystack payment currency.' });
     const key = requirePaystack();
+    const attribution = await findUserAttribution(getFirestore(), decoded.uid);
     const reference = `EW-${decoded.uid.slice(0, 8)}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const payload = { email: user.email, amount: Math.round(requestedAmount * 100), currency: quoteCurrency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid: decoded.uid, categories, durationMs: 31536000000, product: 'eduwills_activation', country: String(req.body?.country || 'INT') } };
+    const payload = { email: user.email, amount: Math.round(requestedAmount * 100), currency: quoteCurrency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid: decoded.uid, categories, durationMs: 31536000000, product: 'eduwills_activation', country: String(req.body?.country || 'INT'), acquisitionSource: attribution.source, acquisitionVisitorId: attribution.visitorId, acquisitionLandingPath: attribution.landingPath, acquisitionRegion: attribution.region, acquisitionTimezone: attribution.timezone } };
     const r = await fetch('https://api.paystack.co/transaction/initialize', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await r.json();
     if (!r.ok || !data.status) return json(res, 502, { error: data.message || 'Could not initialize Paystack payment.' });
@@ -100,14 +117,23 @@ async function processSuccessfulPayment(tx) {
   const userSnap = await db.collection('users').doc(uid).get();
   if (!userSnap.exists) throw new Error('User not found');
   const user = userSnap.data() || {};
+  const attribution = { source: String(meta.acquisitionSource || 'unknown'), visitorId: String(meta.acquisitionVisitorId || ''), landingPath: String(meta.acquisitionLandingPath || ''), region: String(meta.acquisitionRegion || 'unknown'), timezone: String(meta.acquisitionTimezone || 'unknown') };
+  if (attribution.source === 'unknown' || !attribution.visitorId) {
+    const discovered = await findUserAttribution(db, uid);
+    if (attribution.source === 'unknown') attribution.source = discovered.source;
+    if (!attribution.visitorId) attribution.visitorId = discovered.visitorId;
+    if (!attribution.landingPath) attribution.landingPath = discovered.landingPath;
+    if (attribution.region === 'unknown') attribution.region = discovered.region;
+    if (attribution.timezone === 'unknown') attribution.timezone = discovered.timezone;
+  }
   const code = makeCode();
   const now = new Date();
   const codeExpiresAt = new Date(now.getTime() + 7 * 86400000);
   const activationExpiresAt = new Date(now.getTime() + 365 * 86400000);
   const paymentCurrency = String(tx.currency || 'NGN').toUpperCase();
   const paymentAmount = Number(tx.amount || 0) / 100;
-  await db.collection('williTokens').doc(code).set({ token: code, code, userId: uid, uid, username: user.username || '', email: user.email || '', categories, duration: '1 year', durationMs: 31536000000, createdAt: FieldValue.serverTimestamp(), expiresAt: activationExpiresAt, codeExpiresAt, used: false, redeemed: false, revoked: false, active: false, source: 'paystack', paymentReference, paymentCurrency, paymentAmount, paymentId: tx.id || null, paymentStatus: 'success' });
-  await db.collection('users').doc(uid).set({ pendingActivationCode: code, pendingActivationCodeExpiresAt: codeExpiresAt.toISOString(), pendingActivationCategories: categories, pendingActivationPaymentReference: paymentReference, pendingActivationPaymentStatus: 'success', activationPaymentAmount: paymentAmount, activationPaymentCurrency: paymentCurrency }, { merge: true });
+  await db.collection('williTokens').doc(code).set({ token: code, code, userId: uid, uid, username: user.username || '', email: user.email || '', categories, duration: '1 year', durationMs: 31536000000, createdAt: FieldValue.serverTimestamp(), expiresAt: activationExpiresAt, codeExpiresAt, used: false, redeemed: false, revoked: false, active: false, source: 'paystack', paymentReference, paymentCurrency, paymentAmount, paymentId: tx.id || null, paymentStatus: 'success', acquisitionSource: attribution.source, acquisitionVisitorId: attribution.visitorId, acquisitionLandingPath: attribution.landingPath, acquisitionRegion: attribution.region, acquisitionTimezone: attribution.timezone });
+  await db.collection('users').doc(uid).set({ pendingActivationCode: code, pendingActivationCodeExpiresAt: codeExpiresAt.toISOString(), pendingActivationCategories: categories, pendingActivationPaymentReference: paymentReference, pendingActivationPaymentStatus: 'success', activationPaymentAmount: paymentAmount, activationPaymentCurrency: paymentCurrency, acquisitionSource: attribution.source, acquisitionVisitorId: attribution.visitorId, acquisitionLandingPath: attribution.landingPath, acquisitionRegion: attribution.region, acquisitionTimezone: attribution.timezone }, { merge: true });
   if (user.email) await sendActivationEmail({ to: user.email, name: user.fullName, code, categories, paymentAmount, paymentCurrency, activationExpiresAt, codeExpiresAt });
   return { code };
 }
@@ -181,7 +207,7 @@ exports.redeemActivationCode = onRequest({ region: 'us-central1', timeoutSeconds
     const now = new Date();
     const activationExpiresAt = new Date(now.getTime() + 365 * 86400000);
     await ref.set({ used: true, redeemed: true, active: true, usedAt: FieldValue.serverTimestamp(), redeemedAt: FieldValue.serverTimestamp(), activationExpiresAt }, { merge: true });
-    await db.collection('users').doc(decoded.uid).set({ activated: true, activationStatus: 'active', activationActive: true, williTokenActive: true, activeWilliToken: code, activationExpiresAt: activationExpiresAt.toISOString(), activatedAt: now.toISOString(), categories: token.categories || [] }, { merge: true });
+    await db.collection('users').doc(decoded.uid).set({ activated: true, activationStatus: 'active', activationActive: true, williTokenActive: true, activeWilliToken: code, activationExpiresAt: activationExpiresAt.toISOString(), activatedAt: now.toISOString(), categories: token.categories || [], acquisitionSource: token.acquisitionSource || 'unknown', acquisitionVisitorId: token.acquisitionVisitorId || '', acquisitionLandingPath: token.acquisitionLandingPath || '', acquisitionRegion: token.acquisitionRegion || 'unknown', acquisitionTimezone: token.acquisitionTimezone || 'unknown' }, { merge: true });
     return json(res, 200, { success: true, activationExpiresAt: activationExpiresAt.toISOString(), categories: token.categories || [] });
   } catch (e) { return json(res, 500, { error: e.message || 'Activation failed.' }); }
 });
