@@ -3,11 +3,14 @@ import fs from 'node:fs';
 const file = 'app/dashboard/activation/page.tsx';
 let s = fs.readFileSync(file, 'utf8');
 
-if (!s.includes("from 'firebase/functions'")) {
-  s = s.replace("import { onAuthStateChanged } from 'firebase/auth';", "import { onAuthStateChanged } from 'firebase/auth';\nimport { getFunctions, httpsCallable } from 'firebase/functions';");
+if (!s.includes("const PAYMENT_BACKEND_CONFIG")) {
+  s = s.replace(
+    "const PAYMENT_API = 'https://us-central1-eduwills.cloudfunctions.net';",
+    "const PAYMENT_BACKEND_CONFIG = `${BASE}/payment-backend.json`;"
+  );
 }
 
-const start = s.indexOf('async function pay()');
+const start = s.indexOf('  async function pay()');
 if (start < 0) throw new Error('Could not locate activation pay function.');
 let brace = s.indexOf('{', start);
 if (brace < 0) throw new Error('Could not locate activation pay function body.');
@@ -26,7 +29,7 @@ for (let i = brace; i < s.length; i++) {
 }
 if (end < 0) throw new Error('Could not locate end of activation pay function.');
 
-const replacement = `async function pay() {
+const replacement = `  async function pay() {
     if (!selected.length) return setMessage('Select at least one learning category.');
     const current = auth.currentUser;
     if (!current) return setMessage('Please sign in again.');
@@ -35,23 +38,32 @@ const replacement = `async function pay() {
     setPaying(true);
     setMessage('');
     try {
-      const functions = getFunctions(undefined, 'us-central1');
-      const initialize = httpsCallable(functions, 'paystackInitializeCallable');
-      const result = await initialize({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 });
-      const data = result.data as { authorization_url?: string };
-      if (!data.authorization_url) throw new Error('Paystack did not return a checkout URL.');
+      const configResponse = await fetch(PAYMENT_BACKEND_CONFIG, { cache: 'no-store' });
+      const config = await configResponse.json().catch(() => ({}));
+      const backend = String(config?.baseUrl || '').replace(/\\/$/, '');
+      if (!configResponse.ok || !backend) throw new Error('The secure payment service is not configured. Please refresh and try again.');
+
+      const jwt = await current.getIdToken(true);
+      const response = await fetch(backend + '/paystack/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + jwt },
+        body: JSON.stringify({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 })
+      });
+      const text = await response.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch {}
+      if (!response.ok) throw new Error(data?.error || 'Payment initialization failed (' + response.status + ').');
+      if (!data?.authorization_url) throw new Error(data?.error || 'Paystack did not return a checkout URL.');
       window.location.assign(data.authorization_url);
     } catch (e) {
-      const error = e as { code?: string; message?: string };
-      const message = error?.message || '';
-      if (error?.code === 'functions/failed-precondition' && message.includes('PAYSTACK_NOT_CONFIGURED')) setMessage('Paystack Test Mode is not configured on the payment server yet.');
-      else if (error?.code === 'functions/unauthenticated') setMessage('Your login session expired. Please sign in again.');
-      else setMessage(message || 'Could not open Paystack checkout. Please refresh and try again.');
+      const error = e as { message?: string };
+      setMessage(error?.message === 'Failed to fetch' ? 'The secure payment service could not be reached. Please refresh and try again.' : error?.message || 'Could not open Paystack checkout.');
     } finally {
       setPaying(false);
     }
   }`;
 
 s = s.slice(0, start) + replacement + s.slice(end);
+s = s.replace("import { getFunctions, httpsCallable } from 'firebase/functions';\n", '');
 fs.writeFileSync(file, s, 'utf8');
-console.log('Paystack activation client patched: Firebase callable checkout initialization v2.');
+console.log('Paystack activation client patched: Cloudflare Worker initialization.');
