@@ -16,9 +16,7 @@ export function getEduWillsVisitorId() {
     const id = crypto.randomUUID();
     localStorage.setItem(VISITOR_KEY, id);
     return id;
-  } catch {
-    return `v_${Math.random().toString(36).slice(2)}_${Date.now()}`;
-  }
+  } catch { return `v_${Math.random().toString(36).slice(2)}_${Date.now()}`; }
 }
 
 function detectSource() {
@@ -29,8 +27,7 @@ function detectSource() {
     const ref = document.referrer;
     if (!ref) return 'direct';
     try {
-      const url = new URL(ref);
-      const host = url.hostname.replace(/^www\./, '').toLowerCase();
+      const host = new URL(ref).hostname.replace(/^www\./, '').toLowerCase();
       if (host === 'chatgpt.com' || host.endsWith('.chatgpt.com') || host === 'chat.openai.com' || host.endsWith('.openai.com')) return 'chatgpt';
       if (host.includes('google.')) return 'google';
       if (host.includes('facebook.')) return 'facebook';
@@ -61,7 +58,6 @@ function getLandingPath(path: string) {
   } catch { return path; }
 }
 
-/** Coarse, browser-derived location only. No IP address or precise GPS location is collected. */
 function getCoarseLocation() {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
@@ -99,18 +95,31 @@ export default function AnalyticsTracker() {
     const visitorRef = doc(collection(db, 'siteAnalytics', day, 'visitors'), visitorId);
 
     const writeVisitor = (userId?: string) => setDoc(visitorRef, {
-      visitorId, day, firstSeenAt: now, lastSeenAt: new Date().toISOString(),
-      source: firstSource, firstSource, currentSource, path,
-      landingPath: getLandingPath(path),
-      language: location.language, region: location.region, timezone: location.timezone,
-      locationMethod: 'browser_locale_timezone',
-      ...(userId ? { userId, uid: userId } : {}),
+      visitorId, day, firstSeenAt: now, lastSeenAt: new Date().toISOString(), source: firstSource, firstSource, currentSource, path,
+      landingPath: getLandingPath(path), language: location.language, region: location.region, timezone: location.timezone,
+      locationMethod: 'browser_locale_timezone', ...(userId ? { userId, uid: userId } : {}),
     }, { merge: true }).catch(() => {});
 
     writeVisitor(auth.currentUser?.uid);
     const unsubscribe = onAuthStateChanged(auth, user => { if (user) writeVisitor(user.uid); });
     trackEduWillsEvent('page_view');
-    return unsubscribe;
+
+    const handleConversionClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest('a') as HTMLAnchorElement | null;
+      if (!link) return;
+      const href = link.getAttribute('href') || '';
+      let conversionEvent = '';
+      if (href.includes('/signup')) conversionEvent = 'signup_cta_click';
+      else if (href.includes('/dashboard/activation')) conversionEvent = 'activation_cta_click';
+      else if (href === '#pricing') conversionEvent = 'pricing_cta_click';
+      else if (href.includes('/login')) conversionEvent = 'login_cta_click';
+      if (!conversionEvent) return;
+      trackEduWillsEvent(conversionEvent, { href: href.slice(0, 300), text: (link.textContent || '').trim().slice(0, 120) });
+    };
+
+    document.addEventListener('click', handleConversionClick, true);
+    return () => { document.removeEventListener('click', handleConversionClick, true); unsubscribe(); };
   }, []);
   return null;
 }
