@@ -1,4 +1,4 @@
-const { onRequest } = require('firebase-functions/v2/https');
+const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineString } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
@@ -105,3 +105,31 @@ exports.paystackWebhook = onRequest({ region: 'us-central1', timeoutSeconds: 30,
 });
 
 Object.assign(exports, require('./activationPayments'));
+
+// Callable endpoint used by the GitHub Pages client. This avoids browser CORS/preflight
+// and redirect issues that can occur when a v2 HTTPS function is called directly.
+exports.paystackInitializeCallable = onCall({ region: 'us-central1', timeoutSeconds: 30, memory: '256MiB' }, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Please sign in again.');
+  try {
+    const uid = request.auth.uid;
+    const user = await getAuth().getUser(uid);
+    if (!user.email || !user.emailVerified) throw new HttpsError('failed-precondition', 'Verify your email before paying for activation.');
+    const amount = Number(request.data?.amount);
+    const currency = String(request.data?.paymentCurrency || 'NGN').toUpperCase();
+    const categories = Array.isArray(request.data?.categories) ? request.data.categories.map(String).slice(0, 10) : [];
+    const durationMs = Number(request.data?.durationMs || 31536000000);
+    if (!Number.isFinite(amount) || amount <= 0) throw new HttpsError('invalid-argument', 'Invalid activation amount.');
+    if (!['NGN', 'USD'].includes(currency)) throw new HttpsError('invalid-argument', 'Unsupported payment currency.');
+    if (!categories.length) throw new HttpsError('invalid-argument', 'Select at least one category.');
+    const key = requirePaystack();
+    const reference = `EW-${uid.slice(0, 8)}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const payload = { email: user.email, amount: Math.round(amount * 100), currency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid, categories, durationMs, product: 'eduwills_activation' } };
+    const r = await fetch('https://api.paystack.co/transaction/initialize', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await r.json();
+    if (!r.ok || !data.status || !data.data?.authorization_url) throw new HttpsError('failed-precondition', data.message || 'Could not initialize Paystack payment.');
+    return { reference: data.data.reference, access_code: data.data.access_code || '', authorization_url: data.data.authorization_url };
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    throw new HttpsError(e.message === 'PAYSTACK_NOT_CONFIGURED' ? 'failed-precondition' : 'internal', e.message || 'Payment initialization failed.');
+  }
+});
