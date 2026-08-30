@@ -3,23 +3,32 @@ name: Deploy EduWills Free Payment Backend
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install Wrangler
         run: npm install -g wrangler
+
       - name: Authenticate Cloudflare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: wrangler whoami
+
       - name: Configure Worker secrets
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -31,14 +40,37 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUWILLS }}
         working-directory: workers/payments
         run: |
+          test -n "$PAYSTACK_SECRET_KEY"
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
           printf '%s' "$PAYSTACK_SECRET_KEY" | wrangler secret put PAYSTACK_SECRET_KEY
           printf '%s' "$RESEND_API_KEY" | wrangler secret put RESEND_API_KEY
           printf '%s' "${RESEND_FROM_EMAIL:-EduWills <onboarding@resend.dev>}" | wrangler secret put RESEND_FROM_EMAIL
           printf '%s' "$FIREBASE_WEB_API_KEY" | wrangler secret put FIREBASE_WEB_API_KEY
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" | wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
-      - name: Deploy Worker
+
+      - name: Deploy Worker and publish its runtime URL
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         working-directory: workers/payments
-        run: wrangler deploy
+        run: |
+          set -euo pipefail
+          wrangler deploy 2>&1 | tee "$RUNNER_TEMP/wrangler-deploy.log"
+          URL="$(grep -Eo 'https://[A-Za-z0-9-]+\.[A-Za-z0-9-]+\.workers\.dev' "$RUNNER_TEMP/wrangler-deploy.log" | tail -1 || true)"
+          if [ -z "$URL" ]; then
+            wrangler deployments list --json > "$RUNNER_TEMP/wrangler-deployments.json"
+            URL="$(node -e 'const fs=require("fs"); const s=fs.readFileSync(process.argv[1],"utf8"); const m=s.match(/https:\/\/[A-Za-z0-9-]+\.[A-Za-z0-9-]+\.workers\.dev/g); console.log(m?.at(-1)||"")' "$RUNNER_TEMP/wrangler-deployments.json")"
+          fi
+          test -n "$URL"
+          echo "Worker URL: $URL"
+          cd ../..
+          printf '{\n  "baseUrl": "%s"\n}\n' "$URL" > public/payment-backend.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/payment-backend.json
+          if git diff --cached --quiet; then
+            echo "Payment backend URL unchanged."
+          else
+            git commit -m "Publish payment backend URL"
+            git push origin HEAD:main
+          fi
