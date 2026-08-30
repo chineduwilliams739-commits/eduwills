@@ -50,7 +50,7 @@ exports.paystackInitialize = onRequest({ region: 'us-central1', timeoutSeconds: 
     const decoded = await getAuth().verifyIdToken(authHeader.slice(7));
     const key = requirePaystack();
     const amount = Number(req.body?.amount);
-    const currency = String(req.body?.currency || 'NGN').toUpperCase();
+    const currency = String(req.body?.paymentCurrency || req.body?.currency || 'NGN').toUpperCase();
     const categories = Array.isArray(req.body?.categories) ? req.body.categories.map(String).slice(0, 10) : ['book'];
     const durationMs = Number(req.body?.durationMs || 2592000000);
     if (!Number.isFinite(amount) || amount < 200 || amount > 100000000) return json(res, 400, { error: 'Invalid amount' });
@@ -60,11 +60,11 @@ exports.paystackInitialize = onRequest({ region: 'us-central1', timeoutSeconds: 
     const customerEmail = String(user.email || '').trim().toLowerCase();
     if (!customerEmail || customerEmail.endsWith('@accounts.eduwills.app')) return json(res, 400, { error: 'REAL_EMAIL_REQUIRED', message: 'Please add and verify your real email address before making an activation payment.' });
     const reference = `EW-${decoded.uid.slice(0, 8)}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-    const payload = { email: customerEmail, amount: Math.round(amount), currency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid: decoded.uid, categories, durationMs, product: 'eduwills_activation' } };
+    const payload = { email: customerEmail, amount: Math.round(amount * 100), currency, reference, callback_url: 'https://chineduwilliams739-commits.github.io/eduwills/dashboard/activation/', metadata: { uid: decoded.uid, categories, durationMs, product: 'eduwills_activation' } };
     const r = await fetch('https://api.paystack.co/transaction/initialize', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await r.json();
-    if (!r.ok || !data.status) return json(res, 502, { error: 'PAYSTACK_INITIALIZATION_FAILED', detail: data.message || 'Could not initialize payment.' });
-    return json(res, 200, { reference: data.data.reference, access_code: data.data.access_code });
+    if (!r.ok || !data.status || !data.data?.authorization_url) return json(res, 502, { error: 'PAYSTACK_INITIALIZATION_FAILED', detail: data.message || 'Could not initialize payment.' });
+    return json(res, 200, { reference: data.data.reference, access_code: data.data.access_code, authorization_url: data.data.authorization_url });
   } catch (e) { return json(res, e.message === 'PAYSTACK_NOT_CONFIGURED' ? 503 : 500, { error: e.message || 'Payment initialization failed' }); }
 });
 
@@ -98,7 +98,7 @@ exports.paystackWebhook = onRequest({ region: 'us-central1', timeoutSeconds: 30,
     const now = new Date();
     const expiresAt = new Date(now.getTime() + durationMs);
     const categories = Array.isArray(meta.categories) ? meta.categories.map(String).slice(0, 10) : (Array.isArray(user.categories) ? user.categories : ['book']);
-    await db.collection('williTokens').doc(token).set({ token, userId: uid, uid, username: user.username || '', categories, duration: '30 days', durationMs, createdAt: FieldValue.serverTimestamp(), expiresAt, used: false, source: 'paystack', paymentReference, paymentCurrency: currency, paymentAmount: amount, paymentId: tx.id || null });
+    await db.collection('williTokens').doc(token).set({ token, userId: uid, uid, username: user.username || '', categories, duration: '1 year', durationMs, createdAt: FieldValue.serverTimestamp(), expiresAt, used: false, source: 'paystack', paymentReference, paymentCurrency: currency, paymentAmount: amount, paymentId: tx.id || null });
     await userRef.set({ activated: true, activationStatus: 'active', activationActive: true, williTokenActive: true, activationExpiresAt: expiresAt.toISOString(), activeWilliToken: token, activatedAt: now.toISOString(), lastPaymentReference: paymentReference, lastPaymentCurrency: currency, lastPaymentAmount: amount }, { merge: true });
     return res.status(200).send('OK');
   } catch (e) { return res.status(e.message === 'PAYSTACK_NOT_CONFIGURED' ? 503 : 500).send(e.message || 'Webhook error'); }
