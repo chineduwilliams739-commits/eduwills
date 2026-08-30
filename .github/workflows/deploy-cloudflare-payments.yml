@@ -44,6 +44,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUWILLS }}
         working-directory: workers/payments
         run: |
+          set -euo pipefail
           test -n "$PAYSTACK_SECRET_KEY"
           test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
           printf '%s' "$PAYSTACK_SECRET_KEY" | wrangler secret put PAYSTACK_SECRET_KEY
@@ -66,6 +67,10 @@ jobs:
           fi
           test -n "$URL"
           echo "Worker URL: $URL"
+          echo "Checking live payment worker health..."
+          HEALTH="$(curl --fail --silent --show-error --max-time 20 "$URL/health")"
+          echo "$HEALTH"
+          node -e 'const d=JSON.parse(process.argv[1]); if(d.ok!==true) process.exit(1); if(d.paystackConfigured!==true) { console.error("PAYSTACK_SECRET_KEY is not available in the Worker runtime"); process.exit(2); } if(d.firebaseConfigured!==true) { console.error("Firebase service-account/API configuration is not available in the Worker runtime"); process.exit(3); }' "$HEALTH"
           cd ../..
           printf '{\n  "baseUrl": "%s"\n}\n' "$URL" > public/payment-backend.json
           git config user.name "github-actions[bot]"
