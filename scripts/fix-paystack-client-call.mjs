@@ -39,7 +39,7 @@ const replacement = `  async function pay() {
     setMessage('');
     try {
       const configResponse = await fetch(PAYMENT_BACKEND_CONFIG, { cache: 'no-store' });
-      const config = await configResponse.json().catch(() => ({}));
+      const config: any = await configResponse.json().catch(() => ({}));
       const backend = String(config?.baseUrl || '').replace(/\\/$/, '');
       if (!configResponse.ok || !backend) throw new Error('The secure payment service is not configured. Please refresh and try again.');
 
@@ -50,7 +50,7 @@ const replacement = `  async function pay() {
         body: JSON.stringify({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 })
       });
       const text = await response.text();
-      let data = {};
+      let data: any = {};
       try { data = JSON.parse(text); } catch {}
       if (!response.ok) throw new Error(data?.error || 'Payment initialization failed (' + response.status + ').');
       if (!data?.authorization_url) throw new Error(data?.error || 'Paystack did not return a checkout URL.');
