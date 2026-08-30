@@ -7,8 +7,9 @@ import { auth, db } from '@/lib/firebase';
 
 const VISITOR_KEY = 'eduwills_visitor_id_v1';
 const SOURCE_KEY = 'eduwills_first_source_v2';
+const LANDING_KEY = 'eduwills_landing_path_v1';
 
-function getVisitorId() {
+export function getEduWillsVisitorId() {
   try {
     const existing = localStorage.getItem(VISITOR_KEY);
     if (existing) return existing;
@@ -51,6 +52,15 @@ function getFirstSource(currentSource: string) {
   } catch { return currentSource; }
 }
 
+function getLandingPath(path: string) {
+  try {
+    const existing = localStorage.getItem(LANDING_KEY);
+    if (existing) return existing;
+    localStorage.setItem(LANDING_KEY, path);
+    return path;
+  } catch { return path; }
+}
+
 /** Coarse, browser-derived location only. No IP address or precise GPS location is collected. */
 function getCoarseLocation() {
   try {
@@ -64,7 +74,7 @@ function getCoarseLocation() {
 
 export async function trackEduWillsEvent(event: string, properties: Record<string, unknown> = {}) {
   try {
-    const visitorId = getVisitorId();
+    const visitorId = getEduWillsVisitorId();
     const day = new Date().toISOString().slice(0, 10);
     const eventId = crypto.randomUUID();
     await setDoc(doc(db, 'siteAnalytics', day, 'events', eventId), {
@@ -79,7 +89,7 @@ export async function trackEduWillsEvent(event: string, properties: Record<strin
 
 export default function AnalyticsTracker() {
   useEffect(() => {
-    const visitorId = getVisitorId();
+    const visitorId = getEduWillsVisitorId();
     const currentSource = detectSource();
     const firstSource = getFirstSource(currentSource);
     const day = new Date().toISOString().slice(0, 10);
@@ -90,8 +100,8 @@ export default function AnalyticsTracker() {
 
     const writeVisitor = (userId?: string) => setDoc(visitorRef, {
       visitorId, day, firstSeenAt: now, lastSeenAt: new Date().toISOString(),
-      source: firstSource, currentSource, path,
-      landingPath: (() => { try { return localStorage.getItem('eduwills_landing_path_v1') || path; } catch { return path; } })(),
+      source: firstSource, firstSource, currentSource, path,
+      landingPath: getLandingPath(path),
       language: location.language, region: location.region, timezone: location.timezone,
       locationMethod: 'browser_locale_timezone',
       ...(userId ? { userId, uid: userId } : {}),
@@ -99,7 +109,6 @@ export default function AnalyticsTracker() {
 
     writeVisitor(auth.currentUser?.uid);
     const unsubscribe = onAuthStateChanged(auth, user => { if (user) writeVisitor(user.uid); });
-    try { if (!localStorage.getItem('eduwills_landing_path_v1')) localStorage.setItem('eduwills_landing_path_v1', path); } catch {}
     trackEduWillsEvent('page_view');
     return unsubscribe;
   }, []);
