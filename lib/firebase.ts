@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
 const firebaseConfig = {
@@ -14,11 +14,22 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 
-// Firebase App Check must be initialized in the browser before Firebase AI Logic
-// makes a protected request. The reCAPTCHA Enterprise site key is public and is
-// supplied at build time by GitHub Actions.
+// Keep the most recently used Firestore data available locally so core account
+// screens can continue to render during a temporary network outage. Writes are
+// queued by Firestore and synchronized when connectivity returns.
+let firestore: ReturnType<typeof getFirestore>;
+try {
+  firestore = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
+} catch {
+  // initializeFirestore can throw when another module has already initialized
+  // Firestore during a client-side module reload.
+  firestore = getFirestore(app);
+}
+export const db = firestore;
+
 export const appCheckSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY || '';
 
 if (typeof window !== 'undefined' && appCheckSiteKey) {
@@ -29,7 +40,6 @@ if (typeof window !== 'undefined' && appCheckSiteKey) {
     });
   } catch {
     // App Check may already be initialized during client-side module reloads.
-    // Firebase will reuse the existing App Check instance.
   }
 }
 
