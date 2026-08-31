@@ -1,11 +1,17 @@
 import app from './index.js';
 
-// Browser clients send the Firebase ID token in both Authorization and a
-// dedicated header. Cloudflare/browser intermediaries can treat Authorization
-// differently during CORS preflight, so normalize the dedicated header back to
-// Authorization before the payment application handles the request.
+const cors = origin => ({
+  'access-control-allow-origin': origin || '*',
+  'access-control-allow-headers': 'authorization,content-type,x-firebase-id-token',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-max-age': '86400',
+  vary: 'Origin',
+});
+
 export default {
   async fetch(req, env, ctx) {
+    const origin = req.headers.get('origin') || '*';
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
     if (!req.headers.get('authorization')) {
       const token = req.headers.get('x-firebase-id-token');
       if (token) {
