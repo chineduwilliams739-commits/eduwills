@@ -1,0 +1,101 @@
+name: Repair EduWills Profile Identity
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Repair identity resolution
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path("app/admin/page.tsx")
+          s = p.read_text()
+          old = "type User = { id: string; uid?: string; fullName?: string; username?: string; phone?: string;"
+          new = "type User = { id: string; uid?: string; fullName?: string; username?: string; email?: string; authEmail?: string; phone?: string; phoneE164?: string;"
+          if old not in s:
+              raise SystemExit("Admin User type pattern not found")
+          s = s.replace(old, new, 1)
+
+          old = """  const userName = (uid: string) => {
+            const u = users.find(x => (x.uid || x.id) === uid);
+            return u?.fullName || (u?.username ? `@${u.username}` : uid);
+          };"""
+          new = """  const userName = (uid: string) => {
+            const u = users.find(x => (x.uid || x.id) === uid);
+            if (u?.fullName?.trim()) return u.fullName.trim();
+            if (u?.username?.trim()) return `@${u.username.trim()}`;
+            if (u?.email?.trim()) return u.email.trim();
+            if (u?.authEmail?.trim()) return u.authEmail.trim();
+            const tokenOwner = tokens.find(t => (t.userId || t.uid) === uid);
+            if (tokenOwner?.username?.trim()) return `@${tokenOwner.username.trim()}`;
+            return `User ${uid.slice(0, 8)}`;
+          };"""
+          if old not in s:
+              raise SystemExit("Admin userName pattern not found")
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path("app/dashboard/personal/page.tsx")
+          s = p.read_text()
+          old = "const d = s.data(); let tokenCategories: string[] = [];"
+          new = """const raw = s.data(); let d: any = { ...raw, uid: u.uid };
+      try {
+        const idx = await getDocs(query(collection(db, 'phoneIndex'), where('uid', '==', u.uid)));
+        const indexed = idx.docs[0]?.data() || {};
+        d = {
+          ...d,
+          username: d.username || indexed.username || '',
+          phone: d.phone || d.phoneE164 || indexed.phoneE164 || '',
+          phoneE164: d.phoneE164 || indexed.phoneE164 || '',
+          email: d.email || d.authEmail || indexed.authEmail || u.email || '',
+          authEmail: d.authEmail || indexed.authEmail || u.email || '',
+          fullName: d.fullName || u.displayName || '',
+        };
+        const repair: any = { uid: u.uid };
+        if (!raw.username && d.username) repair.username = d.username;
+        if (!raw.phone && !raw.phoneE164 && d.phoneE164) { repair.phone = d.phoneE164; repair.phoneE164 = d.phoneE164; }
+        if (!raw.email && d.email) repair.email = d.email;
+        if (!raw.authEmail && d.authEmail) repair.authEmail = d.authEmail;
+        if (!raw.fullName && d.fullName) repair.fullName = d.fullName;
+        if (Object.keys(repair).length > 1) await setDoc(doc(db, 'users', u.uid), repair, { merge: true });
+      } catch (identityError) {
+        console.warn('EDUWILLS profile identity recovery skipped:', identityError);
+      }
+      let tokenCategories: string[] = [];"""
+          if old not in s:
+              raise SystemExit("Personal identity load pattern not found")
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Verify changes
+        run: |
+          test -f app/admin/page.tsx
+          test -f app/dashboard/personal/page.tsx
+          grep -q "tokenOwner?.username" app/admin/page.tsx
+          grep -q "phoneIndex" app/dashboard/personal/page.tsx
+
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/admin/page.tsx app/dashboard/personal/page.tsx
+          if git diff --cached --quiet; then
+            echo "No changes needed."
+            exit 0
+          fi
+          git commit -m "Fix profile identity recovery in Personal and Admin"
+          git push
