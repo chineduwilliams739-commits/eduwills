@@ -1,3 +1,5 @@
+'use client';
+
 export default function OfflinePage() {
   return (
     <main className="grid min-h-screen place-items-center bg-paper p-6 text-center text-ink">
