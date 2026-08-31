@@ -41,7 +41,7 @@ export default function ActivationPage() {
           const config = await configResponse.json();
           const paymentBackend = String(config?.baseUrl || '').replace(/\/$/, '');
           if (!paymentBackend) throw new Error('PAYMENT_BACKEND_CONFIG_MISSING');
-          const verifyResponse = await fetch(`${paymentBackend}/paystack/verify?reference=${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${jwt}` }, cache: 'no-store' });
+          const verifyResponse = await fetch(`${paymentBackend}/paystack/verify?reference=${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt }, cache: 'no-store' });
           const verifyText = await verifyResponse.text();
           let verifyData: any = {}; try { verifyData = JSON.parse(verifyText); } catch {}
           if (!verifyResponse.ok) throw new Error(verifyData.error || `Payment verification failed (${verifyResponse.status}).`);
@@ -74,7 +74,7 @@ export default function ActivationPage() {
       if (!paymentBackend) throw new Error('The secure payment service is not ready yet. Please refresh and try again.');
       const response = await fetch(`${paymentBackend}/paystack/initialize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt },
         body: JSON.stringify({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 })
       });
       const text = await response.text();
