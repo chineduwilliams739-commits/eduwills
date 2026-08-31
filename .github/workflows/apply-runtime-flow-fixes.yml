@@ -28,24 +28,31 @@ jobs:
           s = re.sub(r"\{publicId&&<section className=\"mt-5 rounded-2xl.*?</section>\}", "", s, flags=re.S)
           marker = "setPublicId(id);const params=new URLSearchParams(window.location.search);"
           replacement = "setPublicId(id);const accountUrl=new URL(window.location.href);if(accountUrl.searchParams.get('u')!==id){accountUrl.searchParams.set('u',id);window.history.replaceState({},document.title,accountUrl.pathname+'?'+accountUrl.searchParams.toString()+accountUrl.hash);}const params=new URLSearchParams(window.location.search);"
-          if marker in s:
-              s = s.replace(marker, replacement, 1)
-          inactivity = """\n useEffect(()=>{const KEY='eduwills_session_activity';const MAX=7*24*60*60*1000;const now=Date.now();const last=Number(localStorage.getItem(KEY)||'0');if(last&&now-last>MAX){signOut(auth).finally(()=>{const u=new URL(window.location.href);const id=u.searchParams.get('u');window.location.replace(`${BASE}/login/${id?`?returnTo=${encodeURIComponent(u.pathname+'?u='+id)}`:''}`);});return;}localStorage.setItem(KEY,String(now));const touch=()=>localStorage.setItem(KEY,String(Date.now()));const events=['click','keydown','touchstart','pointerdown'];events.forEach(e=>window.addEventListener(e,touch,{passive:true}));const timer=window.setInterval(()=>{const lastSeen=Number(localStorage.getItem(KEY)||'0');if(lastSeen&&Date.now()-lastSeen>MAX){signOut(auth).finally(()=>window.location.replace(`${BASE}/login/`));}},60000);return()=>{events.forEach(e=>window.removeEventListener(e,touch));window.clearInterval(timer);};},[]);\n"""
-          if "eduwills_session_activity" not in s:
-              s = s.replace("\n async function logout(){", inactivity + "\n async function logout(){", 1)
+          if marker in s: s=s.replace(marker,replacement,1)
+          inactivity = """\n useEffect(()=>{const KEY='eduwills_session_activity';const MAX=7*24*60*60*1000;const now=Date.now();const last=Number(localStorage.getItem(KEY)||'0');const goLogin=()=>{const u=new URL(window.location.href);const id=u.searchParams.get('u');window.location.replace(`${BASE}/login/${id?`?returnTo=${encodeURIComponent(u.pathname+'?u='+id)}`:''}`)};if(last&&now-last>MAX){signOut(auth).finally(goLogin);return;}localStorage.setItem(KEY,String(now));const touch=()=>localStorage.setItem(KEY,String(Date.now()));const events=['click','keydown','touchstart','pointerdown'];events.forEach(e=>window.addEventListener(e,touch,{passive:true}));const timer=window.setInterval(()=>{const lastSeen=Number(localStorage.getItem(KEY)||'0');if(lastSeen&&Date.now()-lastSeen>MAX){signOut(auth).finally(goLogin);}},60000);return()=>{events.forEach(e=>window.removeEventListener(e,touch));window.clearInterval(timer);};},[]);\n"""
+          if 'eduwills_session_activity' not in s: s=s.replace("\n async function logout(){",inactivity+"\n async function logout(){",1)
           dashboard.write_text(s)
 
-          activation = Path('app/dashboard/activation/page.tsx')
-          a = activation.read_text()
-          a = a.replace("headers: { Authorization: `Bearer ${jwt}` }, cache: 'no-store'", "headers: { Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt }, cache: 'no-store'")
-          a = a.replace("headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },", "headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt },")
+          activation=Path('app/dashboard/activation/page.tsx')
+          a=activation.read_text()
+          a=a.replace("headers: { Authorization: `Bearer ${jwt}` }, cache: 'no-store'","headers: { Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt }, cache: 'no-store'")
+          a=a.replace("headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },","headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt },")
           activation.write_text(a)
 
-          worker = Path('workers/payments/src/index.js')
-          w = worker.read_text()
-          w = w.replace("'access-control-allow-headers':'authorization,content-type'", "'access-control-allow-headers':'authorization,content-type,x-firebase-id-token'")
-          w = w.replace("async function authLookup(env,idToken){if(!idToken)throw new Error('AUTH_REQUIRED');", "async function authLookup(env,idToken){if(!idToken)throw new Error('AUTH_REQUIRED');")
-          w = w.replace("const idToken=(req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);", "const idToken=(req.headers.get('x-firebase-id-token')||req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);")
+          login=Path('app/login/page.tsx')
+          l=login.read_text()
+          old="localStorage.setItem('eduwills_current_user',profile.username||'');localStorage.setItem('eduwills_current_uid',uid);window.location.replace(`${BASE}/dashboard/`);return true;"
+          new="localStorage.setItem('eduwills_current_user',profile.username||'');localStorage.setItem('eduwills_current_uid',uid);const returnTo=new URLSearchParams(window.location.search).get('returnTo');window.location.replace(returnTo&&returnTo.startsWith(BASE+'/dashboard/')?returnTo:`${BASE}/dashboard/`);return true;"
+          if old in l:l=l.replace(old,new,1)
+          old2="localStorage.setItem('eduwills_current_user',username);localStorage.setItem('eduwills_current_uid',credential.user.uid);window.location.replace(`${BASE}/dashboard/`);"
+          new2="localStorage.setItem('eduwills_current_user',username);localStorage.setItem('eduwills_current_uid',credential.user.uid);const returnTo=new URLSearchParams(window.location.search).get('returnTo');window.location.replace(returnTo&&returnTo.startsWith(BASE+'/dashboard/')?returnTo:`${BASE}/dashboard/`);"
+          if old2 in l:l=l.replace(old2,new2,1)
+          login.write_text(l)
+
+          worker=Path('workers/payments/src/index.js')
+          w=worker.read_text()
+          w=w.replace("'access-control-allow-headers':'authorization,content-type'","'access-control-allow-headers':'authorization,content-type,x-firebase-id-token'")
+          w=w.replace("const idToken=(req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);","const idToken=(req.headers.get('x-firebase-id-token')||req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);")
           worker.write_text(w)
           PY
       - name: Verify source changes
@@ -54,10 +61,11 @@ jobs:
           ! grep -q "Your unique EduWills link" app/dashboard/page.tsx
           grep -q "X-Firebase-ID-Token" app/dashboard/activation/page.tsx
           grep -q "x-firebase-id-token" workers/payments/src/index.js
+          grep -q "returnTo" app/login/page.tsx
       - name: Commit fixes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/dashboard/page.tsx app/dashboard/activation/page.tsx workers/payments/src/index.js
+          git add app/dashboard/page.tsx app/dashboard/activation/page.tsx app/login/page.tsx workers/payments/src/index.js
           git diff --cached --quiet || git commit -m "Apply runtime account URL and payment auth fixes [runtime-fix]"
           git push
