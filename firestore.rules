@@ -84,7 +84,7 @@ service cloud.firestore {
     match /siteAnalytics/{day}/visitors/{visitorId} {
       allow read: if isAdmin();
       allow create: if request.resource.data.visitorId == visitorId && request.resource.data.day == day;
-      allow update: if request.resource.data.visitorId == visitorId && resource.data.visitorId == visitorId && request.resource.data.firstSeenAt == resource.data.firstSeenAt && request.resource.data.day == day;
+      allow update: if request.resource.data.visitorId == visitorId && resource.data.visitorId == visitorId && request.resource.data.firstSeenAt == resource.data.firstSeenAt && request.resource.data.day == resource.data.day;
       allow delete: if isAdmin();
     }
     match /siteAnalytics/{day}/events/{eventId} {
