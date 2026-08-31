@@ -11,6 +11,24 @@ const SESSION_MAX_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function AccountSessionBridge() {
   useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes('.workers.dev/')) {
+        const current = auth.currentUser;
+        if (current) {
+          try {
+            const token = await current.getIdToken(false);
+            const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+            if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+            headers.set('X-Firebase-ID-Token', token);
+            return originalFetch(input, { ...init, headers });
+          } catch {}
+        }
+      }
+      return originalFetch(input, init);
+    };
+
     const run = async (user: NonNullable<typeof auth.currentUser>) => {
       const now = Date.now();
       const last = Number(localStorage.getItem('eduwills_last_activity') || 0);
@@ -21,7 +39,6 @@ export default function AccountSessionBridge() {
         return;
       }
       localStorage.setItem('eduwills_last_activity', String(now));
-
       try {
         const ref = doc(db, 'users', user.uid);
         const snap = await getDoc(ref);
@@ -40,16 +57,11 @@ export default function AccountSessionBridge() {
           publicId,
           updatedAt: serverTimestamp(),
         }, { merge: true });
-
         localStorage.setItem('eduwills_public_id', publicId);
-        const currentPath = window.location.pathname;
-        const currentUrl = `${currentPath}${window.location.search}`;
-        if (currentPath === `${BASE}/dashboard/` && !new URLSearchParams(window.location.search).get('u')) {
-          const target = `${BASE}/dashboard/?u=${encodeURIComponent(publicId)}`;
-          window.history.replaceState({}, document.title, target);
-        }
         localStorage.setItem('eduwills_account_url', `${window.location.origin}${BASE}/account/?id=${encodeURIComponent(publicId)}`);
-        void currentUrl;
+        if (window.location.pathname === `${BASE}/dashboard/` && !new URLSearchParams(window.location.search).get('u')) {
+          window.history.replaceState({}, document.title, `${BASE}/dashboard/?u=${encodeURIComponent(publicId)}`);
+        }
       } catch (error) {
         console.warn('Account identity bootstrap could not complete:', error);
       }
@@ -62,18 +74,17 @@ export default function AccountSessionBridge() {
       }
       void run(user);
     });
-
     const touch = () => localStorage.setItem('eduwills_last_activity', String(Date.now()));
     window.addEventListener('click', touch, { passive: true });
     window.addEventListener('keydown', touch, { passive: true });
     window.addEventListener('touchstart', touch, { passive: true });
     return () => {
       unsubscribe();
+      window.fetch = originalFetch;
       window.removeEventListener('click', touch);
       window.removeEventListener('keydown', touch);
       window.removeEventListener('touchstart', touch);
     };
   }, []);
-
   return null;
 }
