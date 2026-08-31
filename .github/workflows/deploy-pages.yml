@@ -38,11 +38,6 @@ jobs:
           set -euxo pipefail
           node --check scripts/fix-paystack-client-call.mjs
           node scripts/fix-paystack-client-call.mjs
-      - name: Apply Paystack return and support UI
-        run: |
-          set -euxo pipefail
-          node --check scripts/patch-paystack-return-and-support.mjs
-          node scripts/patch-paystack-return-and-support.mjs
       - name: Restore EDUWILLS homepage
         run: |
           set -euxo pipefail
@@ -54,6 +49,11 @@ jobs:
           node --check scripts/implement-education-news-and-quiz-policy.mjs
           node scripts/implement-education-news-and-quiz-policy.mjs
           node --check scripts/publish-education-news.mjs
+      - name: Apply Paystack return and support UI
+        run: |
+          set -euxo pipefail
+          node --check scripts/patch-paystack-return-and-support.mjs
+          node scripts/patch-paystack-return-and-support.mjs
       - name: Apply safe Admin WilliToken implementation
         run: python3 scripts/apply-admin-willi-token-ui.py
       - name: Repair generated quiz client syntax
