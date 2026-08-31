@@ -9,7 +9,7 @@ function randomChars(length: number): string {
   return Array.from({ length }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('');
 }
 
-/** Stable, non-sensitive public identifier used in account links and local recovery. */
+/** Stable, non-sensitive public identifier used in account links and recovery. */
 export function createPublicId(): string {
   return `EW${randomChars(10)}`;
 }
@@ -20,6 +20,11 @@ export function usernameFromEmail(email: unknown): string {
   return cleaned.length >= 3 ? cleaned : `learner_${randomChars(6).toLowerCase()}`;
 }
 
+/**
+ * Shareable account URL. Query parameters are used intentionally so every
+ * future user can have a unique link without requiring a new static route.
+ */
 export function accountLink(publicId: string): string {
-  return `${window.location.origin}/eduwills/dashboard/?account=${encodeURIComponent(publicId)}`;
+  if (typeof window === 'undefined') return `/eduwills/account/?id=${encodeURIComponent(publicId)}`;
+  return `${window.location.origin}/eduwills/account/?id=${encodeURIComponent(publicId)}`;
 }
