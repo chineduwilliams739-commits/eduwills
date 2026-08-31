@@ -16,18 +16,17 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Repair identity resolution
+      - name: Repair identity, signup verification, payment and unique links
         run: |
           python3 <<'PY'
           from pathlib import Path
 
+          # Existing profile identity repair.
           p = Path("app/admin/page.tsx")
           s = p.read_text()
           old = "type User = { id: string; uid?: string; fullName?: string; username?: string; phone?: string;"
           new = "type User = { id: string; uid?: string; fullName?: string; username?: string; email?: string; authEmail?: string; phone?: string; phoneE164?: string;"
-          if old in s:
-              s = s.replace(old, new, 1)
-
+          if old in s: s = s.replace(old, new, 1)
           old = """  const userName = (uid: string) => {
             const u = users.find(x => (x.uid || x.id) === uid);
             return u?.fullName || (u?.username ? `@${u.username}` : uid);
@@ -42,8 +41,7 @@ jobs:
             if (tokenOwner?.username?.trim()) return `@${tokenOwner.username.trim()}`;
             return `User ${uid.slice(0, 8)}`;
           };"""
-          if old in s:
-              s = s.replace(old, new, 1)
+          if old in s: s = s.replace(old, new, 1)
           p.write_text(s)
 
           p = Path("app/dashboard/personal/page.tsx")
@@ -53,15 +51,7 @@ jobs:
       try {
         const idx = await getDocs(query(collection(db, 'phoneIndex'), where('uid', '==', u.uid)));
         const indexed = idx.docs[0]?.data() || {};
-        d = {
-          ...d,
-          username: d.username || indexed.username || '',
-          phone: d.phone || d.phoneE164 || indexed.phoneE164 || '',
-          phoneE164: d.phoneE164 || indexed.phoneE164 || '',
-          email: d.email || d.authEmail || indexed.authEmail || u.email || '',
-          authEmail: d.authEmail || indexed.authEmail || u.email || '',
-          fullName: d.fullName || u.displayName || '',
-        };
+        d = { ...d, username: d.username || indexed.username || '', phone: d.phone || d.phoneE164 || indexed.phoneE164 || '', phoneE164: d.phoneE164 || indexed.phoneE164 || '', email: d.email || d.authEmail || indexed.authEmail || u.email || '', authEmail: d.authEmail || indexed.authEmail || u.email || '', fullName: d.fullName || u.displayName || '' };
         const repair: any = { uid: u.uid };
         if (!raw.username && d.username) repair.username = d.username;
         if (!raw.phone && !raw.phoneE164 && d.phoneE164) { repair.phone = d.phoneE164; repair.phoneE164 = d.phoneE164; }
@@ -69,31 +59,100 @@ jobs:
         if (!raw.authEmail && d.authEmail) repair.authEmail = d.authEmail;
         if (!raw.fullName && d.fullName) repair.fullName = d.fullName;
         if (Object.keys(repair).length > 1) await setDoc(doc(db, 'users', u.uid), repair, { merge: true });
-      } catch (identityError) {
-        console.warn('EDUWILLS profile identity recovery skipped:', identityError);
-      }
+      } catch (identityError) { console.warn('EDUWILLS profile identity recovery skipped:', identityError); }
       let tokenCategories: string[] = [];"""
-          if old in s:
-              s = s.replace(old, new, 1)
+          if old in s: s = s.replace(old, new, 1)
           p.write_text(s)
+
+          # Signup: the verification email is the authoritative first step. A
+          # secondary index write must never make the user see a false signup error.
+          p = Path("app/signup/page.tsx")
+          s = p.read_text()
+          old = "const publicId=createPublicId();const userData="
+          new = "const publicId=createPublicId();try{localStorage.setItem('eduwills_public_id',publicId);localStorage.setItem('eduwills_current_uid',credential.user.uid)}catch{}const userData="
+          if old in s: s=s.replace(old,new,1)
+          old = "else setMessage('We could not create your account. Check your Firebase setup and try again.');setSaving(false)"
+          new = "else if(auth.currentUser?.uid===credential.user.uid){window.location.href=`${BASE}/verify-email/`;return}else setMessage('We could not create your account. Check your Firebase setup and try again.');setSaving(false)"
+          if old in s: s=s.replace(old,new,1)
+          p.write_text(s)
+
+          # Verification: poll Firebase and automatically sign out to the login page.
+          p = Path("app/verify-email/page.tsx")
+          s = p.read_text()
+          needle = "  }, []);\n\n  async function checkVerification()"
+          insert = """  }, []);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    timer = setInterval(async () => {
+      const user = auth.currentUser;
+      if (!user || verified) return;
+      try {
+        await reload(user);
+        if (auth.currentUser?.emailVerified) {
+          setVerified(true);
+          await signOut(auth);
+          window.location.href = `${BASE}/login/`;
+        }
+      } catch {}
+    }, 3000);
+    return () => { if (timer) clearInterval(timer); };
+  }, [verified]);
+
+  async function checkVerification()"""
+          if needle in s: s=s.replace(needle,insert,1)
+          s=s.replace("setMessage('Email verified successfully.');\n        setTimeout(() => { window.location.href = `${BASE}/dashboard/`; }, 800);", "setMessage('Email verified successfully. Redirecting you to login…');\n        await signOut(auth);\n        setTimeout(() => { window.location.href = `${BASE}/login/`; }, 500);")
+          p.write_text(s)
+
+          # Stable public account URL helper.
+          p = Path("lib/publicIdentity.ts")
+          s = p.read_text().replace("return `${window.location.origin}/eduwills/dashboard/?u=${encodeURIComponent(publicId)}`;", "return `${window.location.origin}/eduwills/account/?u=${encodeURIComponent(publicId)}`;")
+          p.write_text(s)
+
+          # Paystack initialize had undefined fullName/username variables in its
+          # metadata object. This caused checkout initialization to fail before
+          # Paystack could return its hosted authorization URL.
+          p = Path("workers/payments/src/index.js")
+          s = p.read_text()
+          bad = "email:u.email,fullName,username}}"
+          good = "email:u.email,fullName:String(body.fullName||''),username:String(body.username||'')}}"
+          if bad in s: s=s.replace(bad,good,1)
+          p.write_text(s)
+
+          # Static account-link resolver. The public ID is the only identity used
+          # by this URL, so names/usernames can change without breaking the link.
+          d = Path("app/account/page.tsx")
+          d.parent.mkdir(parents=True, exist_ok=True)
+          d.write_text("""'use client';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+const BASE='/eduwills';
+export default function AccountLinkPage(){
+  const [state,setState]=useState<'loading'|'found'|'missing'>('loading');
+  const [username,setUsername]=useState('');
+  useEffect(()=>{ const id=new URLSearchParams(window.location.search).get('u')||''; if(!/^EW[A-Za-z0-9]{10}$/.test(id)){setState('missing');return;} getDoc(doc(db,'publicUserIndex',id)).then(s=>{if(!s.exists()){setState('missing');return;} setUsername(String((s.data() as any).username||'EduWills learner'));setState('found');}).catch(()=>setState('missing')); },[]);
+  if(state==='loading') return <main className="grid min-h-screen place-items-center bg-slate-950 text-white">Loading account…</main>;
+  if(state==='missing') return <main className="grid min-h-screen place-items-center bg-slate-950 px-6 text-center text-white"><div><h1 className="text-3xl font-black">Account link not found</h1><a className="mt-5 inline-block rounded-xl bg-cyan-400 px-5 py-3 font-black text-slate-950" href={`${BASE}/`}>Go to EduWills</a></div></main>;
+  return <main className="grid min-h-screen place-items-center bg-slate-950 px-6 text-white"><div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center"><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">EduWills account</p><h1 className="mt-3 text-3xl font-black">@{username}</h1><p className="mt-3 text-sm text-slate-400">This unique account link identifies this EduWills account independently of its display name.</p><a className="mt-7 inline-block w-full rounded-xl bg-cyan-400 px-5 py-3 font-black text-slate-950" href={`${BASE}/login/`}>Log in</a></div></main>;
+}
+""")
           PY
 
-      - name: Verify identity recovery
+      - name: Verify fixes
         run: |
-          test -f app/admin/page.tsx
-          test -f app/dashboard/personal/page.tsx
-          grep -q "tokenOwner?.username" app/admin/page.tsx
-          grep -q "phoneIndex" app/dashboard/personal/page.tsx
+          set -euo pipefail
+          test -f app/account/page.tsx
+          grep -q "publicId" app/signup/page.tsx
+          grep -q "emailVerified" app/verify-email/page.tsx
+          grep -q "fullName:String(body.fullName||'')" workers/payments/src/index.js
           grep -q "User \${uid.slice(0, 8)}" app/admin/page.tsx
 
       - name: Commit repair
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/admin/page.tsx app/dashboard/personal/page.tsx
-          if git diff --cached --quiet; then
-            echo "No changes needed."
-            exit 0
-          fi
-          git commit -m "Fix profile identity recovery in Personal and Admin"
+          git add app/admin/page.tsx app/dashboard/personal/page.tsx app/signup/page.tsx app/verify-email/page.tsx lib/publicIdentity.ts workers/payments/src/index.js app/account/page.tsx
+          if git diff --cached --quiet; then echo "No changes needed."; exit 0; fi
+          git commit -m "Fix signup verification Paystack and unique account links"
           git push
