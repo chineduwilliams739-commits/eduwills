@@ -1,0 +1,85 @@
+name: Fix Signup Verification Payment and Unique Links
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-signup-payment-and-links.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply fixes
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # 1) Signup: once Firebase has created the account and the verification
+          # email has been sent, do not turn a secondary Firestore/index failure
+          # into a fake signup failure. Preserve the generated public ID locally
+          # and continue to the verification screen.
+          p=Path('app/signup/page.tsx')
+          s=p.read_text()
+          old="const publicId=createPublicId();const userData="
+          new="const publicId=createPublicId();try{localStorage.setItem('eduwills_public_id',publicId);localStorage.setItem('eduwills_current_uid',credential.user.uid)}catch{}const userData="
+          if old in s: s=s.replace(old,new,1)
+          oldcatch="else setMessage('We could not create your account. Check your Firebase setup and try again.');setSaving(false)"
+          newcatch="else if(auth.currentUser?.uid===credential.user.uid){window.location.href=`${BASE}/verify-email/`;return}else setMessage('We could not create your account. Check your Firebase setup and try again.');setSaving(false)"
+          if oldcatch in s: s=s.replace(oldcatch,newcatch,1)
+          p.write_text(s)
+
+          # 2) Verification: automatically detect verification and send the user
+          # to login after Firebase reports emailVerified=true.
+          p=Path('app/verify-email/page.tsx')
+          s=p.read_text()
+          s=s.replace("import { reload, sendEmailVerification, signOut } from 'firebase/auth';", "import { reload, sendEmailVerification, signOut } from 'firebase/auth';")
+          marker="  useEffect(() => {\n    const user = auth.currentUser;"
+          replacement="  useEffect(() => {\n    const user = auth.currentUser;"
+          # Add polling after the existing initialization effect.
+          needle="  }, []);\n\n  async function checkVerification()"
+          insert="  }, []);\n\n  useEffect(() => {\n    let timer: ReturnType<typeof setInterval> | undefined;\n    const start = () => {\n      timer = setInterval(async () => {\n        const user = auth.currentUser;\n        if (!user || verified) return;\n        try {\n          await reload(user);\n          if (auth.currentUser?.emailVerified) {\n            setVerified(true);\n            await signOut(auth);\n            window.location.href = `${BASE}/login/`;\n          }\n        } catch {}\n      }, 3000);\n    };\n    start();\n    return () => { if (timer) clearInterval(timer); };\n  }, [verified]);\n\n  async function checkVerification()"
+          if needle in s: s=s.replace(needle,insert,1)
+          # Manual check also signs out and redirects to login, rather than dashboard.
+          s=s.replace("setMessage('Email verified successfully.');\n        setTimeout(() => { window.location.href = `${BASE}/dashboard/`; }, 800);", "setMessage('Email verified successfully. Redirecting you to login…');\n        await signOut(auth);\n        setTimeout(() => { window.location.href = `${BASE}/login/`; }, 500);")
+          p.write_text(s)
+
+          # 3) Unique account links: expose a stable public-ID URL helper and make
+          # the ID durable in the account bootstrap path through local storage.
+          p=Path('lib/publicIdentity.ts')
+          s=p.read_text()
+          s=s.replace("return `${window.location.origin}/eduwills/dashboard/?u=${encodeURIComponent(publicId)}`;", "return `${window.location.origin}/eduwills/dashboard/?account=${encodeURIComponent(publicId)}`;")
+          p.write_text(s)
+
+          # 4) Paystack initialize currently references fullName/username variables
+          # that are not defined in the Worker handler. This can make checkout fail
+          # even though the route exists. Use authenticated/profile-safe values.
+          p=Path('workers/payments/src/index.js')
+          s=p.read_text()
+          bad="email:u.email,fullName,username}}"
+          good="email:u.email,fullName:String(body.fullName||''),username:String(body.username||'')}}"
+          if bad not in s: raise SystemExit('Paystack initialize metadata pattern not found')
+          s=s.replace(bad,good,1)
+          p.write_text(s)
+
+          # 5) Add a deterministic, client-side account-link page. It uses the
+          # publicUserIndex document keyed by the generated EW... identifier.
+          d=Path('app/account/page.tsx')
+          d.parent.mkdir(parents=True,exist_ok=True)
+          d.write_text("""'use client';\n\nimport { useEffect, useState } from 'react';\nimport { doc, getDoc } from 'firebase/firestore';\nimport { db } from '@/lib/firebase';\n\nconst BASE='/eduwills';\n\nexport default function AccountLinkPage(){\n  const [state,setState]=useState<'loading'|'found'|'missing'>('loading');\n  const [username,setUsername]=useState('');\n  useEffect(()=>{\n    const id=new URLSearchParams(window.location.search).get('u')||new URLSearchParams(window.location.search).get('account')||'';\n    if(!/^EW[A-Za-z0-9]{10}$/.test(id)){setState('missing');return;}\n    getDoc(doc(db,'publicUserIndex',id)).then(s=>{\n      if(!s.exists()){setState('missing');return;}\n      const data=s.data() as {username?:string};\n      setUsername(String(data.username||'EduWills learner'));\n      setState('found');\n    }).catch(()=>setState('missing'));\n  },[]);\n  if(state==='loading') return <main className=\"grid min-h-screen place-items-center bg-slate-950 text-white\">Loading account…</main>;\n  if(state==='missing') return <main className=\"grid min-h-screen place-items-center bg-slate-950 px-6 text-center text-white\"><div><h1 className=\"text-3xl font-black\">Account link not found</h1><a className=\"mt-5 inline-block rounded-xl bg-cyan-400 px-5 py-3 font-black text-slate-950\" href={`${BASE}/`}>Go to EduWills</a></div></main>;\n  return <main className=\"grid min-h-screen place-items-center bg-slate-950 px-6 text-white\"><div className=\"w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center\"><p className=\"text-xs font-black uppercase tracking-[.2em] text-cyan-300\">EduWills account</p><h1 className=\"mt-3 text-3xl font-black\">@{username}</h1><p className=\"mt-3 text-sm text-slate-400\">This unique account link identifies this EduWills account independently of its display name.</p><a className=\"mt-7 inline-block w-full rounded-xl bg-cyan-400 px-5 py-3 font-black text-slate-950\" href={`${BASE}/login/`}>Log in</a></div></main>;\n}\n""")
+          PY
+
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/signup/page.tsx app/verify-email/page.tsx lib/publicIdentity.ts workers/payments/src/index.js app/account/page.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix signup verification payment and unique account links"
+          git push origin HEAD:main
