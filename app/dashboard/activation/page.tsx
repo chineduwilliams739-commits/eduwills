@@ -5,9 +5,10 @@ import { CheckCircle2, ChevronDown, KeyRound, Loader2, Mail, ShieldCheck } from 
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import ContactSupport from '@/components/ContactSupport';
 
 const BASE = '/eduwills';
-const PAYMENT_API = 'https://us-central1-eduwills.cloudfunctions.net';
+const PAYMENT_CONFIG_URL = `${BASE}/payment-backend.json`;
 const PRICES: Record<string, number> = { Primary: 2000, 'Junior Secondary': 3000, 'Senior Secondary': 3000, 'Book Learner': 4000 };
 const COUNTRIES = [['NG','Nigeria','NGN'],['US','United States','USD'],['GB','United Kingdom','GBP'],['GH','Ghana','GHS'],['KE','Kenya','KES'],['ZA','South Africa','ZAR'],['CI',"Côte d’Ivoire",'XOF'],['INT','Other country','USD']] as const;
 const CURRENCIES = [['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar'],['GBP','GBP — British Pound'],['EUR','EUR — Euro'],['GHS','GHS — Ghanaian Cedi'],['KES','KES — Kenyan Shilling'],['ZAR','ZAR — South African Rand'],['XOF','XOF — West African CFA Franc']] as const;
@@ -21,11 +22,96 @@ function quote(categories: string[], currency: string, country: string): Quote {
 function Menu({ label, value, options, onChange }: { label: string; value: string; options: readonly (readonly [string, string, ...string[]])[]; onChange: (v: string) => void }) { const [open, setOpen] = useState(false); const current = options.find(x => x[0] === value); return <div className="relative"><span className="text-xs font-black uppercase tracking-wider text-slate-400">{label}</span><button type="button" onClick={() => setOpen(v => !v)} className="mt-2 flex w-full items-center justify-between rounded-xl border border-cyan-400/30 bg-slate-950 px-4 py-3 text-left text-sm font-bold"><span className="truncate">{current?.[1] || value}</span><ChevronDown size={18} className={`text-cyan-300 transition ${open ? 'rotate-180' : ''}`} /></button>{open && <><button aria-label="Close" className="fixed inset-0 z-10" onClick={() => setOpen(false)} /><div className="absolute left-0 right-0 z-20 mt-2 max-h-64 overflow-auto rounded-xl border border-slate-700 bg-slate-900 p-1 shadow-2xl">{options.map(x => <button type="button" key={x[0]} onClick={() => { onChange(x[0]); setOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm font-bold ${x[0] === value ? 'bg-cyan-400/15 text-cyan-200' : 'text-slate-100 hover:bg-white/10'}`}><span>{x[1]}</span>{x[0] === value && <CheckCircle2 size={16} className="text-cyan-300" />}</button>)}</div></>}</div>; }
 export default function ActivationPage() {
   const [user, setUser] = useState<User | null>(null), [selected, setSelected] = useState<string[]>([]), [country, setCountry] = useState('NG'), [currency, setCurrency] = useState('NGN'), [code, setCode] = useState(''), [message, setMessage] = useState(''), [loading, setLoading] = useState(true), [paying, setPaying] = useState(false), [redeeming, setRedeeming] = useState(false), [success, setSuccess] = useState<{ categories: string[]; expiresAt: Date } | null>(null);
-  useEffect(() => onAuthStateChanged(auth, async current => { if (!current) { window.location.replace(`${BASE}/login/`); return; } try { const snap = await getDoc(doc(db, 'users', current.uid)); const data = snap.exists() ? snap.data() as User : {}; setUser({ ...data, email: current.email || '' }); if (Array.isArray(data.categories)) setSelected(data.categories.filter(c => Object.hasOwn(PRICES, c))); } catch { setMessage('Could not load your account. Please refresh.'); } finally { setLoading(false); } }), []);
+
+  useEffect(() => onAuthStateChanged(auth, async current => {
+    if (!current) { window.location.replace(`${BASE}/login/`); return; }
+    try {
+      const snap = await getDoc(doc(db, 'users', current.uid));
+      const data = snap.exists() ? snap.data() as User : {};
+      setUser({ ...data, email: current.email || '' });
+      if (Array.isArray(data.categories)) setSelected(data.categories.filter(c => Object.hasOwn(PRICES, c)));
+
+      const reference = new URLSearchParams(window.location.search).get('reference') || new URLSearchParams(window.location.search).get('trxref');
+      if (reference) {
+        setMessage('Confirming your Paystack payment…');
+        try {
+          const jwt = await current.getIdToken(true);
+          const configResponse = await fetch(PAYMENT_CONFIG_URL, { cache: 'no-store' });
+          if (!configResponse.ok) throw new Error('PAYMENT_BACKEND_CONFIG_MISSING');
+          const config = await configResponse.json();
+          const paymentBackend = String(config?.baseUrl || '').replace(/\/$/, '');
+          if (!paymentBackend) throw new Error('PAYMENT_BACKEND_CONFIG_MISSING');
+          const verifyResponse = await fetch(`${paymentBackend}/paystack/verify?reference=${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${jwt}` }, cache: 'no-store' });
+          const verifyText = await verifyResponse.text();
+          let verifyData: any = {}; try { verifyData = JSON.parse(verifyText); } catch {}
+          if (!verifyResponse.ok) throw new Error(verifyData.error || `Payment verification failed (${verifyResponse.status}).`);
+          if (verifyData.emailSent === false) setMessage('Payment confirmed. Your activation code is being prepared. Please check your verified email shortly.');
+          else setMessage('Payment confirmed. Your activation code has been sent to your verified email.');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e: any) {
+          setMessage(e?.message || 'Payment was completed, but confirmation could not be completed automatically. Please refresh and try again.');
+        }
+      }
+    } catch { setMessage('Could not load your account. Please refresh.'); } finally { setLoading(false); }
+  }), []);
+
   const display = useMemo(() => quote(selected, currency, country), [selected, currency, country]);
   const countryName = COUNTRIES.find(x => x[0] === country)?.[1] || 'Other country';
-  async function pay() { if (!selected.length) return setMessage('Select at least one learning category.'); const current = auth.currentUser; if (!current) return setMessage('Please sign in again.'); await current.reload(); if (!current.email || !current.emailVerified) return setMessage('Please add and verify your email in Personal before paying. Your activation code will be sent there.'); setPaying(true); setMessage(''); try { const jwt = await current.getIdToken(true); const response = await fetch(`${PAYMENT_API}/paystackInitialize`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }, body: JSON.stringify({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 }) }); const text = await response.text(); let data: any = {}; try { data = JSON.parse(text); } catch {} if (!response.ok || !data.authorization_url) throw new Error(data.error || data.detail || `Payment service returned ${response.status}.`); window.location.assign(data.authorization_url); } catch (e: any) { setMessage(e?.message === 'Failed to fetch' ? 'The payment service could not be reached. Please refresh and try again.' : e?.message || 'Could not open Paystack checkout.'); } finally { setPaying(false); } }
-  async function redeem() { const clean = code.trim().toUpperCase(); if (!/^[A-Z0-9]{10}$/.test(clean)) return setMessage('Enter the 10-character activation code from your email.'); const current = auth.currentUser; if (!current) return setMessage('Please sign in again.'); setRedeeming(true); setMessage(''); try { const tokenRef = doc(db, 'williTokens', clean); const snap = await getDoc(tokenRef); if (!snap.exists()) throw new Error('This activation code was not found. Check the code and try again.'); const token = snap.data() as any; if (String(token.userId || token.uid || '') !== current.uid) throw new Error('This activation code belongs to a different account.'); if (token.revoked === true || token.cancelled === true) throw new Error('This WilliToken has been revoked and can no longer be used.'); if (token.used === true || token.redeemed === true) throw new Error('This WilliToken has already been redeemed.'); const expiry = token.expiresAt?.toDate?.() || (token.createdAt?.toDate?.() && typeof token.durationMs === 'number' ? new Date(token.createdAt.toDate().getTime() + token.durationMs) : null); if (expiry && expiry.getTime() <= Date.now()) { try { await updateDoc(tokenRef, { expired: true }); } catch {} throw new Error('This WilliToken has expired. Please request a new activation code.'); } const categories = Array.isArray(token.categories) ? token.categories.filter((x: any) => typeof x === 'string' && Object.hasOwn(PRICES, x)) : []; const userRef = doc(db, 'users', current.uid); const userSnap = await getDoc(userRef); const existing: any = userSnap.data() || {}; const merged = [...new Set([...(Array.isArray(existing.categories) ? existing.categories : []), ...categories])]; await updateDoc(tokenRef, { used: true, redeemed: true, redeemedBy: current.uid, redeemedAt: serverTimestamp(), active: true }); const activationExpiry = expiry || new Date(Date.now() + 31536000000); await updateDoc(userRef, { activated: true, activationStatus: 'active', williTokenActive: true, activationExpiresAt: activationExpiry, categories: merged, category: merged[0] || existing.category || '', educationLevels: merged, schoolLevels: merged }); setCode(''); setSuccess({ categories: categories.length ? categories : merged, expiresAt: activationExpiry }); } catch (e: any) { setMessage(e?.code === 'permission-denied' ? 'Activation was denied by Firebase. Please refresh and try again.' : e?.message || 'Activation failed.'); } finally { setRedeeming(false); } }
+
+  async function pay() {
+    if (!selected.length) return setMessage('Select at least one learning category.');
+    const current = auth.currentUser;
+    if (!current) return setMessage('Please sign in again.');
+    try { await current.reload(); } catch {}
+    if (!current.email || !current.emailVerified) return setMessage('Please add and verify your email in Personal before paying. Your activation code will be sent there.');
+    setPaying(true); setMessage('');
+    try {
+      const jwt = await current.getIdToken(true);
+      const configResponse = await fetch(PAYMENT_CONFIG_URL, { cache: 'no-store' });
+      if (!configResponse.ok) throw new Error('The secure payment service configuration could not be loaded. Please refresh and try again.');
+      const config = await configResponse.json();
+      const paymentBackend = String(config?.baseUrl || '').replace(/\/$/, '');
+      if (!paymentBackend) throw new Error('The secure payment service is not ready yet. Please refresh and try again.');
+      const response = await fetch(`${paymentBackend}/paystack/initialize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ categories: selected, country, currency, amount: display.paymentAmount, paymentCurrency: display.paymentCurrency, durationMs: 31536000000 })
+      });
+      const text = await response.text();
+      let data: any = {}; try { data = JSON.parse(text); } catch {}
+      if (!response.ok || !data.authorization_url) throw new Error(data.error || data.detail || `Payment service returned ${response.status}.`);
+      window.location.assign(data.authorization_url);
+    } catch (e: any) {
+      const reason = String(e?.message || '');
+      setMessage(reason === 'Failed to fetch' ? 'The secure payment service could not be reached. Please refresh and try again.' : reason || 'Could not open Paystack checkout.');
+    } finally { setPaying(false); }
+  }
+
+  async function redeem() {
+    const clean = code.trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(clean)) return setMessage('Enter the 10-character activation code from your email.');
+    const current = auth.currentUser; if (!current) return setMessage('Please sign in again.');
+    setRedeeming(true); setMessage('');
+    try {
+      const tokenRef = doc(db, 'williTokens', clean); const snap = await getDoc(tokenRef);
+      if (!snap.exists()) throw new Error('This activation code was not found. Check the code and try again.');
+      const token = snap.data() as any;
+      if (String(token.userId || token.uid || '') !== current.uid) throw new Error('This activation code belongs to a different account.');
+      if (token.revoked === true || token.cancelled === true) throw new Error('This WilliToken has been revoked and can no longer be used.');
+      if (token.used === true || token.redeemed === true) throw new Error('This WilliToken has already been redeemed.');
+      const expiry = token.expiresAt?.toDate?.() || (token.createdAt?.toDate?.() && typeof token.durationMs === 'number' ? new Date(token.createdAt.toDate().getTime() + token.durationMs) : null);
+      if (expiry && expiry.getTime() <= Date.now()) { try { await updateDoc(tokenRef, { expired: true }); } catch {} throw new Error('This WilliToken has expired. Please request a new activation code.'); }
+      const categories = Array.isArray(token.categories) ? token.categories.filter((x: any) => typeof x === 'string' && Object.hasOwn(PRICES, x)) : [];
+      const userRef = doc(db, 'users', current.uid); const userSnap = await getDoc(userRef); const existing: any = userSnap.data() || {};
+      const merged = [...new Set([...(Array.isArray(existing.categories) ? existing.categories : []), ...categories])];
+      await updateDoc(tokenRef, { used: true, redeemed: true, redeemedBy: current.uid, redeemedAt: serverTimestamp(), active: true });
+      const activationExpiry = expiry || new Date(Date.now() + 31536000000);
+      await updateDoc(userRef, { activated: true, activationStatus: 'active', williTokenActive: true, activationExpiresAt: activationExpiry, categories: merged, category: merged[0] || existing.category || '', educationLevels: merged, schoolLevels: merged });
+      setCode(''); setSuccess({ categories: categories.length ? categories : merged, expiresAt: activationExpiry });
+    } catch (e: any) { setMessage(e?.code === 'permission-denied' ? 'Activation was denied by Firebase. Please refresh and try again.' : e?.message || 'Activation failed.'); }
+    finally { setRedeeming(false); }
+  }
+
   if (loading) return <main className="grid min-h-screen place-items-center bg-slate-950 text-white"><Loader2 className="animate-spin" /></main>;
   if (success) return <main className="min-h-screen bg-slate-950 px-4 py-8 text-white"><div className="mx-auto flex min-h-[80vh] max-w-2xl items-center justify-center"><section className="w-full rounded-[2rem] border border-emerald-400/25 bg-white/5 p-8 text-center shadow-2xl"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-400/15 text-emerald-300"><CheckCircle2 size={46} /></div><p className="mt-6 text-xs font-black uppercase tracking-[.25em] text-emerald-300">Activation complete</p><h1 className="mt-2 text-4xl font-black">🎉 Congratulations!</h1><p className="mx-auto mt-4 max-w-lg text-slate-300">Your EduWills account has been successfully activated.</p><div className="mt-7 rounded-2xl border border-white/10 bg-slate-900/80 p-5 text-left"><p className="text-xs font-black uppercase text-slate-500">Activated categories</p><div className="mt-3 flex flex-wrap gap-2">{success.categories.map(c => <span key={c} className="rounded-full bg-cyan-400/10 px-3 py-1.5 text-xs font-black text-cyan-200">{c}</span>)}</div><p className="mt-5 border-t border-white/10 pt-4 text-xs font-black uppercase text-slate-500">Access expires</p><p className="mt-1 font-black">{success.expiresAt.toLocaleString('en-NG', { dateStyle: 'full', timeStyle: 'short' })}</p></div><a href={`${BASE}/dashboard/`} className="mt-7 inline-flex w-full justify-center rounded-xl bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 px-5 py-4 font-black text-slate-950">Continue to EduWills →</a></section></div></main>;
   return <main className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-8"><div className="mx-auto max-w-3xl"><a href={`${BASE}/dashboard/`} className="text-sm font-bold text-slate-300">← Back to dashboard</a><section className="mt-6 rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl sm:p-9"><div className="flex gap-4"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-cyan-400/10 text-cyan-300"><KeyRound /></div><div><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">EDUWILLS activation</p><h1 className="mt-2 text-3xl font-black">Choose your learning category</h1><p className="mt-2 text-sm leading-6 text-slate-400">Get one year of access to the learning tools for every category you activate.</p></div></div><div className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-center"><p className="text-lg font-black text-cyan-300">1 year</p><p className="text-[11px] text-slate-500">Access per activation</p></div><div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-center"><p className="text-lg font-black text-cyan-300">AI quizzes</p><p className="text-[11px] text-slate-500">Practice and revision</p></div><div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 text-center"><p className="text-lg font-black text-cyan-300">Progress</p><p className="text-[11px] text-slate-500">Keep learning organized</p></div></div><div className="mt-7 grid gap-3 sm:grid-cols-2">{Object.keys(PRICES).map(category => { const active = selected.includes(category); return <button type="button" key={category} onClick={() => setSelected(p => active ? p.filter(x => x !== category) : [...p, category])} className={`rounded-2xl border p-5 text-left transition ${active ? 'border-cyan-300 bg-cyan-400/10' : 'border-white/10 bg-slate-900/60 hover:border-white/20'}`}><div className="flex items-center justify-between"><span className="font-black">{category}</span>{active && <CheckCircle2 size={20} className="text-cyan-300" />}</div><p className="mt-2 text-sm text-slate-400">Base price: {money(PRICES[category], 'NGN')}</p><ul className="mt-3 space-y-1 text-xs text-slate-500">{BENEFITS[category].map(item => <li key={item}>✓ {item}</li>)}</ul></button>; })}</div><div className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-slate-900/70 p-5 sm:grid-cols-2"><Menu label="Country" value={country} options={COUNTRIES} onChange={v => { setCountry(v); setCurrency(COUNTRIES.find(x => x[0] === v)?.[2] || 'USD'); }} /><Menu label="Currency" value={currency} options={CURRENCIES} onChange={setCurrency} /></div><div className="mt-6 rounded-2xl border border-cyan-300/20 bg-cyan-400/5 p-5"><div className="flex justify-between gap-4 text-sm"><span className="text-slate-400">Selected categories</span><span className="text-right font-bold">{selected.length ? selected.join(', ') : 'None'}</span></div><div className="mt-3 flex justify-between border-t border-white/10 pt-3"><span className="text-slate-400">Total for {countryName}</span><span className="font-black">{selected.length ? money(display.localAmount, display.localCurrency) : '—'}</span></div>{selected.length && display.international && <p className="mt-2 text-xs text-slate-500">International checkout is processed by Paystack in USD. The displayed local amount is your current equivalent.</p>}</div><button type="button" onClick={pay} disabled={paying || !selected.length} className="mt-6 w-full rounded-xl bg-gradient-to-r from-cyan-400 via-sky-500 to-indigo-600 px-5 py-4 font-black text-slate-950 disabled:opacity-50">{paying ? 'Opening Paystack…' : 'Continue to secure Paystack payment'}</button><div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="flex gap-3 rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-4 text-xs leading-5 text-slate-400"><ShieldCheck size={18} className="shrink-0 text-emerald-300" /><span><strong className="text-slate-200">Secure checkout.</strong> Payment is handed off to Paystack; EDUWILLS does not collect your card details.</span></div><div className="flex gap-3 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-xs leading-5 text-slate-400"><Mail size={18} className="shrink-0 text-cyan-300" /><span><strong className="text-slate-200">Activation by email.</strong> Your one-year activation code is sent to your verified email after successful payment.</span></div></div>{user?.email && <div className="mt-3 flex gap-3 rounded-xl border border-white/10 bg-slate-900/60 p-4 text-xs text-slate-400"><Mail size={18} className="text-cyan-300" /> Verified account email: <strong className="text-white">{user.email}</strong></div>}<div className="mt-7 border-t border-white/10 pt-7"><h2 className="text-xl font-black">Already received your activation code?</h2><p className="mt-2 text-sm text-slate-400">Enter the code from your email to activate your account.</p><div className="mt-4 flex gap-2"><input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))} maxLength={10} placeholder="AB12CD34EF" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-4 py-3 font-mono tracking-widest outline-none focus:border-cyan-300" /><button type="button" onClick={redeem} disabled={redeeming} className="rounded-xl bg-emerald-400 px-5 py-3 font-black text-slate-950 disabled:opacity-50">{redeeming ? 'Activating…' : 'Activate'}</button></div></div>{message && <p className="mt-5 rounded-xl border border-white/10 bg-slate-900 p-4 text-sm text-slate-200">{message}</p>}</section></div><ContactSupport box /></main>;
