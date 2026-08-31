@@ -24,7 +24,7 @@ export default function ContactSupport({ box = false }: { box?: boolean }) {
         </div>
       )}
       {!box && (
-        <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" aria-label="Contact EduWills support on WhatsApp" title="Contact Support" className="fixed bottom-5 right-5 z-50 grid h-14 w-14 place-items-center rounded-full bg-emerald-500 text-white shadow-2xl shadow-emerald-950/40 ring-2 ring-white/10 transition hover:scale-105 hover:bg-emerald-400">
+        <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" aria-label="Contact EduWills support on WhatsApp" title="Contact Support" className="fixed bottom-24 right-5 z-50 grid h-14 w-14 place-items-center rounded-full bg-emerald-500 text-white shadow-2xl shadow-emerald-950/40 ring-2 ring-white/10 transition hover:scale-105 hover:bg-emerald-400">
           <MessageCircle size={27} strokeWidth={2.5} />
           <span className="sr-only">Contact Support on WhatsApp</span>
         </a>

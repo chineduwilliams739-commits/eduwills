@@ -18,7 +18,7 @@ const CATEGORIES = ['Primary', 'Junior Secondary', 'Senior Secondary'] as const;
 const LEGACY_EXPIRY_MARKER = 'legacyActiveTokensExpiredV1';
 
 type User = {
-  id: string; uid?: string; fullName?: string; username?: string; phone?: string;
+  id: string; uid?: string; fullName?: string; username?: string; email?: string; phone?: string;
   category?: string; categories?: string[]; educationLevel?: string; educationLevels?: string[];
   schoolLevel?: string; schoolLevels?: string[];
 };
@@ -175,7 +175,7 @@ export default function AdminPage() {
   }, [users, userSearch]);
 
   const userBooks = (uid: string) => slots.filter(s => s.userId === uid).sort((a, b) => a.slot - b.slot);
-  const userName = (uid: string) => { const u = users.find(x => (x.uid || x.id) === uid); return u?.fullName || (u?.username ? `@${u.username}` : uid); };
+  const userName = (uid: string) => { const u = users.find(x => (x.uid || x.id) === uid); return u?.fullName || (u?.username ? `@${u.username}` : u?.email || 'Unnamed user'); };
   const userTokens = (uid: string) => tokens.filter(t => t.userId === uid && !t.used).sort((a, b) => (tokenExpiry(b)?.getTime() || 0) - (tokenExpiry(a)?.getTime() || 0));
   const activeToken = (uid: string) => userTokens(uid).find(t => { const exp = tokenExpiry(t); return !!exp && exp.getTime() > now; });
 
