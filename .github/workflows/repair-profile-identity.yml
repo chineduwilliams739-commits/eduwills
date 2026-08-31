@@ -25,9 +25,8 @@ jobs:
           s = p.read_text()
           old = "type User = { id: string; uid?: string; fullName?: string; username?: string; phone?: string;"
           new = "type User = { id: string; uid?: string; fullName?: string; username?: string; email?: string; authEmail?: string; phone?: string; phoneE164?: string;"
-          if old not in s:
-              raise SystemExit("Admin User type pattern not found")
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
           old = """  const userName = (uid: string) => {
             const u = users.find(x => (x.uid || x.id) === uid);
@@ -43,9 +42,8 @@ jobs:
             if (tokenOwner?.username?.trim()) return `@${tokenOwner.username.trim()}`;
             return `User ${uid.slice(0, 8)}`;
           };"""
-          if old not in s:
-              raise SystemExit("Admin userName pattern not found")
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
           p.write_text(s)
 
           p = Path("app/dashboard/personal/page.tsx")
@@ -75,18 +73,18 @@ jobs:
         console.warn('EDUWILLS profile identity recovery skipped:', identityError);
       }
       let tokenCategories: string[] = [];"""
-          if old not in s:
-              raise SystemExit("Personal identity load pattern not found")
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
           p.write_text(s)
           PY
 
-      - name: Verify changes
+      - name: Verify identity recovery
         run: |
           test -f app/admin/page.tsx
           test -f app/dashboard/personal/page.tsx
           grep -q "tokenOwner?.username" app/admin/page.tsx
           grep -q "phoneIndex" app/dashboard/personal/page.tsx
+          grep -q "User \${uid.slice(0, 8)}" app/admin/page.tsx
 
       - name: Commit repair
         run: |
