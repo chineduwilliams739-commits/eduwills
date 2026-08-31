@@ -1,11 +1,13 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 const BASE = '/eduwills';
+
+type Profile = { fullName?: string; username?: string; email?: string; authEmail?: string; phone?: string; phoneE164?: string };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -20,24 +22,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
         if (!snap.exists()) {
-          await signOut(auth);
-          window.location.replace(`${BASE}/login/`);
+          console.error('EDUWILLS profile missing for authenticated UID:', user.uid);
+          setReady(true);
           return;
         }
 
-        const data = snap.data() as { fullName?: string; username?: string };
+        const data = snap.data() as Profile;
         const identity = String(data.fullName || data.username || user.displayName || '').trim();
         if (!identity) {
-          await signOut(auth);
-          window.location.replace(`${BASE}/login/`);
-          return;
+          // A valid Firebase session must never be destroyed just because profile
+          // identity fields are incomplete. Keep the session and let the dashboard
+          // render while the profile is repaired.
+          console.warn('EDUWILLS profile has no display identity; preserving session.');
         }
-
         setReady(true);
       } catch (error) {
-        console.error('EDUWILLS session validation failed:', error);
-        await signOut(auth).catch(() => undefined);
-        window.location.replace(`${BASE}/login/`);
+        // Firestore availability/rules problems must not sign a valid user out.
+        console.error('EDUWILLS session profile check failed; preserving auth session:', error);
+        setReady(true);
       }
     });
 
