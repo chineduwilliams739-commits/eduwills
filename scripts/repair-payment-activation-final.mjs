@@ -33,3 +33,4 @@ s = s.replace(oldVerify, newVerify);
 s += `\n${marker}\n`;
 fs.writeFileSync(path, s);
 console.log('Applied robust payment activation repair.');
+// Triggered by the final-repair workflow so the Worker patch is applied to main.
