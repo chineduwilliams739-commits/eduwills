@@ -28,7 +28,7 @@ patch('workers/payments/src/index.js', [
 ])
 
 patch('app/dashboard/page.tsx', [
-("const identity=String(d.fullName?.split(' ')[0]||d.username||u.displayName||'').trim();", "const identity=String(d.fullName?.split(' ')[0]||u.displayName||d.username||'').trim();")
+("const identity=String(d.fullName?.split(' ')[0]||d.username||u.displayName||'').trim();", "const identity=String(d.fullName?.split(' ')[0]||u.displayName||localStorage.getItem('eduwills_current_user')||d.username||'').trim();")
 ])
 
 patch('components/ContactSupport.tsx', [
