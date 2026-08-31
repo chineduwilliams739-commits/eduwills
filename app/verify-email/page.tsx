@@ -23,6 +23,26 @@ export default function VerifyEmailPage() {
     setVerified(user.emailVerified);
   }, []);
 
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const start = () => {
+      timer = setInterval(async () => {
+        const user = auth.currentUser;
+        if (!user || verified) return;
+        try {
+          await reload(user);
+          if (auth.currentUser?.emailVerified) {
+            setVerified(true);
+            await signOut(auth);
+            window.location.href = `${BASE}/login/`;
+          }
+        } catch {}
+      }, 3000);
+    };
+    start();
+    return () => { if (timer) clearInterval(timer); };
+  }, [verified]);
+
   async function checkVerification() {
     const user = auth.currentUser;
     if (!user) return;
@@ -33,8 +53,9 @@ export default function VerifyEmailPage() {
       const current = auth.currentUser;
       if (current?.emailVerified) {
         setVerified(true);
-        setMessage('Email verified successfully.');
-        setTimeout(() => { window.location.href = `${BASE}/dashboard/`; }, 800);
+        setMessage('Email verified successfully. Redirecting you to login…');
+        await signOut(auth);
+        setTimeout(() => { window.location.href = `${BASE}/login/`; }, 500);
       } else {
         setMessage('Your email is not verified yet. Open the link in your email, then try again.');
       }

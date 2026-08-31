@@ -21,5 +21,5 @@ export function usernameFromEmail(email: unknown): string {
 }
 
 export function accountLink(publicId: string): string {
-  return `${window.location.origin}/eduwills/dashboard/?u=${encodeURIComponent(publicId)}`;
+  return `${window.location.origin}/eduwills/dashboard/?account=${encodeURIComponent(publicId)}`;
 }
