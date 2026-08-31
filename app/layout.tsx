@@ -4,6 +4,7 @@ import AnalyticsTracker from '@/components/AnalyticsTracker';
 import LandingConversionBar from '@/components/LandingConversionBar';
 import OfflineBootstrap from '@/components/OfflineBootstrap';
 import AccountIdentityBootstrap from '@/components/AccountIdentityBootstrap';
+import LoginReturnBootstrap from '@/components/LoginReturnBootstrap';
 
 export const metadata: Metadata = {
   title: 'EDUWILLS — AI Quiz Generator for WAEC, JAMB & NECO | Nigerian Students',
@@ -20,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (<html lang="en-NG"><body><OfflineBootstrap /><AccountIdentityBootstrap /><AnalyticsTracker /><LandingConversionBar />{children}</body></html>);
+  return (<html lang="en-NG"><body><OfflineBootstrap /><AccountIdentityBootstrap /><AnalyticsTracker /><LandingConversionBar /><LoginReturnBootstrap />{children}</body></html>);
 }
