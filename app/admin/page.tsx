@@ -60,14 +60,19 @@ function activationExpiry(user: User): Date | null {
 
 function isUserActive(user: User, tokens: WilliToken[]): boolean {
   const uid = user.uid || user.id;
-  const explicitActive = user.activated === true || user.activationStatus === 'active' || user.williTokenActive === true;
-  const userExpiry = activationExpiry(user);
-  if (explicitActive && (!userExpiry || userExpiry.getTime() > Date.now())) return true;
-  return tokens.some(token => {
+  const explicitlyInactive = user.activated === false || user.activationStatus === 'inactive' || user.williTokenActive === false;
+  if (explicitlyInactive) return false;
+
+  const hasValidToken = tokens.some(token => {
     const owner = token.userId || token.uid;
     const expiry = expiryDate(token);
     return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > Date.now();
   });
+  if (hasValidToken) return true;
+
+  const explicitActive = user.activated === true || user.activationStatus === 'active' || user.williTokenActive === true;
+  const userExpiry = activationExpiry(user);
+  return explicitActive && !!userExpiry && userExpiry.getTime() > Date.now();
 }
 
 function formatDate(date: Date | null) {
@@ -112,8 +117,18 @@ export default function AdminPage() {
         getDocs(collection(db, 'williTokens')),
         getDocs(collection(db, 'bookSlots')),
       ]);
+      const loadedTokens = t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken));
+      const now = Date.now();
+      const expiredTokens = loadedTokens.filter(token => {
+        const expiry = expiryDate(token);
+        return !!expiry && expiry.getTime() <= now;
+      });
+      if (expiredTokens.length) {
+        await Promise.all(expiredTokens.map(token => deleteDoc(doc(db, 'williTokens', token.id))));
+      }
+      const liveTokens = loadedTokens.filter(token => !expiredTokens.some(expired => expired.id === token.id));
       setUsers(u.docs.map(x => ({ id: x.id, ...x.data() } as User)));
-      setTokens(t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));
+      setTokens(liveTokens);
       setBooks(b.docs.map(x => ({ id: x.id, ...x.data() } as Book)));
     } catch (e: any) {
       setError(e?.code === 'permission-denied' ? 'Firebase denied Admin access. Check the admins/{UID} record and Firestore rules.' : 'Could not load Admin data.');
@@ -214,7 +229,43 @@ export default function AdminPage() {
   const revokeToken = async (t: WilliToken) => {
     if (!window.confirm(`Revoke WilliToken ${t.token || t.id}? It will immediately stop granting access.`)) return;
     try {
-      await updateDoc(doc(db, 'williTokens', t.id), { revoked: true, active: false, revokedAt: serverTimestamp() });
+      const uid = t.userId || t.uid || '';
+      if (!uid) throw new Error('Token has no owner');
+
+      await deleteDoc(doc(db, 'williTokens', t.id));
+
+      const remainingSnapshot = await getDocs(collection(db, 'williTokens'));
+      const now = Date.now();
+      const remainingTokens = remainingSnapshot.docs
+        .map(x => ({ id: x.id, ...x.data() } as WilliToken))
+        .filter(token => {
+          const owner = token.userId || token.uid;
+          const expiry = expiryDate(token);
+          return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > now;
+        });
+
+      if (remainingTokens.length) {
+        const latestExpiry = remainingTokens.reduce((latest, token) => {
+          const expiry = expiryDate(token);
+          return expiry && (!latest || expiry.getTime() > latest.getTime()) ? expiry : latest;
+        }, null as Date | null);
+        await updateDoc(doc(db, 'users', uid), {
+          activated: true,
+          activationStatus: 'active',
+          activationActive: true,
+          williTokenActive: true,
+          activationExpiresAt: latestExpiry,
+        });
+      } else {
+        await updateDoc(doc(db, 'users', uid), {
+          activated: false,
+          activationStatus: 'inactive',
+          activationActive: false,
+          williTokenActive: false,
+          activationExpiresAt: null,
+        });
+      }
+
       await load();
     } catch { alert('Could not revoke this WilliToken.'); }
   };
