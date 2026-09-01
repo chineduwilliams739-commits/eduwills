@@ -1,0 +1,86 @@
+name: Fix WilliToken Revocation State
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-willi-token-revocation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch admin revocation logic
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/admin/page.tsx')
+          src = path.read_text()
+          old = '''  const revokeToken = async (t: WilliToken) => {
+    if (!window.confirm(`Revoke WilliToken ${t.token || t.id}? It will immediately stop granting access.`)) return;
+    try {
+      await updateDoc(doc(db, 'williTokens', t.id), { revoked: true, active: false, revokedAt: serverTimestamp() });
+      await load();
+    } catch { alert('Could not revoke this WilliToken.'); }
+  };'''
+          new = '''  const revokeToken = async (t: WilliToken) => {
+    if (!window.confirm(`Revoke WilliToken ${t.token || t.id}? It will immediately stop granting access.`)) return;
+    const uid = t.userId || t.uid || '';
+    if (!uid) return alert('This WilliToken has no linked user UID, so its account could not be updated safely.');
+    try {
+      await updateDoc(doc(db, 'williTokens', t.id), { revoked: true, active: false, revokedAt: serverTimestamp() });
+
+      // Recalculate activation from every other non-revoked, non-expired token.
+      // A revoked token must never leave stale active flags on the user account.
+      const now = Date.now();
+      const remainingActiveTokens = tokens
+        .filter(other => other.id !== t.id && (other.userId || other.uid) === uid && other.revoked !== true && other.cancelled !== true)
+        .map(other => ({ token: other, expiry: expiryDate(other) }))
+        .filter(({ expiry }) => !!expiry && expiry.getTime() > now)
+        .sort((a, b) => b.expiry!.getTime() - a.expiry!.getTime());
+
+      const latestExpiry = remainingActiveTokens[0]?.expiry || null;
+      await updateDoc(doc(db, 'users', uid), latestExpiry ? {
+        activated: true,
+        activationStatus: 'active',
+        activationActive: true,
+        williTokenActive: true,
+        activationExpiresAt: latestExpiry,
+      } : {
+        activated: false,
+        activationStatus: 'inactive',
+        activationActive: false,
+        williTokenActive: false,
+        activationExpiresAt: null,
+      });
+
+      await load();
+    } catch (e: any) {
+      alert(e?.code === 'permission-denied' ? 'Admin permission was denied while revoking this WilliToken.' : 'Could not revoke this WilliToken.');
+    }
+  };'''
+          if old not in src:
+              raise SystemExit('Expected revokeToken implementation not found; refusing to make an unsafe edit.')
+          path.write_text(src.replace(old, new, 1))
+          PY
+
+      - name: TypeScript check
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit --pretty false
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/admin/page.tsx
+          git diff --cached --quiet && { echo 'No changes needed.'; exit 0; }
+          git commit -m "Fix WilliToken revocation account state"
+          git push origin HEAD:main
