@@ -36,12 +36,6 @@ function accountExpiry(account: any): number {
   return ms(account?.activationExpiresAt || account?.williTokenExpiresAt || account?.tokenExpiresAt);
 }
 
-function accountIsActive(account: any, now: number): boolean {
-  const expiry = accountExpiry(account);
-  if (expiry && expiry <= now) return false;
-  return account?.activated === true || account?.activationStatus === 'active' || account?.activationActive === true || account?.williTokenActive === true;
-}
-
 function cleanUsername(value: unknown): string {
   return String(value || '').trim().replace(/^@/, '').toLowerCase();
 }
@@ -57,6 +51,28 @@ function tokenIsValid(token: any, uid: string, username: string, now: number): b
   return token?.used === true && token?.active !== false && token?.revoked !== true && token?.cancelled !== true && belongs(token, uid, username) && expiry > now;
 }
 
+async function findActiveToken(uid: string, username: string, now: number): Promise<any | null> {
+  const candidates = new Map<string, any>();
+  const collect = (snap: any) => snap.docs.forEach((item: any) => candidates.set(item.id, { id: item.id, ...item.data() }));
+
+  collect(await getDocs(query(collection(db, 'williTokens'), where('uid', '==', uid))));
+  collect(await getDocs(query(collection(db, 'williTokens'), where('userId', '==', uid))));
+  if (username) {
+    collect(await getDocs(query(collection(db, 'williTokens'), where('username', '==', username))));
+    collect(await getDocs(query(collection(db, 'williTokens'), where('username', '==', `@${username.replace(/^@/, '')}`))));
+  }
+
+  const linked = String((await getDoc(doc(db, 'users', uid))).data()?.activeWilliToken || '').trim();
+  if (linked && !candidates.has(linked)) {
+    const linkedSnap = await getDoc(doc(db, 'williTokens', linked));
+    if (linkedSnap.exists()) candidates.set(linked, { id: linkedSnap.id, ...linkedSnap.data() });
+  }
+
+  return [...candidates.values()]
+    .filter(token => tokenIsValid(token, uid, username, now))
+    .sort((a, b) => tokenExpiry(b) - tokenExpiry(a))[0] || null;
+}
+
 export async function getAiEntitlement(user: FirebaseUser): Promise<AiEntitlement> {
   const uid = user.uid;
   const now = Date.now();
@@ -65,39 +81,25 @@ export async function getAiEntitlement(user: FirebaseUser): Promise<AiEntitlemen
 
   const account = accountSnap.data() || {};
   const username = String(account.username || '').trim();
-  const expiry = accountExpiry(account);
+  const accountExpiryMs = accountExpiry(account);
 
-  // The user activation record is authoritative. A valid activation must never
-  // be locked merely because a token query has a different shape.
-  if (accountIsActive(account, now)) {
-    return { allowed: true, uid, username, expiresAt: expiry, source: 'account', reason: 'active-account' };
+  // A WilliToken is the source of activation entitlement. Account flags are
+  // only cached status and must never grant AI access by themselves.
+  const token = await findActiveToken(uid, username, now);
+  if (token) {
+    const expiresAt = tokenExpiry(token);
+    return { allowed: true, uid, username, expiresAt, source: 'token', reason: 'active-token' };
   }
 
-  // If the account record is stale, resolve a redeemed live token by UID/userId
-  // or username. This is only a fallback and never overrides a valid account activation.
-  const candidates = new Map<string, any>();
-  const collect = (snap: any) => snap.docs.forEach((item: any) => candidates.set(item.id, { id: item.id, ...item.data() }));
-  collect(await getDocs(query(collection(db, 'williTokens'), where('uid', '==', uid))));
-  collect(await getDocs(query(collection(db, 'williTokens'), where('userId', '==', uid))));
-  if (username) {
-    collect(await getDocs(query(collection(db, 'williTokens'), where('username', '==', username))));
-    collect(await getDocs(query(collection(db, 'williTokens'), where('username', '==', `@${username.replace(/^@/, '')}`))));
-  }
-
-  const linked = String(account.activeWilliToken || '').trim().toUpperCase();
-  if (linked && !candidates.has(linked)) {
-    const linkedSnap = await getDoc(doc(db, 'williTokens', linked));
-    if (linkedSnap.exists()) candidates.set(linked, { id: linkedSnap.id, ...linkedSnap.data() });
-  }
-
-  let best: AiEntitlement = { allowed: false, uid, username, expiresAt: expiry, source: 'none', reason: expiry && expiry <= now ? 'activation-expired' : 'not-activated' };
-  for (const token of candidates.values()) {
-    const tokenExp = tokenExpiry(token);
-    if (tokenIsValid(token, uid, username, now) && tokenExp > best.expiresAt) {
-      best = { allowed: true, uid, username, expiresAt: tokenExp, source: 'token', reason: 'active-token', };
-    }
-  }
-  return best;
+  const expired = accountExpiryMs > 0 && accountExpiryMs <= now;
+  return {
+    allowed: false,
+    uid,
+    username,
+    expiresAt: accountExpiryMs,
+    source: 'none',
+    reason: expired ? 'activation-expired' : 'no-active-willitoken',
+  };
 }
 
 export function watchAiEntitlement(callback: (state: { user: FirebaseUser | null; entitlement: AiEntitlement | null; error?: string }) => void) {
