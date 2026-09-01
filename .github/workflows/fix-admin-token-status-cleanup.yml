@@ -1,0 +1,155 @@
+name: Fix Admin WilliToken status and cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-token-status-cleanup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch Admin token handling
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('app/admin/page.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          old_status = '''function isUserActive(user: User, tokens: WilliToken[]): boolean {
+            const uid = user.uid || user.id;
+            const explicitActive = user.activated === true || user.activationStatus === 'active' || user.williTokenActive === true;
+            const userExpiry = activationExpiry(user);
+            if (explicitActive && (!userExpiry || userExpiry.getTime() > Date.now())) return true;
+            return tokens.some(token => {
+              const owner = token.userId || token.uid;
+              const expiry = expiryDate(token);
+              return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > Date.now();
+            });
+          }'''
+          new_status = '''function isUserActive(user: User, tokens: WilliToken[]): boolean {
+            const uid = user.uid || user.id;
+            const explicitlyInactive = user.activated === false || user.activationStatus === 'inactive' || user.williTokenActive === false;
+            if (explicitlyInactive) return false;
+
+            const hasValidToken = tokens.some(token => {
+              const owner = token.userId || token.uid;
+              const expiry = expiryDate(token);
+              return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > Date.now();
+            });
+            if (hasValidToken) return true;
+
+            const explicitActive = user.activated === true || user.activationStatus === 'active' || user.williTokenActive === true;
+            const userExpiry = activationExpiry(user);
+            return explicitActive && !!userExpiry && userExpiry.getTime() > Date.now();
+          }'''
+          if old_status not in text:
+              raise SystemExit('Expected isUserActive implementation was not found')
+          text = text.replace(old_status, new_status, 1)
+
+          old_revoke = '''  const revokeToken = async (t: WilliToken) => {
+            if (!window.confirm(`Revoke WilliToken ${t.token || t.id}? It will immediately stop granting access.`)) return;
+            try {
+              await updateDoc(doc(db, 'williTokens', t.id), { revoked: true, active: false, revokedAt: serverTimestamp() });
+              await load();
+            } catch { alert('Could not revoke this WilliToken.'); }
+          };'''
+          new_revoke = '''  const revokeToken = async (t: WilliToken) => {
+            if (!window.confirm(`Revoke WilliToken ${t.token || t.id}? It will immediately stop granting access.`)) return;
+            try {
+              const uid = t.userId || t.uid || '';
+              if (!uid) throw new Error('Token has no owner');
+
+              // Revoked tokens are not retained as active records. Delete the selected token.
+              await deleteDoc(doc(db, 'williTokens', t.id));
+
+              // Recalculate the account from the remaining valid tokens so revoking one
+              // token does not deactivate an account that still has another valid token.
+              const remainingSnapshot = await getDocs(collection(db, 'williTokens'));
+              const now = Date.now();
+              const remainingTokens = remainingSnapshot.docs
+                .map(x => ({ id: x.id, ...x.data() } as WilliToken))
+                .filter(token => {
+                  const owner = token.userId || token.uid;
+                  const expiry = expiryDate(token);
+                  return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > now;
+                });
+
+              if (remainingTokens.length) {
+                const latestExpiry = remainingTokens.reduce((latest, token) => {
+                  const expiry = expiryDate(token);
+                  return expiry && (!latest || expiry.getTime() > latest.getTime()) ? expiry : latest;
+                }, null as Date | null);
+                await updateDoc(doc(db, 'users', uid), {
+                  activated: true,
+                  activationStatus: 'active',
+                  activationActive: true,
+                  williTokenActive: true,
+                  activationExpiresAt: latestExpiry,
+                });
+              } else {
+                await updateDoc(doc(db, 'users', uid), {
+                  activated: false,
+                  activationStatus: 'inactive',
+                  activationActive: false,
+                  williTokenActive: false,
+                  activationExpiresAt: null,
+                });
+              }
+
+              await load();
+            } catch { alert('Could not revoke this WilliToken.'); }
+          };'''
+          if old_revoke not in text:
+              raise SystemExit('Expected revokeToken implementation was not found')
+          text = text.replace(old_revoke, new_revoke, 1)
+
+          old_load = '''      setUsers(u.docs.map(x => ({ id: x.id, ...x.data() } as User)));
+      setTokens(t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));
+      setBooks(b.docs.map(x => ({ id: x.id, ...x.data() } as Book)));'''
+          new_load = '''      const loadedTokens = t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken));
+      const now = Date.now();
+      const expiredTokens = loadedTokens.filter(token => {
+        const expiry = expiryDate(token);
+        return !!expiry && expiry.getTime() <= now;
+      });
+      if (expiredTokens.length) {
+        await Promise.all(expiredTokens.map(token => deleteDoc(doc(db, 'williTokens', token.id))));
+      }
+      const liveTokens = loadedTokens.filter(token => !expiredTokens.some(expired => expired.id === token.id));
+      setUsers(u.docs.map(x => ({ id: x.id, ...x.data() } as User)));
+      setTokens(liveTokens);
+      setBooks(b.docs.map(x => ({ id: x.id, ...x.data() } as Book)));'''
+          if old_load not in text:
+              raise SystemExit('Expected Admin load implementation was not found')
+          text = text.replace(old_load, new_load, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check
+        run: npx tsc --noEmit --pretty false
+
+      - name: Commit Admin fix
+        shell: bash
+        run: |
+          if git diff --quiet -- app/admin/page.tsx; then
+            echo 'No Admin source changes were necessary.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/admin/page.tsx
+          git commit -m 'Fix Admin WilliToken status and automatic cleanup'
+          git push
