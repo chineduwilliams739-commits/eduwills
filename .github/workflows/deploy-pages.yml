@@ -28,6 +28,8 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Harden Admin WilliToken data handling
+        run: node scripts/harden-admin-willitoken-data.mjs
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
       - name: Build application
