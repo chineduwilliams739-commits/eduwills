@@ -1,0 +1,66 @@
+name: Fix EduWills Payment Syntax
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/payments/src/index.js'
+      - 'scripts/repair-payment-activation-final.mjs'
+      - '.github/workflows/fix-payment-syntax.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fix nullish/logical operator precedence
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('workers/payments/src/index.js'): [
+                  ("categories:rawMeta.categories??pendingMeta.categories", "categories:(rawMeta.categories??pendingMeta.categories)"),
+                  ("categories:rawMeta.categories??pf.categories?.stringValue||'[]'", "categories:(rawMeta.categories??pf.categories?.stringValue)||'[]'"),
+              ],
+              Path('scripts/repair-payment-activation-final.mjs'): [
+                  ("categories:rawMeta.categories??pendingMeta.categories", "categories:(rawMeta.categories??pendingMeta.categories)"),
+                  ("categories:rawMeta.categories??pf.categories?.stringValue||'[]'", "categories:(rawMeta.categories??pf.categories?.stringValue)||'[]'"),
+              ],
+          }
+
+          changed = False
+          for path, pairs in replacements.items():
+              if not path.exists():
+                  continue
+              s = path.read_text()
+              original = s
+              for old, new in pairs:
+                  s = s.replace(old, new)
+              if s != original:
+                  path.write_text(s)
+                  changed = True
+                  print(f'Patched {path}')
+
+          if not changed:
+              print('No syntax patch was necessary.')
+          PY
+
+          if git diff --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/payments/src/index.js scripts/repair-payment-activation-final.mjs
+          git commit -m 'Fix payment metadata operator precedence'
+          git push origin HEAD:main
