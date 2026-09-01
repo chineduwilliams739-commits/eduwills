@@ -5,8 +5,8 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 
 const PAYSTACK_SECRET_KEY = defineString('PAYSTACK_SECRET_KEY', { default: '' });
-const RESEND_API_KEY = defineString('RESEND_API_KEY', { default: '' });
-const RESEND_FROM_EMAIL = defineString('RESEND_FROM_EMAIL', { default: 'EduWills <onboarding@resend.dev>' });
+const BREVO_API_KEY = defineString('BREVO_API_KEY', { default: '' });
+const BREVO_FROM_EMAIL = defineString('BREVO_FROM_EMAIL', { default: '' });
 
 const PRICES = { Primary: 2000, 'Junior Secondary': 3000, 'Senior Secondary': 3000, 'Book Learner': 4000 };
 const COUNTRY_CURRENCY = { NG: 'NGN', US: 'USD', GB: 'GBP', GH: 'GHS', KE: 'KES', ZA: 'ZAR', CI: 'XOF' };
@@ -18,7 +18,7 @@ const baseTotal = (categories) => cleanCategories(categories).reduce((sum, x) =>
 const makeCode = () => Array.from({ length: 10 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('');
 
 function requirePaystack() { const key = PAYSTACK_SECRET_KEY.value(); if (!key) throw new Error('PAYSTACK_NOT_CONFIGURED'); return key; }
-function requireResend() { const key = RESEND_API_KEY.value(); if (!key) throw new Error('RESEND_NOT_CONFIGURED'); return key; }
+function requireBrevo() { const key = BREVO_API_KEY.value(); if (!key) throw new Error('BREVO_NOT_CONFIGURED'); return key; }
 
 async function findUserAttribution(db, uid) {
   try {
@@ -47,13 +47,16 @@ async function fxRate(from, to) {
 }
 
 async function sendActivationEmail({ to, name, code, categories, paymentAmount, paymentCurrency, activationExpiresAt, codeExpiresAt }) {
-  const key = requireResend();
-  const safeName = String(name || 'EduWills learner').replace(/[<>]/g, '');
-  const safeCategories = categories.map(x => String(x).replace(/[<>]/g, '')).join(', ');
-  const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a"><div style="max-width:620px;margin:32px auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0"><div style="background:#0f172a;padding:28px 32px;color:#fff"><div style="font-size:22px;font-weight:800">EDUWILLS</div><div style="margin-top:8px;color:#a5f3fc;font-size:12px;letter-spacing:2px;font-weight:700">ACCOUNT ACTIVATION</div></div><div style="padding:32px"><p style="font-size:16px">Hello ${safeName},</p><p>Your payment has been confirmed successfully. Your EduWills activation code is ready.</p><div style="margin:24px 0;padding:22px;text-align:center;background:#f8fafc;border:1px solid #cbd5e1;border-radius:14px"><div style="font-size:11px;color:#64748b;letter-spacing:2px;font-weight:700">ACTIVATION CODE</div><div style="margin-top:10px;font-size:28px;letter-spacing:5px;font-weight:900;font-family:monospace">${code}</div></div><p style="margin:6px 0"><strong>Category:</strong> ${safeCategories}</p><p style="margin:6px 0"><strong>Payment:</strong> ${paymentCurrency} ${Number(paymentAmount).toFixed(paymentCurrency === 'NGN' ? 0 : 2)}</p><p style="margin:6px 0"><strong>Code valid until:</strong> ${new Date(codeExpiresAt).toLocaleString('en-NG')}</p><p style="margin:6px 0"><strong>Activation duration after redemption:</strong> 1 year</p><div style="margin-top:24px;padding:14px;background:#ecfeff;border-radius:10px;color:#155e75;font-size:13px">For your security, this code can only be redeemed once. If you did not make this payment, contact EduWills support immediately.</div><p style="margin-top:28px;color:#64748b;font-size:13px">Thank you for choosing EduWills.</p></div></div></body></html>`;
-  const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: RESEND_FROM_EMAIL.value(), to: [to], subject: 'Your EduWills activation code', html }) });
-  if (!r.ok) { const text = await r.text(); throw new Error(`EMAIL_SEND_FAILED:${text.slice(0, 300)}`); }
-  return r.json();
+const key = requireBrevo();
+const from = String(BREVO_FROM_EMAIL.value() || '').trim();
+if (!from) throw new Error('BREVO_FROM_EMAIL_NOT_CONFIGURED');
+const safeName = String(name || 'EduWills learner').replace(/[<>]/g, '');
+const safeCategories = categories.map(x => String(x).replace(/[<>]/g, '')).join(', ');
+const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a"><div style="max-width:620px;margin:32px auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0"><div style="background:#0f172a;padding:28px 32px;color:#fff"><div style="font-size:22px;font-weight:800">EDUWILLS</div><div style="margin-top:8px;color:#a5f3fc;font-size:12px;letter-spacing:2px;font-weight:700">ACCOUNT ACTIVATION</div></div><div style="padding:32px"><p style="font-size:16px">Hello ${safeName},</p><p>Your payment has been confirmed successfully. Your EduWills activation code is ready.</p><div style="margin:24px 0;padding:22px;text-align:center;background:#f8fafc;border:1px solid #cbd5e1;border-radius:14px"><div style="font-size:11px;color:#64748b;letter-spacing:2px;font-weight:700">ACTIVATION CODE</div><div style="margin-top:10px;font-size:28px;letter-spacing:5px;font-weight:900;font-family:monospace">${code}</div></div><p style="margin:6px 0"><strong>Category:</strong> ${safeCategories}</p><p style="margin:6px 0"><strong>Payment:</strong> ${paymentCurrency} ${Number(paymentAmount).toFixed(paymentCurrency === 'NGN' ? 0 : 2)}</p><p style="margin:6px 0"><strong>Code valid until:</strong> ${new Date(codeExpiresAt).toLocaleString('en-NG')}</p><p style="margin:6px 0"><strong>Activation duration after redemption:</strong> 1 year</p><div style="margin-top:24px;padding:14px;background:#ecfeff;border-radius:10px;color:#155e75;font-size:13px">For your security, this code can only be redeemed once. If you did not make this payment, contact EduWills support immediately.</div><p style="margin-top:28px;color:#64748b;font-size:13px">Thank you for choosing EduWills.</p></div></div></body></html>`;
+const r = await fetch('https://api.brevo.com/v3/smtp/email', { method: 'POST', headers: { 'api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ sender: { name: 'EduWills', email: from }, to: [{ email: to }], subject: 'Your EduWills activation code', htmlContent: html }) });
+const text = await r.text();
+if (!r.ok) throw new Error(`EMAIL_SEND_FAILED:${text.slice(0, 500)}`);
+return text ? JSON.parse(text) : {};
 }
 
 exports.paystackQuote = onRequest({ region: 'us-central1', timeoutSeconds: 30, memory: '256MiB', cors: true }, async (req, res) => {
