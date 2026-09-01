@@ -1,90 +1,77 @@
-name: Switch EduWills activation email to Brevo
+name: Deploy EduWills Brevo Email Worker
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/switch-to-brevo-email.yml'
-      - 'workers/payments/src/index.js'
-      - 'functions/activationPayments.js'
-      - '.github/workflows/deploy-cloudflare-payments.yml'
+      - 'workers/payments/**'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  migrate:
-    if: ${{ !contains(github.event.head_commit.message, 'Migrate EduWills email delivery to Brevo') }}
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: '20'
 
-      - name: Replace email provider
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Authenticate Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: wrangler whoami
+
+      - name: Configure Brevo and required Worker secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_FROM_EMAIL: ${{ secrets.BREVO_FROM_EMAIL }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUWILLS }}
+        working-directory: workers/payments
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
+          set -euo pipefail
+          test -n "$PAYSTACK_SECRET_KEY"
+          test -n "$BREVO_API_KEY"
+          test -n "$BREVO_FROM_EMAIL"
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          printf '%s' "$PAYSTACK_SECRET_KEY" | wrangler secret put PAYSTACK_SECRET_KEY
+          printf '%s' "$BREVO_API_KEY" | wrangler secret put BREVO_API_KEY
+          printf '%s' "$BREVO_FROM_EMAIL" | wrangler secret put BREVO_FROM_EMAIL
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" | wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
 
-          worker = Path('workers/payments/src/index.js')
-          s = worker.read_text()
-          old_start = "async function sendEmail(env,to,name,code,categories,amount,currency,codeExpires){"
-          start = s.index(old_start)
-          end = s.index("\nconst usernameFromEmail", start)
-          new = '''async function sendEmail(env,to,name,code,categories,amount,currency,codeExpires){
-            const key=String(env.BREVO_API_KEY||'').trim();
-            if(!key)return{sent:false,reason:'BREVO_NOT_CONFIGURED'};
-            const recipient=String(to||'').trim().toLowerCase();
-            if(!recipient)return{sent:false,reason:'RECIPIENT_EMAIL_MISSING'};
-            const from=String(env.BREVO_FROM_EMAIL||'').trim();
-            if(!from)return{sent:false,reason:'BREVO_FROM_EMAIL_NOT_CONFIGURED'};
-            const safe=String(name||'EduWills learner').replace(/[<>]/g,'');
-            const cats=categories.map(x=>String(x).replace(/[<>]/g,'')).join(', ');
-            const html=`<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:32px"><h2>EduWills</h2><p>Hello ${safe},</p><p>Your payment has been confirmed. Your activation code is:</p><div style="font-size:28px;font-weight:800;letter-spacing:5px;text-align:center;padding:20px;background:#f1f5f9">${code}</div><p><b>Category:</b> ${cats}</p><p><b>Payment:</b> ${currency} ${amount}</p><p><b>Redeem by:</b> ${new Date(codeExpires).toLocaleString('en-NG')}</p><p>After redemption, your activation lasts <b>1 year</b>.</p><p>For your security, this code can only be redeemed once.</p><p>Thank you for choosing EduWills.</p></div>`;
-            try{
-              const r=await fetch('https://api.brevo.com/v3/smtp/email',{method:'POST',headers:{'api-key':key,'content-type':'application/json'},body:JSON.stringify({sender:{name:'EduWills',email:from},to:[{email:recipient}],subject:'Your EduWills activation code',htmlContent:html})});
-              const detail=await r.text().catch(()=> '');
-              if(!r.ok)return{sent:false,reason:`BREVO_${r.status}`,detail:detail.slice(0,500)};
-              return{sent:true,detail};
-            }catch(e){return{sent:false,reason:'BREVO_NETWORK_ERROR',detail:String(e?.message||'').slice(0,300)}}
-          }'''
-          worker.write_text(s[:start]+new+s[end:])
-
-          f = Path('functions/activationPayments.js')
-          s = f.read_text()
-          s = s.replace("const RESEND_API_KEY = defineString('RESEND_API_KEY', { default: '' });\nconst RESEND_FROM_EMAIL = defineString('RESEND_FROM_EMAIL', { default: 'EduWills <onboarding@resend.dev>' });", "const BREVO_API_KEY = defineString('BREVO_API_KEY', { default: '' });\nconst BREVO_FROM_EMAIL = defineString('BREVO_FROM_EMAIL', { default: '' });")
-          s = s.replace("function requireResend() { const key = RESEND_API_KEY.value(); if (!key) throw new Error('RESEND_NOT_CONFIGURED'); return key; }", "function requireBrevo() { const key = BREVO_API_KEY.value(); if (!key) throw new Error('BREVO_NOT_CONFIGURED'); return key; }")
-          a = s.index('async function sendActivationEmail({')
-          b = s.index("\nexports.paystackQuote", a)
-          new = '''async function sendActivationEmail({ to, name, code, categories, paymentAmount, paymentCurrency, activationExpiresAt, codeExpiresAt }) {
-            const key = requireBrevo();
-            const from = String(BREVO_FROM_EMAIL.value() || '').trim();
-            if (!from) throw new Error('BREVO_FROM_EMAIL_NOT_CONFIGURED');
-            const safeName = String(name || 'EduWills learner').replace(/[<>]/g, '');
-            const safeCategories = categories.map(x => String(x).replace(/[<>]/g, '')).join(', ');
-            const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a"><div style="max-width:620px;margin:32px auto;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0"><div style="background:#0f172a;padding:28px 32px;color:#fff"><div style="font-size:22px;font-weight:800">EDUWILLS</div><div style="margin-top:8px;color:#a5f3fc;font-size:12px;letter-spacing:2px;font-weight:700">ACCOUNT ACTIVATION</div></div><div style="padding:32px"><p style="font-size:16px">Hello ${safeName},</p><p>Your payment has been confirmed successfully. Your EduWills activation code is ready.</p><div style="margin:24px 0;padding:22px;text-align:center;background:#f8fafc;border:1px solid #cbd5e1;border-radius:14px"><div style="font-size:11px;color:#64748b;letter-spacing:2px;font-weight:700">ACTIVATION CODE</div><div style="margin-top:10px;font-size:28px;letter-spacing:5px;font-weight:900;font-family:monospace">${code}</div></div><p style="margin:6px 0"><strong>Category:</strong> ${safeCategories}</p><p style="margin:6px 0"><strong>Payment:</strong> ${paymentCurrency} ${Number(paymentAmount).toFixed(paymentCurrency === 'NGN' ? 0 : 2)}</p><p style="margin:6px 0"><strong>Code valid until:</strong> ${new Date(codeExpiresAt).toLocaleString('en-NG')}</p><p style="margin:6px 0"><strong>Activation duration after redemption:</strong> 1 year</p><div style="margin-top:24px;padding:14px;background:#ecfeff;border-radius:10px;color:#155e75;font-size:13px">For your security, this code can only be redeemed once. If you did not make this payment, contact EduWills support immediately.</div><p style="margin-top:28px;color:#64748b;font-size:13px">Thank you for choosing EduWills.</p></div></div></body></html>`;
-            const r = await fetch('https://api.brevo.com/v3/smtp/email', { method: 'POST', headers: { 'api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify({ sender: { name: 'EduWills', email: from }, to: [{ email: to }], subject: 'Your EduWills activation code', htmlContent: html }) });
-            const text = await r.text();
-            if (!r.ok) throw new Error(`EMAIL_SEND_FAILED:${text.slice(0, 500)}`);
-            return text ? JSON.parse(text) : {};
-          }
-'''
-          f.write_text(s[:a]+new+s[b:])
-
-          wf = Path('.github/workflows/deploy-cloudflare-payments.yml')
-          s = wf.read_text()
-          s = s.replace("          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}\n          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}", "          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}\n          BREVO_FROM_EMAIL: ${{ secrets.BREVO_FROM_EMAIL }}")
-          s = s.replace("          printf '%s' \"$RESEND_API_KEY\" | wrangler secret put RESEND_API_KEY\n          printf '%s' \"${RESEND_FROM_EMAIL:-EduWills <onboarding@resend.dev>}\" | wrangler secret put RESEND_FROM_EMAIL", "          if [ -n \"${BREVO_API_KEY:-}\" ]; then printf '%s' \"$BREVO_API_KEY\" | wrangler secret put BREVO_API_KEY; fi\n          if [ -n \"${BREVO_FROM_EMAIL:-}\" ]; then printf '%s' \"$BREVO_FROM_EMAIL\" | wrangler secret put BREVO_FROM_EMAIL; fi")
-          s = s.replace("if(d.firebaseConfigured!==true) { console.error(\"Firebase service-account/API configuration is not available in the Worker runtime\"); process.exit(3); }", "if(d.firebaseConfigured!==true) { console.error(\"Firebase service-account/API configuration is not available in the Worker runtime\"); process.exit(3); }")
-          wf.write_text(s)
-          PY
-
-      - name: Commit migration
+      - name: Deploy payment Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: workers/payments
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add workers/payments/src/index.js functions/activationPayments.js .github/workflows/deploy-cloudflare-payments.yml
-          git diff --cached --quiet && exit 0
-          git commit -m "Migrate EduWills email delivery to Brevo"
-          git push origin HEAD:main
+          set -euo pipefail
+          wrangler deploy
+
+      - name: Verify live Worker health
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: workers/payments
+        run: |
+          set -euo pipefail
+          wrangler deployments list --json > "$RUNNER_TEMP/deployments.json"
+          URL="$(node -e 'const fs=require("fs");const s=fs.readFileSync(process.argv[1],"utf8");const m=s.match(/https:\/\/[A-Za-z0-9-]+\.[A-Za-z0-9-]+\.workers\.dev/g);console.log(m?.at(-1)||"")' "$RUNNER_TEMP/deployments.json")"
+          test -n "$URL"
+          echo "Worker URL: $URL"
+          HEALTH="$(curl --fail --silent --show-error --max-time 20 "$URL/health")"
+          echo "$HEALTH"
+          node -e 'const d=JSON.parse(process.argv[1]);if(d.ok!==true)process.exit(1);if(d.paystackConfigured!==true)process.exit(2);if(d.firebaseConfigured!==true)process.exit(3);' "$HEALTH"
