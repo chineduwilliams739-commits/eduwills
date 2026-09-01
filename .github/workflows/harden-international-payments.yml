@@ -27,36 +27,43 @@ jobs:
 
           worker = Path('workers/payments/src/index.js')
           s = worker.read_text()
+
+          # Quote endpoint: always quote the real activation price in NGN for Paystack.
+          # Foreign users can still pay with international cards; their card issuer handles FX.
+          start = s.index("if(url.pathname==='/paystack/quote')")
+          end = s.index("if(url.pathname==='/paystack/initialize')", start)
+          quote = r'''if(url.pathname==='/paystack/quote'){try{const idToken=(req.headers.get('x-firebase-id-token')||req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);if(!u?.emailVerified)return json({error:'Verify your email before paying for activation.'},403,origin);const body=await req.json(),cats=cleanCategories(body.categories);if(!cats.length)return json({error:'Select at least one category.'},400,origin);const country=String(body.country||'INT').toUpperCase(),requestedCurrency=String(body.currency||COUNTRY_CURRENCY[country]||'USD').toUpperCase(),ngnTotal=baseTotal(cats);let localCurrency='NGN',localAmount=ngnTotal;if(country!=='NG'||requestedCurrency!=='NGN'){localCurrency=FALLBACK_USD_RATES[requestedCurrency]?requestedCurrency:'USD';const localRate=await fxRate('NGN',localCurrency);localAmount=Math.round(ngnTotal*localRate*100)/100;}return json({localCurrency,localAmount,paymentCurrency:'NGN',paymentAmount:ngnTotal,international:country!=='NG'},200,origin);}catch(e){return json({error:e?.message||'Could not calculate the payment total.'},500,origin);}}
+'''
+          s = s[:start] + quote + s[end:]
+
+          # Initialize endpoint: server-authoritative amount/currency; never trust client amount.
           start = s.index("if(url.pathname==='/paystack/initialize')")
           end = s.index("if(url.pathname==='/redeem')", start)
-          new = r'''if(url.pathname==='/paystack/initialize'){try{const idToken=(req.headers.get('x-firebase-id-token')||req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);if(!u?.emailVerified)return json({error:'Verify your email before paying for activation.'},403,origin);const body=await req.json(),cats=cleanCategories(body.categories);if(!cats.length)return json({error:'Select at least one category.'},400,origin);const country=String(body.country||'INT').toUpperCase(),requestedCurrency=String(body.currency||COUNTRY_CURRENCY[country]||'USD').toUpperCase(),ngnTotal=baseTotal(cats);const paymentCurrency='NGN',paymentAmount=ngnTotal;let localCurrency='NGN',localAmount=ngnTotal;if(country!=='NG'||requestedCurrency!=='NGN'){localCurrency=PAYSTACK_CURRENCIES.has(requestedCurrency)?requestedCurrency:(FALLBACK_USD_RATES[requestedCurrency]?'USD':'USD');const localRate=await fxRate('NGN',localCurrency);localAmount=Math.round(ngnTotal*localRate*100)/100;}const ref=`EW-${u.localId.slice(0,8)}-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;const data=await paystackPost(env,'transaction/initialize',{email:u.email,amount:Math.round(paymentAmount*100),currency:paymentCurrency,reference:ref,callback_url:env.CALLBACK_URL,metadata:{uid:u.localId,categories:cats,durationMs:31536000000,product:'eduwills_activation',country,email:u.email,fullName:String(body.fullName||''),username:String(body.username||''),baseAmount:ngnTotal,paymentAmount,paymentCurrency,localCurrency,localAmount}});await fsWrite(env,`paymentTransactions/${data.reference}`,{reference:data.reference,uid:u.localId,email:u.email,fullName:String(body.fullName||''),username:String(body.username||''),categories:JSON.stringify(cats),country,currency:paymentCurrency,paymentAmount,status:'pending',createdAt:new Date().toISOString(),callbackUrl:env.CALLBACK_URL,baseAmount:ngnTotal,localCurrency,localAmount});return json({reference:data.reference,authorization_url:data.authorization_url,access_code:data.access_code,localCurrency,localAmount,paymentCurrency,paymentAmount,international:country!=='NG'},200,origin);}catch(e){return json({error:e?.message||'PAYMENT_INITIALIZATION_FAILED'},500,origin);}}
+          init = r'''if(url.pathname==='/paystack/initialize'){try{const idToken=(req.headers.get('x-firebase-id-token')||req.headers.get('authorization')||'').replace(/^Bearer /,'');const u=await authLookup(env,idToken);if(!u?.emailVerified)return json({error:'Verify your email before paying for activation.'},403,origin);const body=await req.json(),cats=cleanCategories(body.categories);if(!cats.length)return json({error:'Select at least one category.'},400,origin);const country=String(body.country||'INT').toUpperCase(),requestedCurrency=String(body.currency||COUNTRY_CURRENCY[country]||'USD').toUpperCase(),ngnTotal=baseTotal(cats);const paymentCurrency='NGN',paymentAmount=ngnTotal;let localCurrency='NGN',localAmount=ngnTotal;if(country!=='NG'||requestedCurrency!=='NGN'){localCurrency=FALLBACK_USD_RATES[requestedCurrency]?requestedCurrency:'USD';const localRate=await fxRate('NGN',localCurrency);localAmount=Math.round(ngnTotal*localRate*100)/100;}const ref=`EW-${u.localId.slice(0,8)}-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;const data=await paystackPost(env,'transaction/initialize',{email:u.email,amount:Math.round(paymentAmount*100),currency:paymentCurrency,reference:ref,callback_url:env.CALLBACK_URL,metadata:{uid:u.localId,categories:cats,durationMs:31536000000,product:'eduwills_activation',country,email:u.email,fullName:String(body.fullName||''),username:String(body.username||''),baseAmount:ngnTotal,paymentAmount,paymentCurrency,localCurrency,localAmount}});await fsWrite(env,`paymentTransactions/${data.reference}`,{reference:data.reference,uid:u.localId,email:u.email,fullName:String(body.fullName||''),username:String(body.username||''),categories:JSON.stringify(cats),country,currency:paymentCurrency,paymentAmount,status:'pending',createdAt:new Date().toISOString(),callbackUrl:env.CALLBACK_URL,baseAmount:ngnTotal,localCurrency,localAmount});return json({reference:data.reference,authorization_url:data.authorization_url,access_code:data.access_code,localCurrency,localAmount,paymentCurrency,paymentAmount,international:country!=='NG'},200,origin);}catch(e){return json({error:e?.message||'PAYMENT_INITIALIZATION_FAILED'},500,origin);}}
 '''
-          worker.write_text(s[:start] + new + s[end:])
+          s = s[:start] + init + s[end:]
+          worker.write_text(s)
 
           page = Path('app/dashboard/activation/page.tsx')
           s = page.read_text()
           old_state = ",[paymentSuccess,setPaymentSuccess]=useState<{code?:string;emailSent:boolean;emailError?:string}|null>(null);"
-          new_state = old_state + "[quote,setQuote]=useState<{localCurrency:string;localAmount:number;paymentCurrency:string;paymentAmount:number;international:boolean}|null>(null);"
           if old_state not in s:
               raise SystemExit('Activation payment state marker not found')
-          s = s.replace(old_state, new_state, 1)
+          if '[quote,setQuote]' not in s:
+              s = s.replace(old_state, old_state + "[quote,setQuote]=useState<{localCurrency:string;localAmount:number;paymentCurrency:string;paymentAmount:number;international:boolean}|null>(null);", 1)
           old_display = " const display=useMemo(()=>{const ngn=selected.reduce((s,c)=>s+(PRICES[c]||0),0);if(country==='NG'&&currency==='NGN')return{localCurrency:'NGN',localAmount:ngn,paymentCurrency:'NGN',paymentAmount:ngn,international:false};const usd=ngn/1550+1;return{localCurrency:currency,localAmount:Math.round(usd*(RATES[currency]||1)*100)/100,paymentCurrency:'USD',paymentAmount:Math.round(usd*100)/100,international:true}},[selected,currency,country]);"
           new_display = " const display=quote||{localCurrency:'NGN',localAmount:selected.reduce((s,c)=>s+(PRICES[c]||0),0),paymentCurrency:'NGN',paymentAmount:selected.reduce((s,c)=>s+(PRICES[c]||0),0),international:false};\n useEffect(()=>{let cancelled=false;(async()=>{if(!selected.length){setQuote(null);return}try{const current=auth.currentUser;if(!current){setQuote(null);return}const jwt=await current.getIdToken(true),backend=await getBackend();const r=await fetch(`${backend}/paystack/quote`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${jwt}`,'X-Firebase-ID-Token':jwt},body:JSON.stringify({categories:selected,country,currency}),cache:'no-store'});const t=await r.text();let d:any={};try{d=JSON.parse(t)}catch{}if(!r.ok)throw new Error(d.error||'Could not calculate the payment total.');if(!cancelled)setQuote(d)}catch{if(!cancelled)setQuote(null)}})();return()=>{cancelled=true}},[selected,country,currency]);"
-          if old_display not in s:
-              raise SystemExit('Activation display marker not found')
-          s = s.replace(old_display, new_display, 1)
+          if old_display in s:
+              s = s.replace(old_display, new_display, 1)
           old_body = "body:JSON.stringify({categories:selected,country,currency,amount:display.paymentAmount,paymentCurrency:display.paymentCurrency,durationMs:31536000000,fullName:user?.fullName||'',username:user?.username||''})"
           new_body = "body:JSON.stringify({categories:selected,country,currency,fullName:user?.fullName||'',username:user?.username||''})"
-          if old_body not in s:
-              raise SystemExit('Activation payment request marker not found')
-          s = s.replace(old_body, new_body, 1)
-          old_button = "disabled={paying||!selected.length}"
-          s = s.replace(old_button, "disabled={paying||!selected.length||!quote}", 1)
+          if old_body in s:
+              s = s.replace(old_body, new_body, 1)
+          s = s.replace("disabled={paying||!selected.length}", "disabled={paying||!selected.length||!quote}", 1)
           old_total = "{selected.length?money(display.localAmount,display.localCurrency):'—'}"
           new_total = "{selected.length?(quote?money(display.localAmount,display.localCurrency):'Calculating…'):'—'}"
-          if old_total not in s:
-              raise SystemExit('Activation total marker not found')
-          s = s.replace(old_total, new_total, 1)
+          if old_total in s:
+              s = s.replace(old_total, new_total, 1)
           page.write_text(s)
           PY
 
@@ -67,6 +74,6 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add workers/payments/src/index.js app/dashboard/activation/page.tsx
-            git commit -m 'Use NGN for Paystack international card payments'
+            git commit -m 'Align international quote with NGN Paystack charging'
             git push origin HEAD:main
           fi
