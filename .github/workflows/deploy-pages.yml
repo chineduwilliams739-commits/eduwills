@@ -38,6 +38,14 @@ jobs:
           grep -q "const baseQuota" lib/quizAiClientStable.ts
           grep -q "local.length < share" lib/quizAiClientStable.ts
           echo "Multi-book evidence isolation and per-book quota checks passed."
+      - name: Verify quiz resume cache
+        run: |
+          set -euxo pipefail
+          grep -q "CACHE_VERSION = 'v23-grounded-generator-resume'" lib/quizAiClientStable.ts
+          grep -q "writeGenerationCache" lib/quizAiClientStable.ts
+          grep -q "onPartial" lib/quizAiClientStable.ts
+          grep -q "clearGenerationCache" lib/quizAiClientStable.ts
+          echo "Partial grounded-question caching and successful-completion cleanup verified."
       - name: Verify Quiz Studio dropdown implementation
         run: |
           set -euxo pipefail
