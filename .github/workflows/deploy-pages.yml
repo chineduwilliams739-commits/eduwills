@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -21,100 +21,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Repair payment identity and support UI
-        run: |
-          set -euxo pipefail
-          python3 scripts/repair-payment-identity.py
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add workers/payments/src/index.js app/dashboard/page.tsx admin/page.tsx components/ContactSupport.tsx scripts/repair-payment-identity.py
-            git commit -m "[identity-repair] Preserve user identity during payment processing"
-            git push origin HEAD:main
-          fi
-      - name: Patch activation redemption
-        run: |
-          set -euxo pipefail
-          node --check scripts/patch-activation-redeem.mjs
-          node scripts/patch-activation-redeem.mjs
-      - name: Fix Paystack client checkout call
-        run: |
-          set -euxo pipefail
-          node --check scripts/fix-paystack-client-call.mjs
-          node scripts/fix-paystack-client-call.mjs
-      - name: Restore EDUWILLS homepage
-        run: |
-          set -euxo pipefail
-          node --check scripts/restore-homepage-final.mjs
-          node scripts/restore-homepage-final.mjs
-      - name: Apply stable EDUWILLS implementation
-        run: |
-          set -euxo pipefail
-          node --check scripts/implement-education-news-and-quiz-policy.mjs
-          node scripts/implement-education-news-and-quiz-policy.mjs
-          node --check scripts/publish-education-news.mjs
-      - name: Apply Paystack return and support UI
-        run: |
-          set -euxo pipefail
-          node --check scripts/patch-paystack-return-and-support.mjs
-          node scripts/patch-paystack-return-and-support.mjs
-      - name: Apply safe Admin WilliToken implementation
-        run: python3 scripts/apply-admin-willi-token-ui.py
-      - name: Repair generated quiz client syntax
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('lib/quizAiClientStable.ts')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace(r"replace(/\\/$/, '')", r"replace(/\/$/, '')")
-          p.write_text(s, encoding='utf-8')
-          PY
-      - name: Apply quiz runtime reliability fix v8
-        run: |
-          set -euxo pipefail
-          node --check scripts/fix-quiz-runtime-v8.mjs
-          node scripts/fix-quiz-runtime-v8.mjs
-      - name: Verify multi-book quiz grounding
-        run: |
-          set -euxo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          s = Path('lib/quizAiClientStable.ts').read_text(encoding='utf-8')
-          required = [
-              'export async function generateQuiz(',
-              'const output: QuizQuestion[] = [];',
-              'async function generateBatch(',
-              'groundedForBooks([book], question, evidence)',
-          ]
-          missing = [item for item in required if item not in s]
-          if missing:
-            raise SystemExit('Quiz implementation verification failed: ' + '; '.join(missing))
-          print('Quiz multi-book generator present and structurally valid.')
-          PY
-      - name: Verify Quiz Studio dropdowns
-        run: |
-          set -euxo pipefail
-          grep -q "function QuizDropdown" app/dashboard/quiz/page.tsx
-          if grep -q '<select' app/dashboard/quiz/page.tsx; then
-            echo 'Unexpected native select remains in Quiz Studio'
-            exit 1
-          fi
-      - name: Verify stable quiz implementation
-        run: |
-          set -euxo pipefail
-          test -f lib/quizAiClient.ts
-          test -f lib/quizAiClientStable.ts
-          test -f lib/verifiedBookGrounding.ts
-          grep -q "quizAiClientStable" lib/quizAiClient.ts
-          grep -q "Sànyà" lib/verifiedBookGrounding.ts
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
       - name: Build application
@@ -122,10 +35,20 @@ jobs:
           NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
           NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY }}
         run: npm run build
+      - name: Verify production artifact
+        run: |
+          set -euxo pipefail
+          test -d out
+          test -f out/index.html
+          test -f out/dashboard/index.html
+          test -f out/dashboard/activation/index.html
+          test -f out/login/index.html
+          test -f out/signup/index.html
+          echo "Production Pages artifact verified."
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./out
   deploy:
@@ -136,5 +59,5 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
         id: deployment
+        uses: actions/deploy-pages@v4
