@@ -43,8 +43,8 @@ jobs:
           set -euxo pipefail
           grep -q "function QuizDropdown" app/dashboard/quiz/page.tsx
           grep -q "slotOptions" app/dashboard/quiz/page.tsx
-          grep -q "durationOptions" app/dashboard/quiz/page.tsx
-          grep -q "difficultyOptions" app/dashboard/quiz/page.tsx
+          grep -q "onChange={setDuration}" app/dashboard/quiz/page.tsx
+          grep -q "onChange={setDifficulty}" app/dashboard/quiz/page.tsx
           echo "Quiz Studio dropdown implementation verified."
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
