@@ -15,17 +15,18 @@ const oldExpiry = "  const explicit = token.expiresAt?.toDate?.();\n  if (explic
 const newExpiry = "  const rawExplicit = token.expiresAt;\n  const explicit = typeof rawExplicit?.toDate === 'function' ? rawExplicit.toDate() : rawExplicit instanceof Date ? rawExplicit : rawExplicit ? new Date(rawExplicit) : null;\n  if (explicit instanceof Date && Number.isFinite(explicit.getTime())) return explicit;\n  const rawCreated = token.createdAt;\n  const created = typeof rawCreated?.toDate === 'function' ? rawCreated.toDate() : rawCreated instanceof Date ? rawCreated : rawCreated ? new Date(rawCreated) : null;\n  if (created instanceof Date && Number.isFinite(created.getTime()) && typeof token.durationMs === 'number' && Number.isFinite(token.durationMs)) return new Date(created.getTime() + token.durationMs);\n  return null;";
 if (s.includes(oldExpiry)) s = s.replace(oldExpiry, newExpiry);
 
-// Permanently remove revoked, cancelled and expired token documents during Admin load.
-const oldTokenLoad = "      const tokenDocs = t.docs;\n\n      // One-time migration: every WilliToken that existed before this change";
-const newTokenLoad = "      const tokenDocs = t.docs;\n      const nowMs = Date.now();\n      const disposableTokens = tokenDocs.filter(d => {\n        const data = d.data() || {};\n        if (data.revoked === true || data.cancelled === true) return true;\n        const exp = tokenExpiry({ id: d.id, ...data } as WilliToken);\n        return !!exp && exp.getTime() <= nowMs;\n      });\n      if (disposableTokens.length) {\n        await Promise.all(disposableTokens.map(d => deleteDoc(d.ref).catch(() => undefined)));\n      }\n      const liveTokenDocs = tokenDocs.filter(d => !disposableTokens.some(x => x.id === d.id));\n\n      // One-time migration: every WilliToken that existed before this change";
-if (s.includes(oldTokenLoad)) s = s.replace(oldTokenLoad, newTokenLoad);
-s = s.replace("      const legacyActive = tokenDocs.filter(d => {", "      const legacyActive = liveTokenDocs.filter(d => {");
+// The previous hardening script targeted an old token-loading block that no longer exists.
+// Patch the current Admin load directly: every revoked/cancelled/expired token is physically
+// deleted from Firestore, and React state is populated only from the surviving documents.
+const currentTokenLoad = "      const loadedTokens = t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken));\n      const now = Date.now();\n      const expiredTokens = loadedTokens.filter(token => {\n        const expiry = expiryDate(token);\n        return !!expiry && expiry.getTime() <= now;\n      });\n      if (expiredTokens.length) {\n        await Promise.all(expiredTokens.map(token => deleteDoc(doc(db, 'williTokens', token.id))));\n      }\n      const liveTokens = loadedTokens.filter(token => !expiredTokens.some(expired => expired.id === token.id));";
+const hardenedTokenLoad = "      const loadedTokens = t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken));\n      const now = Date.now();\n      const disposableTokens = loadedTokens.filter(token => {\n        const expiry = expiryDate(token);\n        return token.revoked === true || token.cancelled === true || (!!expiry && expiry.getTime() <= now);\n      });\n      if (disposableTokens.length) {\n        await Promise.all(disposableTokens.map(token => deleteDoc(doc(db, 'williTokens', token.id))));\n      }\n      const disposableIds = new Set(disposableTokens.map(token => token.id));\n      const liveTokens = loadedTokens.filter(token => !disposableIds.has(token.id));";
+if (s.includes(currentTokenLoad)) s = s.replace(currentTokenLoad, hardenedTokenLoad);
 
-// Crucially, populate React state from liveTokenDocs, not the pre-cleanup snapshot.
-s = s.replace(
-  normalizedLoad,
-  "setTokens(liveTokenDocs.map(x => { const data = x.data() || {}; const rawCategories = data.categories; const categories = Array.isArray(rawCategories) ? rawCategories.map(String).filter(Boolean) : (typeof rawCategories === 'string' ? (() => { try { const parsed = JSON.parse(rawCategories); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : rawCategories ? [rawCategories] : []; } catch { return rawCategories ? [rawCategories] : []; } })() : []); return { id: x.id, ...data, categories } as WilliToken; }));"
-);
+// Crucially, populate React state from the post-cleanup snapshot, not the pre-cleanup snapshot.
+const liveState = "      setTokens(liveTokens);";
+if (!s.includes(liveState)) {
+  s = s.replace(normalizedLoad, liveState);
+}
 
 // A redeemed token remains the user's active entitlement until expiry. Do NOT exclude used=true.
 const oldActive = "  const activeToken = (uid: string) => userTokens(uid).find(t => { const exp = tokenExpiry(t); return !!exp && exp.getTime() > now; });";
