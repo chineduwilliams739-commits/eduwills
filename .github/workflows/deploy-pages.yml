@@ -30,6 +30,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
+      - name: Repair Quiz Studio interactive controls
+        run: node scripts/fix-quiz-studio-interactive-controls.mjs
       - name: Verify multi-book quiz isolation
         run: |
           set -euxo pipefail
