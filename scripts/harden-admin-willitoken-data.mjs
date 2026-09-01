@@ -4,10 +4,9 @@ const path = 'app/admin/page.tsx';
 let s = fs.readFileSync(path, 'utf8');
 
 // Normalize category data safely when loading legacy token records.
-s = s.replace(
-  "setTokens(t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));",
-  "setTokens(t.docs.map(x => { const data = x.data() || {}; const rawCategories = data.categories; const categories = Array.isArray(rawCategories) ? rawCategories.map(String).filter(Boolean) : (typeof rawCategories === 'string' ? (() => { try { const parsed = JSON.parse(rawCategories); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : rawCategories ? [rawCategories] : []; } catch { return rawCategories ? [rawCategories] : []; } })() : []); return { id: x.id, ...data, categories } as WilliToken; }));"
-);
+const normalizedLoad = "setTokens(t.docs.map(x => { const data = x.data() || {}; const rawCategories = data.categories; const categories = Array.isArray(rawCategories) ? rawCategories.map(String).filter(Boolean) : (typeof rawCategories === 'string' ? (() => { try { const parsed = JSON.parse(rawCategories); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : rawCategories ? [rawCategories] : []; } catch { return rawCategories ? [rawCategories] : []; } })() : []); return { id: x.id, ...data, categories } as WilliToken; }));";
+const basicLoad = "setTokens(t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));";
+if (s.includes(basicLoad)) s = s.replace(basicLoad, normalizedLoad);
 s = s.replace("(t.categories || []).join(' ')", "(Array.isArray(t.categories) ? t.categories : []).join(' ')");
 s = s.replace("t.categories?.join(', ') || 'No category recorded'", "(Array.isArray(t.categories) && t.categories.length ? t.categories.join(', ') : 'No category recorded')");
 
@@ -21,9 +20,11 @@ const oldTokenLoad = "      const tokenDocs = t.docs;\n\n      // One-time migra
 const newTokenLoad = "      const tokenDocs = t.docs;\n      const nowMs = Date.now();\n      const disposableTokens = tokenDocs.filter(d => {\n        const data = d.data() || {};\n        if (data.revoked === true || data.cancelled === true) return true;\n        const exp = tokenExpiry({ id: d.id, ...data } as WilliToken);\n        return !!exp && exp.getTime() <= nowMs;\n      });\n      if (disposableTokens.length) {\n        await Promise.all(disposableTokens.map(d => deleteDoc(d.ref).catch(() => undefined)));\n      }\n      const liveTokenDocs = tokenDocs.filter(d => !disposableTokens.some(x => x.id === d.id));\n\n      // One-time migration: every WilliToken that existed before this change";
 if (s.includes(oldTokenLoad)) s = s.replace(oldTokenLoad, newTokenLoad);
 s = s.replace("      const legacyActive = tokenDocs.filter(d => {", "      const legacyActive = liveTokenDocs.filter(d => {");
+
+// Crucially, populate React state from liveTokenDocs, not the pre-cleanup snapshot.
 s = s.replace(
-  "      setTokens(t.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));",
-  "      setTokens(liveTokenDocs.map(x => ({ id: x.id, ...x.data() } as WilliToken)));"
+  normalizedLoad,
+  "setTokens(liveTokenDocs.map(x => { const data = x.data() || {}; const rawCategories = data.categories; const categories = Array.isArray(rawCategories) ? rawCategories.map(String).filter(Boolean) : (typeof rawCategories === 'string' ? (() => { try { const parsed = JSON.parse(rawCategories); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : rawCategories ? [rawCategories] : []; } catch { return rawCategories ? [rawCategories] : []; } })() : []); return { id: x.id, ...data, categories } as WilliToken; }));"
 );
 
 // A redeemed token remains the user's active entitlement until expiry. Do NOT exclude used=true.
