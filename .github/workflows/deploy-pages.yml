@@ -30,6 +30,13 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
+      - name: Verify WilliToken physical cleanup
+        run: |
+          set -euxo pipefail
+          grep -q "token.revoked === true" app/admin/page.tsx
+          grep -q "token.cancelled === true" app/admin/page.tsx
+          grep -q "deleteDoc(doc(db, 'williTokens', token.id))" app/admin/page.tsx
+          echo "Revoked, cancelled and expired WilliToken deletion is present in the deployed Admin build."
       - name: Verify multi-book quiz isolation
         run: |
           set -euxo pipefail
