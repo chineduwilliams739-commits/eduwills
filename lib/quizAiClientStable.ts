@@ -14,8 +14,21 @@ export type QuizQuestion = {
 };
 export type BookSearchResult = { title: string; authors: string[]; source: string };
 
+type CachedQuestion = QuizQuestion & { bookKey: string };
+type QuizGenerationCache = {
+  version: string;
+  key: string;
+  books: QuizBook[];
+  requested: number;
+  difficulty: string;
+  instructions: string;
+  questions: CachedQuestion[];
+  updatedAt: number;
+};
+
 const BASE = '/eduwills';
-const CACHE_VERSION = 'v22-grounded-generator';
+const CACHE_VERSION = 'v23-grounded-generator-resume';
+const CACHE_PREFIX = 'eduwills_quiz_generation_cache:';
 
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 const gemini = getGenerativeModel(ai, {
@@ -73,9 +86,54 @@ const valid = (q: unknown): q is QuizQuestion => {
 const metadata = (q: QuizQuestion) =>
   /\b(author|written by|writer|publisher|publication|isbn|edition|published|year of publication)\b/i.test(q.question);
 
+const bookKey = (book: QuizBook) => `${norm(book.title)}|${norm(book.author)}`;
+
+function generationCacheKey(
+  books: QuizBook[],
+  requested: number,
+  difficulty: string,
+  instructions: string,
+) {
+  return `${CACHE_PREFIX}${CACHE_VERSION}:${JSON.stringify({
+    books: books.map((book) => bookKey(book)),
+    requested,
+    difficulty,
+    instructions,
+  })}`;
+}
+
+function readGenerationCache(key: string): QuizGenerationCache | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as QuizGenerationCache;
+    if (!value || value.version !== CACHE_VERSION || value.key !== key || !Array.isArray(value.questions)) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function writeGenerationCache(cache: QuizGenerationCache) {
+  try {
+    localStorage.setItem(cache.key, JSON.stringify(cache));
+  } catch {
+    // Cache failure must never stop quiz generation.
+  }
+}
+
+function clearGenerationCache(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
 async function gatewayUrl() {
   try {
-    const response = await fetch(`${BASE}/ai-gateway.json?v=22`, { cache: 'no-store' });
+    const response = await fetch(`${BASE}/ai-gateway.json?v=23`, { cache: 'no-store' });
     if (!response.ok) return '';
     const data = await response.json();
     return String(data?.url || '').replace(/\/$/, '');
@@ -347,9 +405,14 @@ export async function generateQuiz(
   instructions: string,
   recent: string[] = [],
   _research = '',
+  onPartial?: (question: QuizQuestion, book: QuizBook, completed: number, requested: number) => void,
 ): Promise<QuizQuestion[]> {
   const requested = Math.min(100, Math.max(1, Number(count) || 10));
   if (!books.length) throw new Error('No book selected.');
+
+  const cacheKey = generationCacheKey(books, requested, difficulty, instructions);
+  const cached = readGenerationCache(cacheKey);
+  const cachedQuestions = cached?.questions || [];
 
   // Research is deliberately isolated per selected book. Never pass one combined
   // evidence blob to every book: doing so can let the model answer one book from
@@ -360,12 +423,58 @@ export async function generateQuiz(
 
   const output: QuizQuestion[] = [];
   const seen = new Set(recent.map(fingerprint).filter(Boolean));
+
+  for (const cachedQuestion of cachedQuestions) {
+    if (!valid(cachedQuestion)) continue;
+    const matchingBook = books.find((book) => bookKey(book) === cachedQuestion.bookKey);
+    if (!matchingBook) continue;
+    const evidence = evidenceByBook[books.indexOf(matchingBook)] || '';
+    if (!evidence.trim()) continue;
+    if (metadata(cachedQuestion)) continue;
+    if (!groundedForBooks([matchingBook], cachedQuestion, evidence)) continue;
+    const key = fingerprint(cachedQuestion.question);
+    if (!key || seen.has(key)) continue;
+    if (output.some((item) => similar(item.question, cachedQuestion.question))) continue;
+    output.push({
+      question: cachedQuestion.question,
+      options: cachedQuestion.options,
+      answer: cachedQuestion.answer,
+      explanation: cachedQuestion.explanation,
+      evidence: cachedQuestion.evidence,
+    });
+    seen.add(key);
+    if (output.length >= requested) break;
+  }
+
+  const cacheState: QuizGenerationCache = {
+    version: CACHE_VERSION,
+    key: cacheKey,
+    books,
+    requested,
+    difficulty,
+    instructions,
+    questions: cachedQuestions.filter((q) => valid(q)),
+    updatedAt: Date.now(),
+  };
+
+  // Keep only the currently validated/resumable questions. This also cleans stale
+  // cache entries from an older attempt before new questions are appended.
+  cacheState.questions = output.map((question) => {
+    const source = cachedQuestions.find((q) => fingerprint(q.question) === fingerprint(question.question));
+    return {
+      ...question,
+      bookKey: source?.bookKey || bookKey(books.find((book) => groundedForBooks([book], question, evidenceByBook[books.indexOf(book)] || '')) || books[0]),
+    };
+  });
+  cacheState.updatedAt = Date.now();
+  writeGenerationCache(cacheState);
+
   const baseQuota = Math.floor(requested / books.length);
   let remainder = requested % books.length;
 
-  // Every selected book receives a deterministic quota. A book that cannot produce
-  // its own quota causes the whole request to fail instead of silently replacing it
-  // with questions from another selected book.
+  // Every selected book receives a deterministic quota. Cached questions count
+  // toward that book's quota so a failed attempt can resume without regenerating
+  // the questions that were already accepted and stored.
   for (let bookIndex = 0; bookIndex < books.length; bookIndex++) {
     const book = books[bookIndex];
     const share = baseQuota + (remainder-- > 0 ? 1 : 0);
@@ -376,7 +485,10 @@ export async function generateQuiz(
       throw new Error(`No verified evidence was found for ${book.title} by ${book.author}.`);
     }
 
-    const local: QuizQuestion[] = [];
+    const local = output.filter((question) => {
+      const cachedQuestion = cachedQuestions.find((item) => fingerprint(item.question) === fingerprint(question.question));
+      return cachedQuestion?.bookKey === bookKey(book);
+    });
     let guard = 0;
 
     while (local.length < share && guard < 8) {
@@ -404,20 +516,32 @@ export async function generateQuiz(
         output.push(question);
         seen.add(key);
         added += 1;
-        if (local.length >= share) break;
+
+        // Persist immediately after every validated question. A later AI failure
+        // must never erase valid work that has already been generated.
+        cacheState.questions.push({ ...question, bookKey: bookKey(book) });
+        cacheState.updatedAt = Date.now();
+        writeGenerationCache(cacheState);
+        onPartial?.(question, book, output.length, requested);
+
+        if (local.length >= share || output.length >= requested) break;
       }
 
       if (!added && guard >= 3) break;
     }
 
     if (local.length < share) {
+      // Keep the partial cache intact so the next attempt resumes from exactly the
+      // validated questions already accepted above.
       throw new Error(
-        `AI generated ${local.length} of ${share} grounded questions for ${book.title} by ${book.author}. Please try again.`,
+        `AI generated ${output.length} of ${requested} grounded questions so far; ${book.title} by ${book.author} still needs ${share - local.length}. Please retry to resume.`
       );
     }
   }
 
-  return output.slice(0, requested);
+  const finalOutput = output.slice(0, requested);
+  clearGenerationCache(cacheKey);
+  return finalOutput;
 }
 
 export async function askEduwills(prompt: string, history: string[] = []) {
