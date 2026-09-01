@@ -346,24 +346,36 @@ export async function generateQuiz(
   difficulty: string,
   instructions: string,
   recent: string[] = [],
-  research = '',
+  _research = '',
 ): Promise<QuizQuestion[]> {
   const requested = Math.min(100, Math.max(1, Number(count) || 10));
   if (!books.length) throw new Error('No book selected.');
 
-  const evidence = research || await researchBooks(books);
+  // Research is deliberately isolated per selected book. Never pass one combined
+  // evidence blob to every book: doing so can let the model answer one book from
+  // another book's evidence and makes multi-book quizzes collapse onto one title.
+  const evidenceByBook = await Promise.all(
+    books.map(async (book) => researchBooks([book])),
+  );
+
   const output: QuizQuestion[] = [];
   const seen = new Set(recent.map(fingerprint).filter(Boolean));
+  const baseQuota = Math.floor(requested / books.length);
+  let remainder = requested % books.length;
 
-  // When multiple books are selected, distribute the requested questions across them.
-  for (const book of books) {
-    if (output.length >= requested) break;
+  // Every selected book receives a deterministic quota. A book that cannot produce
+  // its own quota causes the whole request to fail instead of silently replacing it
+  // with questions from another selected book.
+  for (let bookIndex = 0; bookIndex < books.length; bookIndex++) {
+    const book = books[bookIndex];
+    const share = baseQuota + (remainder-- > 0 ? 1 : 0);
+    if (share <= 0) continue;
 
-    const remaining = requested - output.length;
-    const share = Math.min(
-      remaining,
-      Math.max(1, Math.ceil(requested / books.length)),
-    );
+    const evidence = evidenceByBook[bookIndex] || '';
+    if (!evidence.trim()) {
+      throw new Error(`No verified evidence was found for ${book.title} by ${book.author}.`);
+    }
+
     const local: QuizQuestion[] = [];
     let guard = 0;
 
@@ -392,17 +404,17 @@ export async function generateQuiz(
         output.push(question);
         seen.add(key);
         added += 1;
-        if (local.length >= share || output.length >= requested) break;
+        if (local.length >= share) break;
       }
 
       if (!added && guard >= 3) break;
     }
-  }
 
-  if (output.length < requested) {
-    throw new Error(
-      `AI generated ${output.length} of ${requested} grounded questions. Please try again.`,
-    );
+    if (local.length < share) {
+      throw new Error(
+        `AI generated ${local.length} of ${share} grounded questions for ${book.title} by ${book.author}. Please try again.`,
+      );
+    }
   }
 
   return output.slice(0, requested);
