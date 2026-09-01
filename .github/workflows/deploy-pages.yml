@@ -30,6 +30,22 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
+      - name: Verify multi-book quiz isolation
+        run: |
+          set -euxo pipefail
+          grep -q "evidenceByBook" lib/quizAiClientStable.ts
+          grep -q "researchBooks(\[book\])" lib/quizAiClientStable.ts
+          grep -q "const baseQuota" lib/quizAiClientStable.ts
+          grep -q "local.length < share" lib/quizAiClientStable.ts
+          echo "Multi-book evidence isolation and per-book quota checks passed."
+      - name: Verify Quiz Studio dropdown implementation
+        run: |
+          set -euxo pipefail
+          grep -q "function QuizDropdown" app/dashboard/quiz/page.tsx
+          grep -q "slotOptions" app/dashboard/quiz/page.tsx
+          grep -q "durationOptions" app/dashboard/quiz/page.tsx
+          grep -q "difficultyOptions" app/dashboard/quiz/page.tsx
+          echo "Quiz Studio dropdown implementation verified."
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
       - name: Build application
