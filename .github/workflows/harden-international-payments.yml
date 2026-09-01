@@ -38,6 +38,7 @@ jobs:
 
           page=Path('app/dashboard/activation/page.tsx')
           s=page.read_text()
+          s=s.replace(');,[quote,setQuote]=', '),[quote,setQuote]=')
           old_state=",[paymentSuccess,setPaymentSuccess]=useState<{code?:string;emailSent:boolean;emailError?:string}|null>(null);"
           if old_state in s and '[quote,setQuote]' not in s:
               s=s.replace(old_state,old_state+",[quote,setQuote]=useState<{localCurrency:string;localAmount:number;paymentCurrency:string;paymentAmount:number;international:boolean}|null>(null);",1)
@@ -54,12 +55,13 @@ jobs:
           page.write_text(s)
           PY
 
+          npx tsc --noEmit --pretty false
           node --check workers/payments/src/index.js
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add workers/payments/src/index.js app/dashboard/activation/page.tsx
           if ! git diff --cached --quiet; then
-            git commit -m 'Enable USD international Paystack checkout'
+            git commit -m 'Fix international checkout state syntax'
             git push origin HEAD:main
           else
             echo 'International payment changes already present.'
