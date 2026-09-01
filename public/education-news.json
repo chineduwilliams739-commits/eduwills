@@ -1,173 +1,170 @@
 {
-  "generatedAt": "2026-08-31T11:36:49.356Z",
+  "generatedAt": "2026-09-01T10:08:23.425Z",
+  "mix": {
+    "nigeria": 0.7,
+    "international": 0.3,
+    "total": 20
+  },
   "items": [
     {
       "title": "UTME applications data intensifies concerns over state of education in northern Nigeria - Premium Times Nigeria",
       "link": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxNVVpMUlZoYU8xSVE5SkRaNkw1MjBrNmJCNWZ0NXFoNjBFenVLRHVFU0RJcnNCdDBFczM3YjRzalZHajFyQTlXT05Fa0l4b1p6XzkzNk9zd2Q3NWxBLWxiNU9uVEs5LXdIM0ZKSUNKbzJSNWxobnJ2eG1PVEdpVm9MRlJ4ZXBLRERlTEs3QjZ6am1QaUVmaENzZ1ZpTkRGclYyMERJYnA2RDd4Y1B4SmFQaHJReFNTaWswSGZONWpFaXNmZmw3bERzWFdPOUpja2ctZGVWaHpacFlOSGs1?oc=5",
       "source": "Premium Times Nigeria",
       "publishedAt": "Fri, 28 Aug 2026 11:07:15 GMT",
-      "description": "UTME applications data intensifies concerns over state of education in northern Nigeria &nbsp;&nbsp; Premium Times Nigeria"
+      "description": "UTME applications data intensifies concerns over state of education in northern Nigeria &nbsp;&nbsp; Premium Times Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "America built thousands of colleges for more students. Now there are about to be 500,000 fewer of them - Fortune",
+      "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNZGFVLXR6YXcyODY2eUVWa2xLVXFFX01Fclh1Uzgyc29UbUpLcUNpN1V3b25xUVQwanFCaWhDblk2UW11SmhXNm5QelhEZ2NZVnFCLTViUGhtOG1taUdvNmxPdG8xVFlTLVlUSkh1LVZIYXlIWUs2Y0dEMV8yTl8zRk16ZXZHQmRGY04zUGZ0Zlpjc0U?oc=5",
+      "source": "Fortune",
+      "publishedAt": "Mon, 31 Aug 2026 20:35:00 GMT",
+      "description": "America built thousands of colleges for more students. Now there are about to be 500,000 fewer of them &nbsp;&nbsp; Fortune",
+      "region": "International"
     },
     {
       "title": "Nigeria’s future depends on the quality of its education system — Prof. Olaniyan - The Guardian Nigeria News",
       "link": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxOSTdlTlBxY0pRdXVHY25lZGF0LW5pOXhMWElqbm5YeDJ6ZGc3RmxTc1IyX19HbDBmTEdTS1JOTllEdlZMZTlRbGZEeUZYcEpUdkZMNUN6RFF3MlJHRzVBV2VwaDhaaEJ1VEJGRFZpWWxRdmhxaGxmeHZYeGs5NzdaaGl2MDhIazZNM0Z5bjR0YklRQVJiUU9ORXVILXljMjJrU2FOOHBsOE9xcGc?oc=5",
       "source": "The Guardian Nigeria News",
       "publishedAt": "Sat, 29 Aug 2026 04:00:00 GMT",
-      "description": "Nigeria’s future depends on the quality of its education system — Prof. Olaniyan &nbsp;&nbsp; The Guardian Nigeria News"
+      "description": "Nigeria’s future depends on the quality of its education system — Prof. Olaniyan &nbsp;&nbsp; The Guardian Nigeria News",
+      "region": "Nigeria"
+    },
+    {
+      "title": "America's Best Colleges of 2026-2027 - Time Magazine",
+      "link": "https://news.google.com/rss/articles/CBMickFVX3lxTE92bVdSWXVOSWNYOHVjY0ZaSmhGM19VWldsYk53ai1ENFItVnk1NDI0SE1zYWFYSmpMUl9tSGJMa2FJUjNiUDNURHNHZFFfTEJnaWg0Z1M3SGp5OExaNjFlV3ZBWDlMVnhlbXJfT25QSzkzUQ?oc=5",
+      "source": "Time Magazine",
+      "publishedAt": "Tue, 25 Aug 2026 13:04:31 GMT",
+      "description": "America's Best Colleges of 2026-2027 &nbsp;&nbsp; Time Magazine",
+      "region": "International"
+    },
+    {
+      "title": "Minister Urges Education, Skills Alignment for Global Opportunities - von.gov.ng",
+      "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxPVlBiWnBIakVBSTVmTWpmMVBKU0NRRVFURDktNS0zbDJUX3pSUnpuYjdpV3ZKTWpDY21vSEljM2F4bGVGQjY2VzJTTDJFNjQ5eUV3cWN6UUpsOHoxY2V3ZzdGTFVpZlZ1TGJDY3czdURTNXZoQ0N4M1JMNnJSay0wVDRYTDlHNTAxaVJfZVRLYw?oc=5",
+      "source": "von.gov.ng",
+      "publishedAt": "Tue, 01 Sep 2026 07:30:48 GMT",
+      "description": "Minister Urges Education, Skills Alignment for Global Opportunities &nbsp;&nbsp; von.gov.ng",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Time's best colleges list is out — and Oregon's top school might surprise you - OregonLive.com",
+      "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxPb1U0STJZTDU1X1NwT3ZBYmVCVmN4djJmQzh2LXFOV2FkamtCSUYtaUlCcDN1elc5ZmVTMUYyNmh6b2pUVVp0ZkFaSFFveENzT2MzMjY0UmtkRmVsaDRZa1VQM3J3STBuSElieU00Tl8tN1ByR3JCOFBHSkIyMV8yRmgwRUtaWUoyd3hkQ1J3cFhkRk5pTUQ0enZvTmpwSWY4bE95c1YweV9zVDVRWXdLSUJIUkdPZw?oc=5",
+      "source": "OregonLive.com",
+      "publishedAt": "Fri, 28 Aug 2026 23:29:00 GMT",
+      "description": "Time's best colleges list is out — and Oregon's top school might surprise you &nbsp;&nbsp; OregonLive.com",
+      "region": "International"
     },
     {
       "title": "Strengthening Resilience: Impact report (EC567) - ReliefWeb",
       "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPTTR1UGxnU0dfRDh2UktuUjhSNXE0THZpV28zMUk1endVYUNNanV6cFBDbU14Uk5aaktJeTRYbzluUEVOU0ktSnU5dWxYRzRlN25WZFBqS2JwSTMxMjh6U3cxQ0F0ZWdZUXRua1ZFVjJYM1pQaE5pbzNoUjRhNlk4LWNianR6NWth?oc=5",
       "source": "ReliefWeb",
       "publishedAt": "Fri, 28 Aug 2026 11:48:43 GMT",
-      "description": "Strengthening Resilience: Impact report (EC567) &nbsp;&nbsp; ReliefWeb"
+      "description": "Strengthening Resilience: Impact report (EC567) &nbsp;&nbsp; ReliefWeb",
+      "region": "Nigeria"
+    },
+    {
+      "title": "News in brief: Time magazine names UVA No. 2 public school in America - UVA Today",
+      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxQaXU2VHdSY180NGUwdnNrTDFDb2xLMEgtSk42M3BJLUlLM3p3N3lLaDBsdUxEN0RJZkVJLXFwVkUtYzR3WHpCSmk3aVBHajM0NFVBNEo0c09UMGxvUWZYUll0czVkSFhyalNmRTBPSDVycDBsM1dacGg0bThqQkZhWVhTRm56WkYtNnF4MW5OQWpoSVYtUi1zX29MRQ?oc=5",
+      "source": "UVA Today",
+      "publishedAt": "Tue, 25 Aug 2026 19:08:31 GMT",
+      "description": "News in brief: Time magazine names UVA No. 2 public school in America &nbsp;&nbsp; UVA Today",
+      "region": "International"
     },
     {
       "title": "Edtech platform marks 10 years of expanding digital education in Nigeria - Vanguard News",
       "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxNVnVPMFhmOVJxeHpaVXhvUkRGdE5rTDFkdjNmRUxZX0ZiWXg2SnlBMG1LRVJyQVJRaTZPR2RaRWg4aVd0czJpOEhDNTE1Z0s0LU9nYzhrWE1GMDNJdFdibHFxa2lnT0RrLXdmbXdhOTdxbUZuS2lCUTFBZmZHdlhLNzB4N1BlODJSb0pfWHE0aFEyd1lpbmY2SDd5anFwTlFaMm9wZjdkRUJ1Z19LMEHSAbMBQVVfeXFMUGtRSm1XT0x5NXBKX2JfbjBKSWdIUVRZX0FVWW95WG1xRUVya1FkSFJuYm9EUjZsVW9wckRsWDFSajRsYWxFN2xqZExlSld4SS1UejEtNDFGZ3g5SEo2MHBYQVBWck81UGQxLWg3RUp0bEJzOEZCRlpBaEFvTlNoZE93djlmXzlYcW5RU3Q2a0NFNzFGXzdkYVdfRkpIaFc5YnoxdjFMNW5rTjZ0WWZwVnhVOHc?oc=5",
       "source": "Vanguard News",
       "publishedAt": "Wed, 26 Aug 2026 21:42:14 GMT",
-      "description": "Edtech platform marks 10 years of expanding digital education in Nigeria &nbsp;&nbsp; Vanguard News"
+      "description": "Edtech platform marks 10 years of expanding digital education in Nigeria &nbsp;&nbsp; Vanguard News",
+      "region": "Nigeria"
+    },
+    {
+      "title": "What’s Left of The New School? - Dissent Magazine",
+      "link": "https://news.google.com/rss/articles/CBMihgFBVV95cUxQOElvVjVUaHV6TE9kbk1XcVpVWUVoQVlVWUwtUGdfVDdPWXVnZWVwYldJUkVYZXg0d0RqSldlR3BPbjBNcEtoQ0lESGtGUUZ3RFNBajVuRjlRb2psM1I3R2hxN3FRTFR5SzY5YlYxVHNQbm4zb0M3Vy10a2VvTFZfdnlqZHI3dw?oc=5",
+      "source": "Dissent Magazine",
+      "publishedAt": "Thu, 27 Aug 2026 16:12:54 GMT",
+      "description": "What’s Left of The New School? &nbsp;&nbsp; Dissent Magazine",
+      "region": "International"
     },
     {
       "title": "Teacher Education In Nigeria: Matters Arising - Independent Newspaper Nigeria",
       "link": "https://news.google.com/rss/articles/CBMid0FVX3lxTE9hMzl5ZXVLZFhFajM2TW0xVWRPRThtTWVsLXU2YV8xT19oWDU5amR0WDRscVVPSVZZdkFqbS1SRUM2R3JEekQ3bFBxLTNiZktlQWtyQmhuSFdxRjBoRkROWUFnRnJjUFlQM0k4Z3RpM3NVNERTZ1ZZ?oc=5",
       "source": "Independent Newspaper Nigeria",
       "publishedAt": "Thu, 27 Aug 2026 06:44:31 GMT",
-      "description": "Teacher Education In Nigeria: Matters Arising &nbsp;&nbsp; Independent Newspaper Nigeria"
+      "description": "Teacher Education In Nigeria: Matters Arising &nbsp;&nbsp; Independent Newspaper Nigeria",
+      "region": "Nigeria"
     },
     {
-      "title": "Nigerian Navy commissions School facilities in Bayelsa - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMif0FVX3lxTFBvdHJYbW5sTGliaUpWNVlVcWFCVHdudXJqQW8yWGNJRkV5UXZNdk9HOU1wbTJTUXFaLTdrcUtJOWRhZTlqR2VvczI3Tk1WSGU5ajZIZVU2djRmN0MwZHhtaXFUOFN3XzZ5Y25QZFFpRkVWOFNRV0oyOTRVWUlqYjA?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Wed, 26 Aug 2026 11:55:14 GMT",
-      "description": "Nigerian Navy commissions School facilities in Bayelsa &nbsp;&nbsp; Voice of Nigeria"
-    },
-    {
-      "title": "What is Nigeria’s education system producing for the labour market? - Business News Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNbjIzWnF1S2htMXo3dFBkdWxJX2xrczhhR19WNnRjeU54eER5Qi1WMThaZTk2OG1SbU9NZ202dDZpcHpHMklEYTliYjZHQnpZUWI4anhTckF1Q2o5VktPQWdHeHc4UGdvUHNwbUtMWnR6N3piOGRObllnVl9RaTdybnFDVGpnLTNKbFNNS2o4M2gwOGx6c0FGRElfTWdYTUt5YnhJX05KQ2Q?oc=5",
-      "source": "Business News Nigeria",
-      "publishedAt": "Mon, 24 Aug 2026 18:07:52 GMT",
-      "description": "What is Nigeria’s education system producing for the labour market? &nbsp;&nbsp; Business News Nigeria"
+      "title": "How Colorado higher education has responded to a questionnaire from Linda McMahon so far - chalkbeat.org",
+      "link": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNUFo4UUhveGhYemZVTWFMeThUZHF4VFZhNlFEc0tBNTZjd1d5ZWJiRktvZXpvLXBmcjZUNng0WEE5SnFqV2NRTXBoQV9ldEY0cTZqWWRoRGtieV9JWVdpMnFPZzUwYzZ3bkh1d0ZFbjRMaEVCamV2Q2prZWJPSldnaUJWcnkzODVRUVJDRHNQRW44UE01NFBEYWxGdlFiVEszZlo3ZlRwOG4yRUNkNmY5VzBlQVRlUFNhZFE?oc=5",
+      "source": "chalkbeat.org",
+      "publishedAt": "Tue, 25 Aug 2026 16:41:00 GMT",
+      "description": "How Colorado higher education has responded to a questionnaire from Linda McMahon so far &nbsp;&nbsp; chalkbeat.org",
+      "region": "International"
     },
     {
       "title": "How Tinubu’s NELFUND Vision Is Quietly Becoming One of Nigeria’s Biggest Education Reforms in History - dailynewsngr.com.ng",
       "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxPZThqdzdqOFEzbjZ5cW1pSTRzbTJSanJlUVpMOHdFbmhpN21kbjdzLThpSjZOZjF1V3k5WnZZNjJLLTU2WHlYUm1mQkdZd0N1TDgzOEJfclg2bXpRdk00NVU3M2t0anRtMk5qXzJIT3BPSlNTRVhtMG81cmloNGpmamxxbE5WX3pMUWw1eTdBRlN3d010YXhHOVVUeXRSVU5pVUlZeFhpLXM0Nmo5ZGxXRDVfRWFRZkZJSkVyekpHRllJYm1MMWV0MnRLdjQ5c1JVTTBXVC13?oc=5",
       "source": "dailynewsngr.com.ng",
       "publishedAt": "Sat, 29 Aug 2026 07:53:16 GMT",
-      "description": "How Tinubu’s NELFUND Vision Is Quietly Becoming One of Nigeria’s Biggest Education Reforms in History &nbsp;&nbsp; dailynewsngr.com.ng"
+      "description": "How Tinubu’s NELFUND Vision Is Quietly Becoming One of Nigeria’s Biggest Education Reforms in History &nbsp;&nbsp; dailynewsngr.com.ng",
+      "region": "Nigeria"
     },
     {
-      "title": "Nigeria needs leaders, not rulers, says education advocate - Tribune Online",
-      "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNYkFFU2VDa0dtekFjUzVOSVBTSUtTYllIazZkNkRiVFBESkpSUmlvamFBcUc5RVFvQjZITXE4eUdockpYbnMzRTFTZzhhdkNjYUloSGhDZl9WTE1aV1V0eHRoc1NpSXhkYkhhWTh4QTZRLVZZU1V4NHR4Qjhla3RSMWE1allsdk1vQkl6LVJlUkprb0k?oc=5",
-      "source": "Tribune Online",
-      "publishedAt": "Thu, 27 Aug 2026 01:52:22 GMT",
-      "description": "Nigeria needs leaders, not rulers, says education advocate &nbsp;&nbsp; Tribune Online"
+      "title": "FG Launches ₦365m National Laureate Prize For Nigerian Students, Researchers - Channels Television",
+      "link": "https://news.google.com/rss/articles/CBMivwFBVV95cUxPV1FIZXRDSnRNUWZTMHdocUFPb19GZElWZ2VVbEtPRzBITU1zU2lyY3gyM290UXBFS1JHWTUwZDhhWmFQbzdVRWYwV213ZVh3TzF6QVYzMDUtR21vZkNNQkJHVHljQnlZNktnRHAzdUpFbFhkc0ZEeUdHRXV5MkVRWE80MWV2czVyQ1ljN2VIcjhpRU04X3hvMU1rcF9ZM3MybGRpOVdOWElMYnNfMmdiQTlJd1ZMOG5KS3ROeFRJZw?oc=5",
+      "source": "Channels Television",
+      "publishedAt": "Fri, 28 Aug 2026 01:18:26 GMT",
+      "description": "FG Launches ₦365m National Laureate Prize For Nigerian Students, Researchers &nbsp;&nbsp; Channels Television",
+      "region": "Nigeria"
     },
     {
       "title": "NUT: Nigeria’s education system collapsing - Daily Trust",
       "link": "https://news.google.com/rss/articles/CBMickFVX3lxTFBJZHVkZk5OcFBpNUJPcjdqaFFRblU2QU9Sem1uNDByUEJZamhITG9ORktxUjRlUGZkM25WMUVOMGVQSXFqcEFRYkpfZjZGeUhXT1poc0R6RjVRUURzd3hfSnJmNlJXUkc0SGhuei1XYnFTUQ?oc=5",
       "source": "Daily Trust",
       "publishedAt": "Fri, 28 Aug 2026 05:25:08 GMT",
-      "description": "NUT: Nigeria’s education system collapsing &nbsp;&nbsp; Daily Trust"
+      "description": "NUT: Nigeria’s education system collapsing &nbsp;&nbsp; Daily Trust",
+      "region": "Nigeria"
     },
     {
-      "title": "Alausa Unveils National Digital Training Academy For Nigerian Youths - thefact.ng",
-      "link": "https://news.google.com/rss/articles/CBMikgFBVV95cUxNTmthZmlwTzB3ek14U2h0TmxGZXNtOVdDeDJCNktwbEVrdnlWYTlsb0ZSYlFibGc3QXYzNmNvQ2M2UmxEcEtWeW83ZkxkTGxZeURaNnVCLWV5dWpRMFhPRmpaeGtHbWVFTXRfRHhEMWtZNkxKRkVnOUpvOVFBNjFaWi0wOGJDR2lFVV9mMF9ySnNQZw?oc=5",
-      "source": "thefact.ng",
-      "publishedAt": "Sun, 30 Aug 2026 19:42:30 GMT",
-      "description": "Alausa Unveils National Digital Training Academy For Nigerian Youths &nbsp;&nbsp; thefact.ng"
-    },
-    {
-      "title": "NIsBEC flags off in Lagos to champion behavioural science, special education, needs, and care practice in Nigeria - Realnews Magazine",
-      "link": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxNa3dfQVZvenhxM1drMVA4ZDhhRlNiLUs3OTl6VDQ2Nm0zeGFVT3d6eXdadlVvY05kQ1dmSFUxTlA3a1gyTVIydmpOZmotTFNFeXlFTXVEVUQ1RGJSNkQxc3l6TUFxcXdRS3BaUS1YckdCaFN4VnNLSllwd1Y5WnJ6RkpBRDFRYnBPLUg2Uk10czNEWDNOME8tczFmUXo2TXVrWFBrZE9aTGRwLVpSS05XbkxobTVKUU1LdTJvS2RoNFJfU0FVZkNKMTZpX1RwRUduZ0h1RWcxNA?oc=5",
-      "source": "Realnews Magazine",
-      "publishedAt": "Tue, 25 Aug 2026 17:32:26 GMT",
-      "description": "NIsBEC flags off in Lagos to champion behavioural science, special education, needs, and care practice in Nigeria &nbsp;&nbsp; Realnews Magazine"
-    },
-    {
-      "title": "In Kaduna, basic education is a right, not a privilege – Uba Sani - Premium Times Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMiswFBVV95cUxNS3VRR2lOQjhwSDh5X0cyRlJnaXYtUXFfYS1CeFNldG5sVnQtQlJmLVpVZGFuR0taMVNtTWdNMEp1NWd0Tzcwc2dscGdaMU4xM3FGZUJfeFp3SkZBZDBlWXEzeE4zVm12U0llSUEwWnNOVW10dUZCVGlvVWJHelJ6TmdCVUdrQlVfQXp6SXZfYXZqZ3hZTkJrbkVaak1VUVluZmp2d21GMFFlV1g0cGlSTk01Zw?oc=5",
-      "source": "Premium Times Nigeria",
-      "publishedAt": "Wed, 26 Aug 2026 16:19:08 GMT",
-      "description": "In Kaduna, basic education is a right, not a privilege – Uba Sani &nbsp;&nbsp; Premium Times Nigeria"
-    },
-    {
-      "title": "Between education standard and its transparency - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMihAFBVV95cUxObEYtTWZoWnF2eXI2eG0weUljdWtSTEFvbVFZWDFtNEwyTmxKLV91Wml3QkhkUlpKcl9RQkdtWXFHY0g2QWJIODFqS250cVlfMV82TDNPaWJhaFp2b0wzWThwRlZXOFI1V0xoNndRSlZHYVJFLXJHN2ZrcllXMkNKZXhMX0g?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Fri, 28 Aug 2026 04:45:00 GMT",
-      "description": "Between education standard and its transparency &nbsp;&nbsp; The Guardian Nigeria News"
-    },
-    {
-      "title": "Fubara Advocates Shift From Theory To Skills-Based Education In Nigeria - Independent Newspaper Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxQZm44c3JLWlVEeHk1aUhIaEJ1cUZDQWxFdVFRWlBzSmhmaFNRQS1VNHg5UEphVThoN0l3WDQ1UUtFR1oxTWJiYmp4MTlzVmtzcndWTno1UU5jSldOM3ZsZ3hCMHIxVDlOVEpXNjF3WnhidzNOLUgzV0xxSG1Pd1EwMW5SWExDZEsxOExKWTh6ZU5XMzlrOHNMb19ucw?oc=5",
-      "source": "Independent Newspaper Nigeria",
-      "publishedAt": "Sun, 30 Aug 2026 15:11:18 GMT",
-      "description": "Fubara Advocates Shift From Theory To Skills-Based Education In Nigeria &nbsp;&nbsp; Independent Newspaper Nigeria"
+      "title": "Nigeria needs leaders, not rulers, says education advocate - Tribune Online",
+      "link": "https://news.google.com/rss/articles/CBMiT0FVX3lxTFAxak9UVDdJX1VqQzd0Vkx5cDh4THNXemZwcFJDQi1lc0toV1dibU5xQ0YtNmJjbFNpcHFrRkRuZ0FwMUgxXzhEWHVFWElLbTg?oc=5",
+      "source": "Tribune Online",
+      "publishedAt": "Thu, 27 Aug 2026 01:28:00 GMT",
+      "description": "Nigeria needs leaders, not rulers, says education advocate &nbsp;&nbsp; Tribune Online",
+      "region": "Nigeria"
     },
     {
       "title": "Open, Distance Learning: The pathway to Nigeria’s future university scale - Business News Nigeria",
       "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxPbkRFSjBFNGNpd055Z0pTMUtmczhoNkVIY1k3alRXYmVqYnNBREhHZmxWbzhual8ySHp3OHQ1aHAyZmM5blUtYTh6eUprNlItVFpXZVF5R0x4Y1NSTjhZZUJhWGR0LUY4Ti1Rbjg1anp1VWsxZV9kS1N5SkhEcGNxWkRPbDg2eDVsTExZdEozdF9OTGt5NGVIREtPeWFvT1R6ZV9hUUxLeEtGOGNLSDRDOXlld3VwZw?oc=5",
       "source": "Business News Nigeria",
       "publishedAt": "Sat, 29 Aug 2026 04:53:59 GMT",
-      "description": "Open, Distance Learning: The pathway to Nigeria’s future university scale &nbsp;&nbsp; Business News Nigeria"
+      "description": "Open, Distance Learning: The pathway to Nigeria’s future university scale &nbsp;&nbsp; Business News Nigeria",
+      "region": "Nigeria"
     },
     {
-      "title": "‘Imperative of open, distant learning in inclusive varsity education’ - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxPWkFocUNkc0RTckpnRUNZNEcteVRieUptUXVEY0ExYlhKenFaT2FlUkxUa0xzS013Z0xyNHp6SXk3cld6T2N6YU9WWWJULVpCR3lMeDVHYmF5aERxMTY0WXRQbWtWdzBYOXFlOEhoRm5jOWdaTS1sMHBFMWJWTEpCNTVMRXlseXJPYXlOUGo4Qk1xN1lnQXpDM2JWVFVtZw?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Thu, 27 Aug 2026 04:34:00 GMT",
-      "description": "‘Imperative of open, distant learning in inclusive varsity education’ &nbsp;&nbsp; The Guardian Nigeria News"
+      "title": "FG Launches ‘Hire From Nigeria’ Campaign To Drive Youth Employability - thefact.ng",
+      "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPLVEtbzZjb2NtNXFJVkJHUGdaeHBtLU5PYjVRa2tHOTZHaFA0eTBVOUJYM0JpWVhTbi1vY0RnczYwd09sWXY3VzQzY2dhTGhMSmhQV1c2SGpyRDI5b1BUMGZ1a1luaVA0cDR3Y1dfSzRGRWY5Y1VjWmpDRmM5ejlBTnNPWFh4Z3JabUNQSFRNNzE?oc=5",
+      "source": "thefact.ng",
+      "publishedAt": "Mon, 31 Aug 2026 21:08:30 GMT",
+      "description": "FG Launches ‘Hire From Nigeria’ Campaign To Drive Youth Employability &nbsp;&nbsp; thefact.ng",
+      "region": "Nigeria"
     },
     {
-      "title": "NIsBEC launches to raise standards in behavioural science, special education - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxOVnhlcG96bXEtWlJMSGFFbW14NGU2WHJfb3hlNXBpT041MGFlU1dKSldZRmZMbVVhYUV2cUJIc3Z1NXYxVkFiUGxpX0poVkpHa19aNDU3bENiY1I0dUtkWnFOZVRXN0lRQVNHeEtiOVY5czhldXVkVkFxLWp5c1EzMU5HaVZnSkhSSV9GYkZNdzFjcjhKTjRRS0xzcnJqRVRIbnRV?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Tue, 25 Aug 2026 15:14:00 GMT",
-      "description": "NIsBEC launches to raise standards in behavioural science, special education &nbsp;&nbsp; The Guardian Nigeria News"
+      "title": "NIsBEC flags off in Lagos to champion behavioural science, special education, needs, and care practice in Nigeria - Realnews Magazine",
+      "link": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxNa3dfQVZvenhxM1drMVA4ZDhhRlNiLUs3OTl6VDQ2Nm0zeGFVT3d6eXdadlVvY05kQ1dmSFUxTlA3a1gyTVIydmpOZmotTFNFeXlFTXVEVUQ1RGJSNkQxc3l6TUFxcXdRS3BaUS1YckdCaFN4VnNLSllwd1Y5WnJ6RkpBRDFRYnBPLUg2Uk10czNEWDNOME8tczFmUXo2TXVrWFBrZE9aTGRwLVpSS05XbkxobTVKUU1LdTJvS2RoNFJfU0FVZkNKMTZpX1RwRUduZ0h1RWcxNA?oc=5",
+      "source": "Realnews Magazine",
+      "publishedAt": "Tue, 25 Aug 2026 17:32:26 GMT",
+      "description": "NIsBEC flags off in Lagos to champion behavioural science, special education, needs, and care practice in Nigeria &nbsp;&nbsp; Realnews Magazine",
+      "region": "Nigeria"
     },
     {
-      "title": "IELPN urges education leaders to use AI responsibly - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxPempYVFktQmU3eHpWckR0M1ZuSnY1Mk1YeXU1dDRiUEpDVGZTNEh4WURRYXRfTzJxaHBpbHZOSlRJbzdMNTlCZFBjWHlEcDA2czVKcU5xM1VFa2QwYkN0RFd2UHVHZ3JfODVFazRZdFpVX2RveS1WNVBzT0E2dmpiUW95NA?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Wed, 26 Aug 2026 11:11:00 GMT",
-      "description": "IELPN urges education leaders to use AI responsibly &nbsp;&nbsp; The Guardian Nigeria News"
-    },
-    {
-      "title": "NELFUND faces legal hurdle over unclaimed, dormant funds - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPel9ZalVyVnFibmJ4T3R5al9YZ2E5emhqTEVlUTNjajNhTFdMMDBCcHlnSGpQSHYweVdYd08wRlk1SGJhS0NUU18wdGpHT1hIQnJ2S2s2cXd0b1lxaXJlQjA4U3hPVGhOY2tsT0Z2NmJXUGNoSmRpdE05SE5kQzA5bHR4LTlCclND?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Tue, 25 Aug 2026 04:00:00 GMT",
-      "description": "NELFUND faces legal hurdle over unclaimed, dormant funds &nbsp;&nbsp; The Guardian Nigeria News"
-    },
-    {
-      "title": "Africa’s 2nd-largest economy makes a fresh push to win over Nigerian students and expand its education exports - Business Insider Africa",
-      "link": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxPSXlBMzl4MWprUjNzdmVmVjhzQlRDcDlFSmMxem16RHpkMjZqT3ExeENwNjNvYjljekttaVNWdHhmRFpfRjR0QU5OTVM3RzB6SUtVVXNSVThvVDhEQWRLa1ctOWZlbTFzalNtOEp4MG9pSEtyaTlpUVlrRmIzbHNPeVpDUWlwREdJUG44LWx2NVVPb21WOHgyZjUwbXljM2pLX0NvZFlYd1ZRTGpsc2JKT0czd010U0FjZ19SdlJHNU5GWmxCMDNOallwLU12LW9xNjZj?oc=5",
-      "source": "Business Insider Africa",
-      "publishedAt": "Thu, 27 Aug 2026 08:00:00 GMT",
-      "description": "Africa’s 2nd-largest economy makes a fresh push to win over Nigerian students and expand its education exports &nbsp;&nbsp; Business Insider Africa"
-    },
-    {
-      "title": "TETFund: Projecting culture of excellence in education infrastructure, research across Africa - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMiygFBVV95cUxQZXozbXFpRzlPQTdqd2N3X0d0emZhVjBnaGMxY1B4d2JzUW5kbGtEbWFESjlkTFo3RGhPaTBtS2IxUUNWQ3BscTRNenV2T09BZkE0TDJES0tlRHRzRktqaWxjWlMxRm5vY2RPazI3MFNGTEdXUFRwWFlHanZwWFF4ajc0T3hpQk5CVVZPWjVfNUtPWTY1REhpbzltb3pMVVpscTEtYkVobmluQ3lSelpTQVIyamE0UUlTQk5wUnFLMmdVT2VacjdYYVlB?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Sat, 29 Aug 2026 04:00:00 GMT",
-      "description": "TETFund: Projecting culture of excellence in education infrastructure, research across Africa &nbsp;&nbsp; The Guardian Nigeria News"
-    },
-    {
-      "title": "Nigeria Must Stop Sending Students Abroad For Courses Offered Locally-Minister - LEADERSHIP Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxOR2dEbHBCMDR3VkdEanhmWFE0eVlubDUybUlVaEJLdENWT21lQlNzUmZqaUxZendSSVVoMVpOMmNyVnZQUE9BNHRCcGt5N0RUeGhFeWtVTWdrNEViVU9MNTRuazZSVGZld3kwSkhRQjVZdDNFdF9FY0VMZzJzTElWbldMSGxaQW5OTUZYNWJqU0VGdGhDM0xQWU8xd183NGM3SWdV?oc=5",
-      "source": "LEADERSHIP Newspapers",
-      "publishedAt": "Wed, 26 Aug 2026 13:51:01 GMT",
-      "description": "Nigeria Must Stop Sending Students Abroad For Courses Offered Locally-Minister &nbsp;&nbsp; LEADERSHIP Newspapers"
-    },
-    {
-      "title": "NELFUND, ITF partnership opens new frontier for skills training - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxOVUEyU1FZNUVReHF0cXlZRW92THBRelI2aERyYWFNclZvNWNpMWhBbDYtaDVYajdnWUpseWhFSUhfNmdLOU1ZQ0VxRHJuM1VqeG9qREpzR0ZHZjJ2bGNhazdPMUZOZzBnTlRNT0FXTVhoMWhzdk1PVDk4c3g5b1RDZ0ZVenFXZTNKakFTQlFyX3VGUlZ1a0VuZA?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Tue, 25 Aug 2026 11:17:00 GMT",
-      "description": "NELFUND, ITF partnership opens new frontier for skills training &nbsp;&nbsp; The Guardian Nigeria News"
+      "title": "In Kaduna, basic education is a right, not a privilege – Uba Sani - Premium Times Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiswFBVV95cUxNS3VRR2lOQjhwSDh5X0cyRlJnaXYtUXFfYS1CeFNldG5sVnQtQlJmLVpVZGFuR0taMVNtTWdNMEp1NWd0Tzcwc2dscGdaMU4xM3FGZUJfeFp3SkZBZDBlWXEzeE4zVm12U0llSUEwWnNOVW10dUZCVGlvVWJHelJ6TmdCVUdrQlVfQXp6SXZfYXZqZ3hZTkJrbkVaak1VUVluZmp2d21GMFFlV1g0cGlSTk01Zw?oc=5",
+      "source": "Premium Times Nigeria",
+      "publishedAt": "Wed, 26 Aug 2026 16:19:08 GMT",
+      "description": "In Kaduna, basic education is a right, not a privilege – Uba Sani &nbsp;&nbsp; Premium Times Nigeria",
+      "region": "Nigeria"
     }
   ]
 }
