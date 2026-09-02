@@ -28,6 +28,8 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Apply dashboard Personal and news layout repair
+        run: node scripts/repair-activation-news.mjs
       - name: Verify requested activation signup dashboard repairs
         shell: bash
         run: |
@@ -47,7 +49,9 @@ jobs:
           for category in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner'):
               assert category in signup, f'Missing signup category: {category}'
           assert 'useState<string[]>([])' in signup, 'Signup category selection should start empty'
-          assert 'items-start gap-4 sm:grid-cols-2 lg:grid-cols-5' in dashboard, 'Dashboard card grid alignment fix missing'
+          assert 'lg:grid-cols-4' in dashboard, 'Dashboard four-card grid alignment missing'
+          assert "n==='PERSONAL'?'lg:col-span-4 lg:mx-auto lg:w-1/2 '" in dashboard, 'Centered wider Personal card missing'
+          assert '<EducationFeed />' in dashboard, 'Education news feed missing from dashboard'
           assert 'no-active-willitoken' in ai, 'No-active-WilliToken entitlement guard missing'
           print('Requested activation, signup, dashboard and entitlement changes verified.')
           PY
