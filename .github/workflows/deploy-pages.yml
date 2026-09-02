@@ -1,5 +1,5 @@
 name: Deploy EDUWILLS to GitHub Pages
-# status-repair-v3
+# status-repair-v4
 
 on:
   push:
@@ -39,6 +39,10 @@ jobs:
         run: node scripts/repair-activation-success-ui.mjs
       - name: Apply dashboard and revoked-token status repair
         run: node scripts/repair-dashboard-token-status.mjs
+      - name: Apply payment WilliToken copy UI repair
+        run: node scripts/repair-payment-willitoken-copy-ui.mjs
+      - name: Apply payment/category/revocation lifecycle repair
+        run: node scripts/repair-payment-category-and-revocation-v2.mjs
       - name: Verify requested activation signup dashboard repairs
         shell: bash
         run: |
@@ -71,7 +75,14 @@ jobs:
           assert 'WilliToken redeemed' in activation
           assert 'Unlocked categories' in activation
           assert 'WilliToken' in activation
-          print('Requested activation, signup, dashboard, entitlement, revoke-status and success-UI changes verified.')
+          assert 'copiedPaymentToken' in activation
+          assert 'copyPaymentToken' in activation
+          assert 'Your WilliToken' in activation
+          assert 'mergedCategories' in Path('functions/activationPayments.js').read_text()
+          assert 'activeWilliToken: code' in Path('functions/activationPayments.js').read_text()
+          assert 'redeemedBy: uid' in Path('functions/activationPayments.js').read_text()
+          assert 'active: true' in Path('functions/activationPayments.js').read_text()
+          print('Requested activation, signup, dashboard, entitlement, payment activation, copy UI, category assignment and revoke-status changes verified.')
           PY
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
