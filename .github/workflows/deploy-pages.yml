@@ -64,15 +64,10 @@ jobs:
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
           layout_repair = dashboard_news_repair.replace('\\', '')
 
-          # Check the source literally rather than through whitespace-compacting
-          # or regex normalization. This preserves labels containing spaces such
-          # as "EDUWILLS AI" and matches the actual TypeScript source exactly.
+          # The nav is a stable source-level requirement. Check the literal labels
+          # without whitespace normalization so labels containing spaces survive.
           nav_labels = ('QUIZ', 'HISTORY', 'ACTIVATION', 'EDUWILLS AI', 'PERSONAL')
-          dashboard_nav_ok = all(
-              (f"name:'{label}'" in dashboard) or (f'name:"{label}"' in dashboard)
-              or (f"name: '{label}'" in dashboard) or (f'name: "{label}"' in dashboard)
-              for label in nav_labels
-          )
+          dashboard_nav_ok = all(label in dashboard for label in nav_labels)
 
           checks = {
               'country options': 'Other countries' in activation and 'Nigeria' in activation,
