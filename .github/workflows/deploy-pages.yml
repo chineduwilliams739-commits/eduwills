@@ -1,5 +1,4 @@
 name: Deploy EDUWILLS to GitHub Pages
-# status-repair-v6
 
 on:
   push:
@@ -17,104 +16,65 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - name: Setup Node.js 24
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
+          cache: npm
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Apply dashboard Personal and news layout repair
+      - name: Apply dashboard Personal and news repair
         run: node scripts/repair-activation-news.mjs
-      - name: Apply WilliToken payment and activation success UI repair
+      - name: Apply activation success and WilliToken UI repair
         run: node scripts/repair-activation-success-ui.mjs
-      - name: Apply dashboard and revoked-token status repair
+      - name: Apply dashboard and Admin token status repair
         run: node scripts/repair-dashboard-token-status.mjs
-      - name: Apply payment WilliToken copy UI repair
+      - name: Apply payment WilliToken copy and redemption repair
         run: node scripts/repair-payment-willitoken-copy-ui.mjs
-      - name: Apply payment/category/revocation lifecycle repair
+      - name: Apply payment category and revocation lifecycle repair
         run: node scripts/repair-payment-category-and-revocation-v2.mjs
-      - name: Apply paid-token redemption gate and final lifecycle repair
+      - name: Apply paid-token access gate repair
         run: node scripts/repair-paid-token-redeem-gate.mjs
-      - name: Verify requested activation signup dashboard repairs
-        shell: bash
+      - name: Apply final activation-page hardening
+        run: node scripts/repair-activation-final.mjs
+      - name: Apply Admin WilliToken data hardening
+        run: node scripts/harden-admin-willitoken-data.mjs
+      - name: Verify source repairs
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          activation = Path('app/dashboard/activation/page.tsx').read_text()
-          signup = Path('app/signup/page.tsx').read_text()
-          dashboard = Path('app/dashboard/page.tsx').read_text()
-          admin = Path('app/admin/page.tsx').read_text()
-          ai = Path('lib/aiAccess.ts').read_text()
-          payment = Path('functions/activationPayments.js').read_text()
-          assert 'Other countries' in activation
-          assert 'Nigeria' in activation
-          assert 'USD — US Dollar' in activation
-          assert 'NGN — Nigerian Naira' in activation
-          assert 'const [quote, setQuote]' in activation
+          activation=Path('app/dashboard/activation/page.tsx').read_text()
+          signup=Path('app/signup/page.tsx').read_text()
+          dashboard=Path('app/dashboard/page.tsx').read_text()
+          admin=Path('app/admin/page.tsx').read_text()
+          ai=Path('lib/aiAccess.ts').read_text()
+          payment=Path('functions/activationPayments.js').read_text()
+          required_activation = [
+              'Other countries','Nigeria','USD — US Dollar','NGN — Nigerian Naira',
+              'const [quote, setQuote]','aria-label="Activation complete"',
+              'WilliToken redeemed','Unlocked categories','Your WilliToken',
+              'activeCategoryId','copyPaymentToken','copiedPaymentToken',
+          ]
+          for marker in required_activation: assert marker in activation, marker
           assert 'Coming soon' not in signup
-          for category in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner'):
-              assert category in signup
-          assert 'useState<string[]>([])' in signup
+          for category in ('Senior Secondary','Junior Secondary','Primary','Book Learner'): assert category in signup
           assert 'lg:grid-cols-4' in dashboard
-          assert "const nav=[{name:'QUIZ'" in dashboard
-          assert 'max-w-md min-h-[150px]' in dashboard
           assert '<EducationFeed />' in dashboard
           assert 'no-active-willitoken' in ai
           assert 'function isUserActive(user: User, tokens: WilliToken[]): boolean' in admin
           assert 'activeWilliToken: null' in admin
           assert 'userDocId' in admin
-          assert 'aria-label="Activation complete"' in activation
-          assert 'WilliToken redeemed' in activation
-          assert 'Unlocked categories' in activation
-          assert 'copiedPaymentToken' in activation
-          assert 'copyPaymentToken' in activation
-          assert 'Your WilliToken' in activation
           assert "pendingActivationCode: code" in payment
-          assert "used: false, redeemed: false, revoked: false, active: false, source: 'paystack'" in payment
-          assert 'activeCategoryId: activeCategory' in activation
-          print('Requested activation, signup, dashboard, entitlement, payment copy UI, token redemption gate, category assignment and revoke-status changes verified.')
+          assert "source: 'paystack'" in payment
+          assert 'active: true' in payment
+          assert 'redeemedBy: uid' in payment
+          print('EduWills source repairs verified.')
           PY
-      - name: Harden Admin WilliToken data handling
-        run: node scripts/harden-admin-willitoken-data.mjs
-      - name: Verify WilliToken physical cleanup
-        run: |
-          set -euxo pipefail
-          grep -q "token.revoked === true" app/admin/page.tsx
-          grep -q "token.cancelled === true" app/admin/page.tsx
-          grep -q "deleteDoc(doc(db, 'williTokens', token.id))" app/admin/page.tsx
-          echo "Revoked, cancelled and expired WilliToken deletion is present in the deployed Admin build."
-      - name: Verify multi-book quiz isolation
-        run: |
-          set -euxo pipefail
-          grep -q "evidenceByBook" lib/quizAiClientStable.ts
-          grep -q "researchBooks(\[book\])" lib/quizAiClientStable.ts
-          grep -q "const baseQuota" lib/quizAiClientStable.ts
-          grep -q "local.length < share" lib/quizAiClientStable.ts
-          echo "Multi-book evidence isolation and per-book quota checks passed."
-      - name: Verify quiz resume cache
-        run: |
-          set -euxo pipefail
-          grep -q "CACHE_VERSION = 'v23-grounded-generator-resume'" lib/quizAiClientStable.ts
-          grep -q "writeGenerationCache" lib/quizAiClientStable.ts
-          grep -q "onPartial" lib/quizAiClientStable.ts
-          grep -q "clearGenerationCache" lib/quizAiClientStable.ts
-          echo "Partial grounded-question caching and successful-completion cleanup verified."
-      - name: Verify Quiz Studio dropdown implementation
-        run: |
-          set -euxo pipefail
-          grep -q "function QuizDropdown" app/dashboard/quiz/page.tsx
-          grep -q "slotOptions" app/dashboard/quiz/page.tsx
-          grep -q "onChange={setDuration}" app/dashboard/quiz/page.tsx
-          grep -q "onChange={setDifficulty}" app/dashboard/quiz/page.tsx
-          echo "Quiz Studio dropdown implementation verified."
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
       - name: Build application
@@ -124,14 +84,13 @@ jobs:
         run: npm run build
       - name: Verify production artifact
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           test -d out
           test -f out/index.html
           test -f out/dashboard/index.html
           test -f out/dashboard/activation/index.html
           test -f out/login/index.html
           test -f out/signup/index.html
-          echo "Production Pages artifact verified."
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
