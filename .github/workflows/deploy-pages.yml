@@ -30,6 +30,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Apply dashboard Personal and news layout repair
         run: node scripts/repair-activation-news.mjs
+      - name: Apply WilliToken payment and activation success UI repair
+        run: node scripts/repair-activation-success-ui.mjs
       - name: Verify requested activation signup dashboard repairs
         shell: bash
         run: |
@@ -53,7 +55,11 @@ jobs:
           assert "n==='PERSONAL'?'lg:col-span-4 lg:mx-auto lg:w-1/2 '" in dashboard, 'Centered wider Personal card missing'
           assert '<EducationFeed />' in dashboard, 'Education news feed missing from dashboard'
           assert 'no-active-willitoken' in ai, 'No-active-WilliToken entitlement guard missing'
-          print('Requested activation, signup, dashboard and entitlement changes verified.')
+          assert 'aria-label="Activation complete"' in activation, 'Activation success popup missing'
+          assert 'WilliToken redeemed' in activation, 'Activation success popup WilliToken label missing'
+          assert 'Unlocked categories' in activation, 'Activation success popup category details missing'
+          assert 'WilliToken</p>' in activation, 'Payment success WilliToken label missing'
+          print('Requested activation, signup, dashboard, entitlement and success-UI changes verified.')
           PY
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
