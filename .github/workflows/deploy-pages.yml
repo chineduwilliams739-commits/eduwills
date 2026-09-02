@@ -62,8 +62,13 @@ jobs:
           dashboard_news_repair = Path('scripts/repair-activation-news.mjs').read_text()
           admin_hardening = Path('scripts/harden-admin-willitoken-data.mjs').read_text()
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
-          cd = compact(dashboard)
           layout_repair = dashboard_news_repair.replace('\\', '')
+
+          nav_labels = ('QUIZ', 'HISTORY', 'ACTIVATION', 'EDUWILLS AI', 'PERSONAL')
+          dashboard_nav_ok = all(
+              re.search(r"name\s*:\s*['\"]" + re.escape(label) + r"['\"]", dashboard)
+              for label in nav_labels
+          )
 
           checks = {
               'country options': 'Other countries' in activation and 'Nigeria' in activation,
@@ -78,7 +83,7 @@ jobs:
               'copied payment token': 'copiedPaymentToken' in ca,
               'signup categories': all(x in signup for x in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner')),
               'signup has phone selector': 'PhoneInput' in signup or 'country' in signup.lower(),
-              'dashboard navigation': all(x in cd for x in ("name:'QUIZ'", "name:'HISTORY'", "name:'ACTIVATION'", "name:'EDUWILLSAI'", "name:'PERSONAL'")),
+              'dashboard navigation': dashboard_nav_ok,
               'dashboard layout repair': 'lg:grid-cols-4' in layout_repair and "n==='PERSONAL'" in layout_repair and 'lg:col-span-4' in layout_repair,
               'dashboard support': '<ContactSupport />' in dashboard or 'ContactSupport' in dashboard,
               'paid-token access guard': 'no-active-willitoken' in ai,
