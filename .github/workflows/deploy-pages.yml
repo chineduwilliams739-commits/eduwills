@@ -64,9 +64,13 @@ jobs:
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
           layout_repair = dashboard_news_repair.replace('\\', '')
 
+          # Check the source literally rather than through whitespace-compacting
+          # or regex normalization. This preserves labels containing spaces such
+          # as "EDUWILLS AI" and matches the actual TypeScript source exactly.
           nav_labels = ('QUIZ', 'HISTORY', 'ACTIVATION', 'EDUWILLS AI', 'PERSONAL')
           dashboard_nav_ok = all(
-              re.search(r"name\s*:\s*['\"]" + re.escape(label) + r"['\"]", dashboard, re.DOTALL)
+              (f"name:'{label}'" in dashboard) or (f'name:"{label}"' in dashboard)
+              or (f"name: '{label}'" in dashboard) or (f'name: "{label}"' in dashboard)
               for label in nav_labels
           )
 
