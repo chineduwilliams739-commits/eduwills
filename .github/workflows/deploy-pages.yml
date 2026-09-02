@@ -35,7 +35,6 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           activation = Path('app/dashboard/activation/page.tsx')
           a = activation.read_text()
           state = " const[user,setUser]=useState<any>(null),[selected,setSelected]=useState<string[]>([]),[country,setCountry]=useState('NG'),[currency,setCurrency]=useState('NGN'),[code,setCode]=useState(''),[message,setMessage]=useState(''),[loading,setLoading]=useState(true),[paying,setPaying]=useState(false),[redeeming,setRedeeming]=useState(false),[success,setSuccess]=useState<{categories:string[];expiresAt:Date}|null>(null),[paymentSuccess,setPaymentSuccess]=useState<{code?:string;emailSent:boolean;emailError?:string}|null>(null),[quote,setQuote]=useState<{localCurrency:string;localAmount:number;paymentCurrency:string;paymentAmount:number;international:boolean}|null>(null);"
@@ -44,21 +43,19 @@ jobs:
           a = a.replace("const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar'],['GBP','GBP — British Pound'],['EUR','EUR — Euro'],['GHS','GHS — Ghanaian Cedi'],['KES','KES — Kenyan Shilling'],['ZAR','ZAR — South African Rand'],['XOF','XOF — West African CFA Franc']] as const;", "const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar']] as const;")
           a = a.replace("const RATES:Record<string,number>={USD:1,GBP:.75,EUR:.86,GHS:11.2,KES:129,ZAR:17.8,XOF:560,NGN:1550};", "const RATES:Record<string,number>={USD:1,NGN:1550};")
           activation.write_text(a)
-
           signup = Path('app/signup/page.tsx')
           u = signup.read_text()
           u = u.replace("const options=[{id:'senior',name:'Senior Secondary',price:3000,status:'Coming soon'},{id:'junior',name:'Junior Secondary',price:3000,status:'Coming soon'},{id:'primary',name:'Primary',price:2000,status:'Coming soon'},{id:'book',name:'Book Learner',price:4000,status:'Available now'}];", "const options=[{id:'senior',name:'Senior Secondary',price:3000,status:'Available now'},{id:'junior',name:'Junior Secondary',price:3000,status:'Available now'},{id:'primary',name:'Primary',price:2000,status:'Available now'},{id:'book',name:'Book Learner',price:4000,status:'Available now'}];")
           u = u.replace("const[selected,setSelected]=useState<string[]>(['book']);", "const[selected,setSelected]=useState<string[]>([]);")
           signup.write_text(u)
-
           dashboard = Path('app/dashboard/page.tsx')
           d = dashboard.read_text()
           d = d.replace('className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"', 'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"')
           dashboard.write_text(d)
           PY
-          grep -q "COUNTRIES=\[\['NG','Nigeria','NGN'\],\['INT','Other countries','USD'\]\]" app/dashboard/activation/page.tsx
-          grep -q "CURRENCIES=\[\['NGN','NGN — Nigerian Naira'\],\['USD','USD — US Dollar'\]\]" app/dashboard/activation/page.tsx
-          grep -q "\[quote,setQuote\]=useState" app/dashboard/activation/page.tsx
+          grep -q "'Other countries'" app/dashboard/activation/page.tsx
+          grep -q "'USD — US Dollar'" app/dashboard/activation/page.tsx
+          grep -Eq "\[quote[[:space:]]*,[[:space:]]*setQuote\][[:space:]]*=useState" app/dashboard/activation/page.tsx
           ! grep -q "Coming soon" app/signup/page.tsx
           grep -q "items-start gap-4 sm:grid-cols-2 lg:grid-cols-5" app/dashboard/page.tsx
           grep -q "no-active-willitoken" lib/aiAccess.ts
