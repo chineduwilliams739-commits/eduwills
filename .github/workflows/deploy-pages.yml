@@ -106,3 +106,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+# Retrigger Pages deployment after workflow dependency-cache fix.
