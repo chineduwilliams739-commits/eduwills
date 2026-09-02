@@ -17,12 +17,15 @@ jobs:
       - name: Apply requested UI fixes
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
           activation = Path('app/dashboard/activation/page.tsx')
           a = activation.read_text()
           a = a.replace(');,[quote,setQuote=',');[quote,setQuote=')
+          a = a.replace(');,[quote,setQuote=',');,[quote,setQuote=')
+          a = a.replace(');[quote,setQuote=',),[quote,setQuote=')
           a = a.replace("const COUNTRIES=[['NG','Nigeria','NGN'],['US','United States','USD'],['GB','United Kingdom','GBP'],['GH','Ghana','GHS'],['KE','Kenya','KES'],['ZA','South Africa','ZAR'],['CI','Côte d’Ivoire','XOF'],['INT','Other country','USD']] as const;", "const COUNTRIES=[['NG','Nigeria','NGN'],['INT','Other countries','USD']] as const;")
           a = a.replace("const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar'],['GBP','GBP — British Pound'],['EUR','EUR — Euro'],['GHS','GHS — Ghanaian Cedi'],['KES','KES — Kenyan Shilling'],['ZAR','ZAR — South African Rand'],['XOF','XOF — West African CFA Franc']] as const;", "const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar']] as const;")
           a = a.replace("const RATES:Record<string,number>={USD:1,GBP:.75,EUR:.86,GHS:11.2,KES:129,ZAR:17.8,XOF:560,NGN:1550};", "const RATES:Record<string,number>={USD:1,NGN:1550};")
@@ -39,6 +42,11 @@ jobs:
           d = d.replace('className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"', 'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"')
           dashboard.write_text(d)
           PY
+          grep -q "COUNTRIES=\[\['NG','Nigeria','NGN'\],\['INT','Other countries','USD'\]\]" app/dashboard/activation/page.tsx
+          grep -q "CURRENCIES=\[\['NGN','NGN — Nigerian Naira'\],\['USD','USD — US Dollar'\]\]" app/dashboard/activation/page.tsx
+          ! grep -q "Coming soon" app/signup/page.tsx
+          grep -q "items-start gap-4 sm:grid-cols-2 lg:grid-cols-5" app/dashboard/page.tsx
+          grep -q "no-active-willitoken" lib/aiAccess.ts
           npm install --no-audit --no-fund
           npx tsc --noEmit --pretty false
       - name: Commit and remove one-time workflow
