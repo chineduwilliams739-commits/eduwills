@@ -1,12 +1,9 @@
 name: Deploy EDUWILLS to GitHub Pages
-# status-repair-v5
+# status-repair-v6
 
 on:
   push:
     branches: [main]
-  workflow_run:
-    workflows: ["Fix Analytics TypeScript"]
-    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -67,7 +64,7 @@ jobs:
               assert category in signup
           assert 'useState<string[]>([])' in signup
           assert 'lg:grid-cols-4' in dashboard
-          assert "nav.filter(({name:n})=>n!=='PERSONAL')" in dashboard
+          assert "const nav=[{name:'QUIZ'" in dashboard
           assert 'max-w-md min-h-[150px]' in dashboard
           assert '<EducationFeed />' in dashboard
           assert 'no-active-willitoken' in ai
