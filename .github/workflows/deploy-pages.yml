@@ -58,12 +58,7 @@ jobs:
           admin = Path('app/admin/page.tsx').read_text()
           ai = Path('lib/aiAccess.ts').read_text()
           payment = Path('functions/activationPayments.js').read_text()
-          ca = compact(activation)
-          cs = compact(signup)
-          cd = compact(dashboard)
-          cad = compact(admin)
-          cai = compact(ai)
-          cp = compact(payment)
+          ca, cad, cp = compact(activation), compact(admin), compact(payment)
 
           checks = {
               'country options': 'Other countries' in activation and 'Nigeria' in activation,
@@ -77,8 +72,9 @@ jobs:
               'copy payment token': 'copyPaymentToken' in ca,
               'copied payment token': 'copiedPaymentToken' in ca,
               'signup categories': all(x in signup for x in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner')),
-              'dashboard grid': 'lg:grid-cols-4' in dashboard,
-              'education feed': '<EducationFeed />' in dashboard,
+              'signup has international phone selector': 'PhoneInput' in signup and 'defaultCountry="NG"' in signup,
+              'dashboard five-section navigation': 'lg:grid-cols-5' in dashboard and all(x in dashboard for x in ('QUIZ','HISTORY','ACTIVATION','EDUWILLS AI','PERSONAL')),
+              'dashboard support': '<ContactSupport />' in dashboard,
               'paid-token access guard': 'no-active-willitoken' in ai,
               'admin active-status function': 'functionisUserActive(user:User,tokens:WilliToken[]):boolean' in cad,
               'admin active token null': 'activeWilliToken:null' in cad,
