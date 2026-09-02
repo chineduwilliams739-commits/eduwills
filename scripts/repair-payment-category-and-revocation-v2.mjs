@@ -20,6 +20,9 @@ write(paymentPath, payment);
 // Admin: status is derived only from a currently valid WilliToken; revocation updates the real user document.
 const adminPath = 'app/admin/page.tsx';
 let admin = read(adminPath);
+if (!admin.includes('activeCategory?: string')) {
+  admin = admin.replace("type User = { id: string;", "type User = { id: string; activeCategory?: string; activeCategoryId?: string;");
+}
 const activeFn = /function isUserActive\(user: User, tokens: WilliToken\[\]\): boolean \{[\s\S]*?\n\}/;
 if (!activeFn.test(admin)) throw new Error('Admin isUserActive function not found.');
 admin = admin.replace(activeFn, `function isUserActive(user: User, tokens: WilliToken[]): boolean {
@@ -41,12 +44,11 @@ if (admin.includes(oldSave)) admin = admin.replace(oldSave, newSave);
 else if (!admin.includes("const categories = [...new Set(selectedCategories.map(normalizeCategory)")) throw new Error('Admin category assignment block not found.');
 write(adminPath, admin);
 
-// Dashboard: remove stale account-flag fallback; the dashboard must not remain active after the final token is revoked.
+// Dashboard: require a valid activation expiry when using the user document's activation flags.
 const dashboardPath = 'app/dashboard/page.tsx';
 let dashboard = read(dashboardPath);
 const oldActiveRecord = /function isActiveRecord\(d:any\)\{[\s\S]*?\n\}/;
 if (!oldActiveRecord.test(dashboard)) throw new Error('Dashboard active record function not found.');
-// This function is used only with the user document, so explicit flags are treated as active only when they have a valid expiry.
 dashboard = dashboard.replace(oldActiveRecord, `function isActiveRecord(d:any){\n const now=Date.now();\n const expires=expiryMs(d.activationExpiresAt);\n const explicitActive=d.activationStatus==='active'||d.williTokenActive===true||d.activationActive===true||d.isActive===true;\n return explicitActive && !!expires && expires>now;\n}`);
 write(dashboardPath, dashboard);
 
