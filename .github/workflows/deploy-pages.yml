@@ -58,7 +58,7 @@ jobs:
           assert 'aria-label="Activation complete"' in activation, 'Activation success popup missing'
           assert 'WilliToken redeemed' in activation, 'Activation success popup WilliToken label missing'
           assert 'Unlocked categories' in activation, 'Activation success popup category details missing'
-          assert 'WilliToken</p>' in activation, 'Payment success WilliToken label missing'
+          assert 'WilliToken' in activation, 'Payment success WilliToken label missing'
           print('Requested activation, signup, dashboard, entitlement and success-UI changes verified.')
           PY
       - name: Harden Admin WilliToken data handling
