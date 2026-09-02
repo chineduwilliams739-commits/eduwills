@@ -30,16 +30,22 @@ dashboard = dashboard.replace(
   'className={`rounded-2xl border p-5 text-left shadow-sm transition ${n===\'PERSONAL\'?\'lg:col-span-4 lg:mx-auto lg:w-1/2 \':\'\'}${l?'
 );
 
-// Put the news feed immediately below Personal and keep it centered/full-width
-// within the dashboard content area. Idempotent so repeated deployment checks
-// do not duplicate it.
-if (!dashboard.includes('<EducationFeed />')) {
-  const marker = '</div></div><nav className="fixed bottom-0';
-  if (!dashboard.includes(marker)) throw new Error('Dashboard news insertion point not found.');
-  dashboard = dashboard.replace(marker, '<div className="mt-6 w-full"><EducationFeed /></div></div></div><nav className="fixed bottom-0');
+// Put the news feed below the dashboard cards. Use the fixed bottom-nav as a
+// stable anchor rather than the previous exact closing-div sequence, because
+// other repair scripts may legitimately rewrite the card layout before the
+// package prebuild hook runs. Repeated runs remain safe.
+const feedImport = "import EducationFeed from '@/components/EducationFeed';";
+const hasFeed = /<EducationFeed\s*\/>/.test(dashboard);
+if (!hasFeed) {
+  const navMarker = '<nav className="fixed bottom-0';
+  const navIndex = dashboard.indexOf(navMarker);
+  if (navIndex < 0) throw new Error('Dashboard bottom navigation insertion point not found.');
+  dashboard = dashboard.slice(0, navIndex) + '<div className="mt-6 w-full"><EducationFeed /></div>' + dashboard.slice(navIndex);
 } else {
-  dashboard = dashboard.replace(/<EducationFeed\s*\/>/, '<div className="mt-6 w-full"><EducationFeed /></div>');
+  // Collapse any repeated wrappers from older runs to one feed component.
+  dashboard = dashboard.replace(/(?:<div className="mt-6 w-full">\s*)+<EducationFeed\s*\/>(?:\s*<\/div>)+/g, '<div className="mt-6 w-full"><EducationFeed /></div>');
 }
+if (!dashboard.includes(feedImport)) throw new Error('EducationFeed import was not preserved.');
 fs.writeFileSync(dashboardPath, dashboard);
 
 // Show 20 items so the visible feed can be exactly 70% Nigerian / 30% foreign.
