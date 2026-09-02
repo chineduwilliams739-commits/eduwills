@@ -63,11 +63,10 @@ jobs:
           admin_hardening = Path('scripts/harden-admin-willitoken-data.mjs').read_text()
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
           layout_repair = dashboard_news_repair.replace('\\', '')
-          dashboard_compact = compact(dashboard)
 
           nav_labels = ('QUIZ', 'HISTORY', 'ACTIVATION', 'EDUWILLS AI', 'PERSONAL')
           dashboard_nav_ok = all(
-              re.search(r"name:.*?['\"]" + re.escape(label) + r"['\"]", dashboard_compact)
+              re.search(r"name\s*:\s*['\"]" + re.escape(label) + r"['\"]", dashboard, re.DOTALL)
               for label in nav_labels
           )
 
