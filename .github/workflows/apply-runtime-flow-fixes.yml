@@ -3,6 +3,12 @@ name: Apply Runtime Flow Fixes
 on:
   push:
     branches: [main]
+    paths:
+      - 'app/dashboard/activation/page.tsx'
+      - 'app/signup/page.tsx'
+      - 'app/dashboard/page.tsx'
+      - 'lib/aiAccess.ts'
+      - '.github/workflows/apply-runtime-flow-fixes.yml'
   workflow_dispatch:
 
 permissions:
@@ -10,7 +16,7 @@ permissions:
 
 jobs:
   patch:
-    if: ${{ !contains(github.event.head_commit.message, '[runtime-fix]') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[runtime-fix]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,11 +43,21 @@ jobs:
           d=d.replace('className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"','className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"')
           dashboard.write_text(d)
           PY
-          grep -q "COUNTRIES=\[\['NG','Nigeria','NGN'\],\['INT','Other countries','USD'\]\]" app/dashboard/activation/page.tsx
-          grep -q "CURRENCIES=\[\['NGN','NGN — Nigerian Naira'\],\['USD','USD — US Dollar'\]\]" app/dashboard/activation/page.tsx
-          ! grep -q "Coming soon" app/signup/page.tsx
-          grep -q "items-start gap-4 sm:grid-cols-2 lg:grid-cols-5" app/dashboard/page.tsx
-          grep -q "no-active-willitoken" lib/aiAccess.ts
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          activation=Path('app/dashboard/activation/page.tsx').read_text()
+          signup=Path('app/signup/page.tsx').read_text()
+          dashboard=Path('app/dashboard/page.tsx').read_text()
+          ai=Path('lib/aiAccess.ts').read_text()
+          assert re.search(r"const\s+COUNTRIES\s*=\s*\[.*'NG'.*'Nigeria'.*'NGN'.*'INT'.*'Other countries'.*'USD'.*\]\s*as const", activation, re.S)
+          assert re.search(r"const\s+CURRENCIES\s*=\s*\[.*'NGN'.*'NGN — Nigerian Naira'.*'USD'.*'USD — US Dollar'.*\]\s*as const", activation, re.S)
+          assert re.search(r"\[quote,setQuote\]\s*=\s*useState", activation)
+          assert 'Coming soon' not in signup
+          assert 'items-start gap-4 sm:grid-cols-2 lg:grid-cols-5' in dashboard
+          assert 'no-active-willitoken' in ai
+          print('Runtime activation, signup, dashboard and AI access checks passed.')
+          PY
       - name: Commit fixes with rebase protection
         shell: bash
         run: |
