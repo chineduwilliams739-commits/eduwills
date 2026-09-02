@@ -1,4 +1,5 @@
 name: Deploy EDUWILLS to GitHub Pages
+# status-repair-v2
 
 on:
   push:
@@ -45,27 +46,27 @@ jobs:
           dashboard = Path('app/dashboard/page.tsx').read_text()
           admin = Path('app/admin/page.tsx').read_text()
           ai = Path('lib/aiAccess.ts').read_text()
-          assert 'Other countries' in activation, 'Activation country option missing: Other countries'
-          assert 'Nigeria' in activation, 'Activation country option missing: Nigeria'
-          assert 'USD — US Dollar' in activation, 'USD option missing from activation page'
-          assert 'NGN — Nigerian Naira' in activation, 'NGN option missing from activation page'
-          assert 'const [quote, setQuote]' in activation, 'Activation quote state declaration missing'
-          assert 'Coming soon' not in signup, 'Signup still contains locked categories'
+          assert 'Other countries' in activation
+          assert 'Nigeria' in activation
+          assert 'USD — US Dollar' in activation
+          assert 'NGN — Nigerian Naira' in activation
+          assert 'const [quote, setQuote]' in activation
+          assert 'Coming soon' not in signup
           for category in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner'):
               assert category in signup, f'Missing signup category: {category}'
-          assert 'useState<string[]>([])' in signup, 'Signup category selection should start empty'
-          assert 'lg:grid-cols-4' in dashboard, 'Dashboard four-card grid alignment missing'
-          assert "nav.filter(({name:n})=>n!=='PERSONAL')" in dashboard, 'Dashboard four-card row missing'
-          assert 'max-w-md min-h-[150px]' in dashboard, 'Centered Personal card missing'
-          assert '<EducationFeed />' in dashboard, 'Education news feed missing from dashboard'
-          assert 'no-active-willitoken' in ai, 'No-active-WilliToken entitlement guard missing'
-          assert 'function isUserActive(user: User, tokens: WilliToken[]): boolean' in admin, 'Admin token-derived status guard missing'
-          assert "activeWilliToken: null" in admin, 'Admin revoke does not clear active token pointer'
-          assert 'userDocId' in admin, 'Admin revoke does not resolve the actual user document ID'
-          assert 'aria-label="Activation complete"' in activation, 'Activation success popup missing'
-          assert 'WilliToken redeemed' in activation, 'Activation success popup WilliToken label missing'
-          assert 'Unlocked categories' in activation, 'Activation success popup category details missing'
-          assert 'WilliToken' in activation, 'Payment success WilliToken label missing'
+          assert 'useState<string[]>([])' in signup
+          assert 'lg:grid-cols-4' in dashboard
+          assert "nav.filter(({name:n})=>n!=='PERSONAL')" in dashboard
+          assert 'max-w-md min-h-[150px]' in dashboard
+          assert '<EducationFeed />' in dashboard
+          assert 'no-active-willitoken' in ai
+          assert 'function isUserActive(user: User, tokens: WilliToken[]): boolean' in admin
+          assert 'activeWilliToken: null' in admin
+          assert 'userDocId' in admin
+          assert 'aria-label="Activation complete"' in activation
+          assert 'WilliToken redeemed' in activation
+          assert 'Unlocked categories' in activation
+          assert 'WilliToken' in activation
           print('Requested activation, signup, dashboard, entitlement, revoke-status and success-UI changes verified.')
           PY
       - name: Harden Admin WilliToken data handling
