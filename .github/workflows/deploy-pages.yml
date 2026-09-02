@@ -1,5 +1,5 @@
 name: Deploy EDUWILLS to GitHub Pages
-# status-repair-v4
+# status-repair-v5
 
 on:
   push:
@@ -43,6 +43,8 @@ jobs:
         run: node scripts/repair-payment-willitoken-copy-ui.mjs
       - name: Apply payment/category/revocation lifecycle repair
         run: node scripts/repair-payment-category-and-revocation-v2.mjs
+      - name: Apply paid-token redemption gate and final lifecycle repair
+        run: node scripts/repair-paid-token-redeem-gate.mjs
       - name: Verify requested activation signup dashboard repairs
         shell: bash
         run: |
@@ -54,6 +56,7 @@ jobs:
           dashboard = Path('app/dashboard/page.tsx').read_text()
           admin = Path('app/admin/page.tsx').read_text()
           ai = Path('lib/aiAccess.ts').read_text()
+          payment = Path('functions/activationPayments.js').read_text()
           assert 'Other countries' in activation
           assert 'Nigeria' in activation
           assert 'USD — US Dollar' in activation
@@ -61,7 +64,7 @@ jobs:
           assert 'const [quote, setQuote]' in activation
           assert 'Coming soon' not in signup
           for category in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner'):
-              assert category in signup, f'Missing signup category: {category}'
+              assert category in signup
           assert 'useState<string[]>([])' in signup
           assert 'lg:grid-cols-4' in dashboard
           assert "nav.filter(({name:n})=>n!=='PERSONAL')" in dashboard
@@ -74,15 +77,13 @@ jobs:
           assert 'aria-label="Activation complete"' in activation
           assert 'WilliToken redeemed' in activation
           assert 'Unlocked categories' in activation
-          assert 'WilliToken' in activation
           assert 'copiedPaymentToken' in activation
           assert 'copyPaymentToken' in activation
           assert 'Your WilliToken' in activation
-          assert 'mergedCategories' in Path('functions/activationPayments.js').read_text()
-          assert 'activeWilliToken: code' in Path('functions/activationPayments.js').read_text()
-          assert 'redeemedBy: uid' in Path('functions/activationPayments.js').read_text()
-          assert 'active: true' in Path('functions/activationPayments.js').read_text()
-          print('Requested activation, signup, dashboard, entitlement, payment activation, copy UI, category assignment and revoke-status changes verified.')
+          assert "pendingActivationCode: code" in payment
+          assert "used: false, redeemed: false, revoked: false, active: false, source: 'paystack'" in payment
+          assert 'activeCategoryId: activeCategory' in activation
+          print('Requested activation, signup, dashboard, entitlement, payment copy UI, token redemption gate, category assignment and revoke-status changes verified.')
           PY
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
