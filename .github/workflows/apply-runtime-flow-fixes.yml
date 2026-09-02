@@ -14,41 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Apply runtime and UI repairs
+      - name: Apply requested activation signup and dashboard fixes
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
-
-          dashboard=Path('app/dashboard/page.tsx')
-          s=dashboard.read_text()
-          s=s.replace(', Copy','')
-          s=s.replace("import { accountLink, createPublicId } from '@/lib/publicIdentity';", "import { createPublicId } from '@/lib/publicIdentity';")
-          s=re.sub(r"\n async function copyAccountLink\(\).*?\n const locked=", "\n const locked=", s, flags=re.S)
-          s=re.sub(r"\{publicId&&<section className=\"mt-5 rounded-2xl.*?</section>\}", "", s, flags=re.S)
-          marker="setPublicId(id);const params=new URLSearchParams(window.location.search);"
-          replacement="setPublicId(id);const accountUrl=new URL(window.location.href);if(accountUrl.searchParams.get('u')!==id){accountUrl.searchParams.set('u',id);window.history.replaceState({},document.title,accountUrl.pathname+'?'+accountUrl.searchParams.toString()+accountUrl.hash);}const params=new URLSearchParams(window.location.search);"
-          if marker in s:s=s.replace(marker,replacement,1)
-          if 'eduwills_session_activity' not in s:
-            inactivity="""\n useEffect(()=>{const KEY='eduwills_session_activity';const MAX=7*24*60*60*1000;const now=Date.now();const last=Number(localStorage.getItem(KEY)||'0');const goLogin=()=>{const u=new URL(window.location.href);const id=u.searchParams.get('u');window.location.replace(`${BASE}/login/${id?`?returnTo=${encodeURIComponent(u.pathname+'?u='+id)}`:''}`)};if(last&&now-last>MAX){signOut(auth).finally(goLogin);return;}localStorage.setItem(KEY,String(now));const touch=()=>localStorage.setItem(KEY,String(Date.now()));const events=['click','keydown','touchstart','pointerdown'];events.forEach(e=>window.addEventListener(e,touch,{passive:true}));const timer=window.setInterval(()=>{const lastSeen=Number(localStorage.getItem(KEY)||'0');if(lastSeen&&Date.now()-lastSeen>MAX){signOut(auth).finally(goLogin);}},60000);return()=>{events.forEach(e=>window.removeEventListener(e,touch));window.clearInterval(timer);};},[]);\n"""
-            s=s.replace("\n async function logout(){",inactivity+"\n async function logout(){",1)
-          # Prevent one dashboard section card from stretching the whole row.
-          s=s.replace('className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"','className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"')
-          dashboard.write_text(s)
 
           activation=Path('app/dashboard/activation/page.tsx')
           a=activation.read_text()
-          # Repair the syntax typo that previously blocked TypeScript compilation.
           a=a.replace(');,[quote,setQuote=',');[quote,setQuote=')
-          # Payments are exposed as Nigeria/NGN or Other countries/USD only.
           a=a.replace("const COUNTRIES=[['NG','Nigeria','NGN'],['US','United States','USD'],['GB','United Kingdom','GBP'],['GH','Ghana','GHS'],['KE','Kenya','KES'],['ZA','South Africa','ZAR'],['CI','Côte d’Ivoire','XOF'],['INT','Other country','USD']] as const;", "const COUNTRIES=[['NG','Nigeria','NGN'],['INT','Other countries','USD']] as const;")
           a=a.replace("const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar'],['GBP','GBP — British Pound'],['EUR','EUR — Euro'],['GHS','GHS — Ghanaian Cedi'],['KES','KES — Kenyan Shilling'],['ZAR','ZAR — South African Rand'],['XOF','XOF — West African CFA Franc']] as const;", "const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar']] as const;")
           a=a.replace("const RATES:Record<string,number>={USD:1,GBP:.75,EUR:.86,GHS:11.2,KES:129,ZAR:17.8,XOF:560,NGN:1550};", "const RATES:Record<string,number>={USD:1,NGN:1550};")
-          a=a.replace("headers: { Authorization: `Bearer ${jwt}` }, cache: 'no-store'","headers: { Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt }, cache: 'no-store'")
-          a=a.replace("headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },","headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, 'X-Firebase-ID-Token': jwt },")
           activation.write_text(a)
 
           signup=Path('app/signup/page.tsx')
@@ -56,25 +34,22 @@ jobs:
           u=u.replace("const options=[{id:'senior',name:'Senior Secondary',price:3000,status:'Coming soon'},{id:'junior',name:'Junior Secondary',price:3000,status:'Coming soon'},{id:'primary',name:'Primary',price:2000,status:'Coming soon'},{id:'book',name:'Book Learner',price:4000,status:'Available now'}];", "const options=[{id:'senior',name:'Senior Secondary',price:3000,status:'Available now'},{id:'junior',name:'Junior Secondary',price:3000,status:'Available now'},{id:'primary',name:'Primary',price:2000,status:'Available now'},{id:'book',name:'Book Learner',price:4000,status:'Available now'}];")
           u=u.replace("const[selected,setSelected]=useState<string[]>(['book']);", "const[selected,setSelected]=useState<string[]>([]);")
           signup.write_text(u)
+
+          dashboard=Path('app/dashboard/page.tsx')
+          d=dashboard.read_text()
+          d=d.replace('className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"','className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"')
+          dashboard.write_text(d)
           PY
-          node scripts/repair-support-payment-ui-v2.mjs
-      - name: Verify repairs
-        run: |
-          grep -q "eduwills_session_activity" app/dashboard/page.tsx
-          ! grep -q "Your unique EduWills link" app/dashboard/page.tsx
-          grep -q "ContactSupport" app/dashboard/page.tsx
-          grep -q "ContactSupport" app/dashboard/personal/page.tsx
-          grep -q "paymentSuccess" app/dashboard/activation/page.tsx
           grep -q "COUNTRIES=\[\['NG','Nigeria','NGN'\],\['INT','Other countries','USD'\]\]" app/dashboard/activation/page.tsx
           grep -q "CURRENCIES=\[\['NGN','NGN — Nigerian Naira'\],\['USD','USD — US Dollar'\]\]" app/dashboard/activation/page.tsx
           ! grep -q "Coming soon" app/signup/page.tsx
           grep -q "const\[selected,setSelected\]=useState<string\[\]>(\[\]);" app/signup/page.tsx
           grep -q "items-start gap-4 sm:grid-cols-2 lg:grid-cols-5" app/dashboard/page.tsx
-          grep -q "PAYMENT_ACTIVATION_UI_AND_DELIVERY_REPAIR_V2" workers/payments/src/index.js
-          grep -q "code:result.code" workers/payments/src/index.js
+          grep -q "no-active-willitoken" lib/aiAccess.ts
       - name: Commit fixes
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/dashboard/page.tsx app/dashboard/personal/page.tsx app/dashboard/activation/page.tsx app/login/page.tsx app/signup/page.tsx workers/payments/src/index.js
-          if git diff --cached --quiet; then echo 'No changes needed.'; else git commit -m "Apply activation, signup and dashboard UI fixes [runtime-fix]"; git push; fi
+          git add app/dashboard/activation/page.tsx app/signup/page.tsx app/dashboard/page.tsx
+          if git diff --cached --quiet; then echo 'No requested UI changes needed.'; else git commit -m "Apply activation signup and dashboard UI fixes [runtime-fix]"; git push origin HEAD:main; fi
