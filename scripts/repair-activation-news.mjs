@@ -9,17 +9,36 @@ let activation = fs.readFileSync(activationPath, 'utf8');
 activation = activation.replace(/<ContactSupport\s+box\s*\/>/g, '');
 fs.writeFileSync(activationPath, activation);
 
-// Dashboard: restore the education-news feed if an earlier repair/deployment removed it.
+// Dashboard: restore the education-news feed and keep it directly below the
+// Personal card, centered inside the same dashboard content column.
 let dashboard = fs.readFileSync(dashboardPath, 'utf8');
 if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) {
   const marker = "import { auth, db } from '@/lib/firebase';";
   if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found.');
   dashboard = dashboard.replace(marker, `${marker}\nimport EducationFeed from '@/components/EducationFeed';`);
 }
+
+// Four equal cards on the first row; Personal becomes a wider centered card
+// on the second row instead of being squeezed into a fifth grid column.
+dashboard = dashboard.replace(
+  'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"',
+  'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4"'
+);
+
+dashboard = dashboard.replace(
+  'className={`rounded-2xl border p-5 text-left shadow-sm transition ${l?',
+  'className={`rounded-2xl border p-5 text-left shadow-sm transition ${n===\'PERSONAL\'?\'lg:col-span-4 lg:mx-auto lg:w-1/2 \':\'\'}${l?'
+);
+
+// Put the news feed immediately below Personal and keep it centered/full-width
+// within the dashboard content area. Idempotent so repeated deployment checks
+// do not duplicate it.
 if (!dashboard.includes('<EducationFeed />')) {
   const marker = '</div></div><nav className="fixed bottom-0';
   if (!dashboard.includes(marker)) throw new Error('Dashboard news insertion point not found.');
-  dashboard = dashboard.replace(marker, '<EducationFeed /></div></div><nav className="fixed bottom-0');
+  dashboard = dashboard.replace(marker, '<div className="mt-6 w-full"><EducationFeed /></div></div></div><nav className="fixed bottom-0');
+} else {
+  dashboard = dashboard.replace(/<EducationFeed\s*\/>/, '<div className="mt-6 w-full"><EducationFeed /></div>');
 }
 fs.writeFileSync(dashboardPath, dashboard);
 
@@ -40,7 +59,6 @@ if (fs.existsSync(jsonPath)) {
     const mixed = [];
     for (let i = 0; i < 14; i++) if (ng[i]) mixed.push({ ...ng[i], region: 'Nigeria' });
     for (let i = 0; i < 6; i++) if (foreign[i]) mixed.push({ ...foreign[i], region: 'International' });
-    // Interleave the two pools for a natural international mix while preserving 14/6.
     const ordered = [];
     for (let i = 0; i < 7; i++) { if (mixed[i]) ordered.push(mixed[i]); if (mixed[14 + i]) ordered.push(mixed[14 + i]); }
     for (let i = 7; i < 14; i++) if (mixed[i]) ordered.push(mixed[i]);
@@ -52,4 +70,4 @@ if (fs.existsSync(jsonPath)) {
   }
 }
 
-console.log('Activation support and international education-news UI repair applied.');
+console.log('Activation support and dashboard Personal/news layout repair applied.');
