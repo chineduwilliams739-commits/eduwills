@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -28,6 +28,45 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Apply requested activation/signup/dashboard repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          activation = Path('app/dashboard/activation/page.tsx')
+          a = activation.read_text()
+          a = a.replace(');,[quote,setQuote=',');[quote,setQuote=')
+          a = a.replace("const COUNTRIES=[['NG','Nigeria','NGN'],['US','United States','USD'],['GB','United Kingdom','GBP'],['GH','Ghana','GHS'],['KE','Kenya','KES'],['ZA','South Africa','ZAR'],['CI','Côte d’Ivoire','XOF'],['INT','Other country','USD']] as const;", "const COUNTRIES=[['NG','Nigeria','NGN'],['INT','Other countries','USD']] as const;")
+          a = a.replace("const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar'],['GBP','GBP — British Pound'],['EUR','EUR — Euro'],['GHS','GHS — Ghanaian Cedi'],['KES','KES — Kenyan Shilling'],['ZAR','ZAR — South African Rand'],['XOF','XOF — West African CFA Franc']] as const;", "const CURRENCIES=[['NGN','NGN — Nigerian Naira'],['USD','USD — US Dollar']] as const;")
+          a = a.replace("const RATES:Record<string,number>={USD:1,GBP:.75,EUR:.86,GHS:11.2,KES:129,ZAR:17.8,XOF:560,NGN:1550};", "const RATES:Record<string,number>={USD:1,NGN:1550};")
+          activation.write_text(a)
+
+          signup = Path('app/signup/page.tsx')
+          u = signup.read_text()
+          u = u.replace("const options=[{id:'senior',name:'Senior Secondary',price:3000,status:'Coming soon'},{id:'junior',name:'Junior Secondary',price:3000,status:'Coming soon'},{id:'primary',name:'Primary',price:2000,status:'Coming soon'},{id:'book',name:'Book Learner',price:4000,status:'Available now'}];", "const options=[{id:'senior',name:'Senior Secondary',price:3000,status:'Available now'},{id:'junior',name:'Junior Secondary',price:3000,status:'Available now'},{id:'primary',name:'Primary',price:2000,status:'Available now'},{id:'book',name:'Book Learner',price:4000,status:'Available now'}];")
+          u = u.replace("const[selected,setSelected]=useState<string[]>(['book']);", "const[selected,setSelected]=useState<string[]>([]);")
+          signup.write_text(u)
+
+          dashboard = Path('app/dashboard/page.tsx')
+          d = dashboard.read_text()
+          d = d.replace('className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"', 'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"')
+          dashboard.write_text(d)
+          PY
+          # These checks ensure this deployment cannot proceed with the old broken activation source.
+          grep -q "COUNTRIES=\[\['NG','Nigeria','NGN'\],\['INT','Other countries','USD'\]\]" app/dashboard/activation/page.tsx
+          grep -q "CURRENCIES=\[\['NGN','NGN — Nigerian Naira'\],\['USD','USD — US Dollar'\]\]" app/dashboard/activation/page.tsx
+          ! grep -q "Coming soon" app/signup/page.tsx
+          grep -q "items-start gap-4 sm:grid-cols-2 lg:grid-cols-5" app/dashboard/page.tsx
+          grep -q "no-active-willitoken" lib/aiAccess.ts
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/activation/page.tsx app/signup/page.tsx app/dashboard/page.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m 'Apply activation signup and dashboard UI fixes [pages-repair]'
+            git push origin HEAD:main
+          fi
       - name: Harden Admin WilliToken data handling
         run: node scripts/harden-admin-willitoken-data.mjs
       - name: Verify WilliToken physical cleanup
