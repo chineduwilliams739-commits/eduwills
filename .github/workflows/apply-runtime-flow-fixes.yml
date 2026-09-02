@@ -52,7 +52,7 @@ jobs:
           ai=Path('lib/aiAccess.ts').read_text()
           assert re.search(r"const\s+COUNTRIES\s*=\s*\[.*'NG'.*'Nigeria'.*'NGN'.*'INT'.*'Other countries'.*'USD'.*\]\s*as const", activation, re.S)
           assert re.search(r"const\s+CURRENCIES\s*=\s*\[.*'NGN'.*'NGN — Nigerian Naira'.*'USD'.*'USD — US Dollar'.*\]\s*as const", activation, re.S)
-          assert re.search(r"\[quote,setQuote\]\s*=\s*useState", activation)
+          assert re.search(r"const\s+\[quote\s*,\s*setQuote\s*\]\s*=\s*useState", activation)
           assert 'Coming soon' not in signup
           assert 'items-start gap-4 sm:grid-cols-2 lg:grid-cols-5' in dashboard
           assert 'no-active-willitoken' in ai
