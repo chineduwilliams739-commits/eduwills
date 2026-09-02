@@ -44,3 +44,4 @@ npm run dev
 The AI, authentication, phone verification, payments, persistent book library, and production database will be connected in subsequent implementation phases.
 
 <!-- Pages deployment trigger for quiz-generation UI repair. -->
+<!-- Verified deployment trigger: 2026-09-02 -->
