@@ -61,7 +61,7 @@ jobs:
           dashboard_repair = Path('scripts/repair-dashboard-token-status.mjs').read_text()
           admin_hardening = Path('scripts/harden-admin-willitoken-data.mjs').read_text()
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
-          cd, cdr, cah = compact(dashboard), compact(dashboard_repair), compact(admin_hardening)
+          cd = compact(dashboard)
 
           checks = {
               'country options': 'Other countries' in activation and 'Nigeria' in activation,
@@ -77,7 +77,7 @@ jobs:
               'signup categories': all(x in signup for x in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner')),
               'signup has phone selector': 'PhoneInput' in signup or 'country' in signup.lower(),
               'dashboard navigation': all(x in cd for x in ("constnav", "name:'QUIZ'", "name:'HISTORY'", "name:'ACTIVATION'", "name:'EDUWILLSAI'", "name:'PERSONAL'")),
-              'dashboard layout repair': 'lg:grid-cols-4' in dashboard_repair and 'n!==\'PERSONAL\'' in dashboard_repair,
+              'dashboard layout repair': 'lg:grid-cols-4' in dashboard_repair and "n==='PERSONAL'" in dashboard_repair and 'lg:col-span-4' in dashboard_repair,
               'dashboard support': '<ContactSupport />' in dashboard or 'ContactSupport' in dashboard,
               'paid-token access guard': 'no-active-willitoken' in ai,
               'admin active-status logic': 'isUserActive' in admin and 'return tokens.some' in admin,
