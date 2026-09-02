@@ -22,12 +22,45 @@ payment = payment.replace(/const existingCategories = Array\.isArray\(user\.cate
     acquisitionTimezone: attribution.timezone,
   }, { merge: true });`);
 
-// The paid token itself remains unredeemed/inactive until the user enters it.
 payment = payment.replace(/used: true, redeemed: true, redeemedBy: uid, redeemedAt: FieldValue\.serverTimestamp\(\), revoked: false, active: true, source: 'paystack'/, "used: false, redeemed: false, revoked: false, active: false, source: 'paystack'");
 if (!payment.includes("pendingActivationCode: code") || !payment.includes("used: false, redeemed: false, revoked: false, active: false, source: 'paystack'")) {
   throw new Error('Paid-token redemption gate could not be applied to payment backend.');
 }
 write(paymentPath, payment);
+
+// Activation-page redemption is the only point at which paid categories are assigned.
+const activationPath = 'app/dashboard/activation/page.tsx';
+let activation = read(activationPath);
+const oldActivationUpdate = `      await updateDoc(userRef, {
+        activated: true,
+        activationStatus: 'active',
+        williTokenActive: true,
+        activationExpiresAt: activationExpiry,
+        categories: merged,
+        category: merged[0] || existing.category || '',
+        educationLevels: merged,
+        schoolLevels: merged,
+      });`;
+const newActivationUpdate = `      const activeCategory = categories[0] || existing.activeCategory || merged[0] || '';
+      await updateDoc(userRef, {
+        activated: true,
+        activationStatus: 'active',
+        activationActive: true,
+        williTokenActive: true,
+        activationExpiresAt: activationExpiry,
+        categories: merged,
+        category: merged[0] || existing.category || '',
+        educationLevels: merged,
+        schoolLevels: merged,
+        activeCategory,
+        activeCategoryId: activeCategory ? activeCategory.toLowerCase().replace(/\\s+/g, '-') : '',
+        pendingActivationCode: null,
+        pendingActivationCodeExpiresAt: null,
+        pendingActivationCategories: null,
+      });`;
+if (activation.includes(oldActivationUpdate)) activation = activation.replace(oldActivationUpdate, newActivationUpdate);
+else if (!activation.includes('activeCategoryId: activeCategory')) throw new Error('Activation redemption assignment block not found.');
+write(activationPath, activation);
 
 // Admin: status must be token-derived, and revoking the final token must explicitly deactivate the real user document.
 const adminPath = 'app/admin/page.tsx';
@@ -50,18 +83,15 @@ const revoke = `  const revokeToken = async (t: WilliToken) => {
       const uid = t.userId || t.uid || '';
       if (!uid) throw new Error('Token has no owner');
       const userDocId = users.find(user => (user.uid || user.id) === uid)?.id || uid;
-
       await deleteDoc(doc(db, 'williTokens', t.id));
 
       const remainingSnapshot = await getDocs(collection(db, 'williTokens'));
       const now = Date.now();
-      const remainingTokens = remainingSnapshot.docs
-        .map(x => ({ id: x.id, ...x.data() } as WilliToken))
-        .filter(token => {
-          const owner = token.userId || token.uid;
-          const expiry = expiryDate(token);
-          return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > now;
-        });
+      const remainingTokens = remainingSnapshot.docs.map(x => ({ id: x.id, ...x.data() } as WilliToken)).filter(token => {
+        const owner = token.userId || token.uid;
+        const expiry = expiryDate(token);
+        return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > now;
+      });
 
       if (remainingTokens.length) {
         const latest = remainingTokens.sort((a, b) => (expiryDate(b)?.getTime() || 0) - (expiryDate(a)?.getTime() || 0))[0];
@@ -84,7 +114,6 @@ const revoke = `  const revokeToken = async (t: WilliToken) => {
           activeWilliToken: null,
         });
       }
-
       await load(true);
     } catch { alert('Could not revoke this WilliToken.'); }
   };
@@ -92,7 +121,6 @@ const revoke = `  const revokeToken = async (t: WilliToken) => {
 `;
 admin = admin.slice(0, revokeStart) + revoke + admin.slice(revokeEnd);
 
-// Admin category assignment: write the actual user document with normalized categories and active category.
 const saveStart = admin.indexOf('  const saveCategories = async () => {');
 const saveEnd = admin.indexOf('  const exportUsers =', saveStart);
 if (saveStart < 0 || saveEnd < 0) throw new Error('Admin category assignment function not found.');
@@ -102,9 +130,7 @@ const save = `  const saveCategories = async () => {
     try {
       const categories = [...new Set(selectedCategories.map(normalizeCategory).filter(category => issueCategories.includes(category as typeof issueCategories[number])))];
       if (!categories.length) throw new Error('Select at least one valid category.');
-      const activeCategory = categories.includes(selectedUser.activeCategory as string)
-        ? selectedUser.activeCategory
-        : categories[0];
+      const activeCategory = categories.includes(selectedUser.activeCategory as string) ? selectedUser.activeCategory : categories[0];
       await setDoc(doc(db, 'users', selectedUser.id), {
         categories,
         category: categories[0],
