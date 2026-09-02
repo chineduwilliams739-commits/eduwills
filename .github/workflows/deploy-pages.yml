@@ -66,7 +66,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/dashboard/activation/page.tsx app/signup/page.tsx app/dashboard/page.tsx
           if ! git diff --cached --quiet; then
-            git commit -m 'Apply activation signup and dashboard UI fixes [pages-repair]'
+            git commit -m 'Apply requested activation/signup/dashboard repairs [pages-repair]'
             git push origin HEAD:main
           fi
       - name: Harden Admin WilliToken data handling
