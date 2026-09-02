@@ -81,8 +81,9 @@ jobs:
               'admin post-cleanup state': 'setTokens(liveTokens)' in admin,
               'payment pending activation code': 'pendingActivationCode' in cp,
               'payment source': "source:'paystack'" in cp or 'source:"paystack"' in cp,
-              'payment active token': 'active:true' in cp,
-              'payment redemption owner': 'redeemedBy:uid' in cp,
+              'payment token starts inactive': 'active:false' in cp,
+              'activation redeems token as active': 'active:true' in ca,
+              'payment redemption owner': 'redeemedBy:uid' in ca or 'redeemedBy:current.uid' in ca,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
