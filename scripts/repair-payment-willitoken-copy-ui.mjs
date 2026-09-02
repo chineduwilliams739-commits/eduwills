@@ -21,6 +21,10 @@ const newTokenBox = `              {paymentSuccess.code && (\n                <d
 if (source.includes(oldReference)) source = source.replace(oldReference, newTokenBox);
 else if (!source.includes('Your WilliToken') || !source.includes('copyPaymentToken')) throw new Error('Payment success token display marker not found.');
 
-source = source.replace('          <div role="dialog" aria-modal="true" className="relative w-full max-w-lg', '          <div role="dialog" aria-modal="true" className="relative w-full max-w-lg');
+const oldUsedCheck = "      if (token.used === true || token.redeemed === true) throw new Error('This WilliToken has already been redeemed.');";
+const newUsedCheck = "      if (token.used === true || token.redeemed === true) {\n        if (token.source === 'paystack' && token.active === true) {\n          const paidCategories = Array.isArray(token.categories) ? token.categories.filter((value: any) => typeof value === 'string' && Object.hasOwn(PRICES, value)) : [];\n          const paidExpiry = expiry || new Date(Date.now() + 31536000000);\n          setCode('');\n          setMessage('');\n          setActivationSuccess({ token: clean, categories: paidCategories, expiresAt: paidExpiry });\n          return;\n        }\n        throw new Error('This WilliToken has already been redeemed.');\n      }";
+if (source.includes(oldUsedCheck)) source = source.replace(oldUsedCheck, newUsedCheck);
+else if (!source.includes("token.source === 'paystack' && token.active === true")) throw new Error('WilliToken redemption guard marker not found.');
+
 fs.writeFileSync(path, source);
-console.log('Prominent copyable WilliToken payment UI repair applied.');
+console.log('Prominent copyable WilliToken payment UI and paid-token confirmation repair applied.');
