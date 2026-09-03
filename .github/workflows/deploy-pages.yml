@@ -10,9 +10,11 @@ permissions:
   pages: write
   id-token: write
 
+# Serialize Pages deployments instead of cancelling a healthy deployment when
+# another repair commit lands while the current deployment is running.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
