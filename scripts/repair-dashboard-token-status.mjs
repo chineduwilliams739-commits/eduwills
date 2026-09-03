@@ -7,12 +7,12 @@ const read = (path) => fs.readFileSync(path, 'utf8');
 const write = (path, value) => fs.writeFileSync(path, value);
 
 // Dashboard: make the first four navigation cards a stable four-column row,
-// put Personal on its own centered row, and put the news feed directly below it.
+// put Personal on its own centered row, and keep the news feed below it.
 let dashboard = read(dashboardPath);
 
-// repair-activation-news runs immediately before this script. DashboardPage is
-// already a client component, so keep EducationFeed as a normal static import.
-// Normalize every older dynamic/static form so repeated CI runs are idempotent.
+// repair-activation-news owns the inline client-side EducationFeed function.
+// Do not add an imported client component here: the previous import caused
+// Next 14 static export to cross the client/server module boundary incorrectly.
 const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const dynamicImport = "import dynamic from 'next/dynamic';";
 const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
@@ -23,28 +23,27 @@ dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\
 
 const marker = "import { auth, db } from '@/lib/firebase';";
 if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found');
-dashboard = dashboard.replace(marker, `${marker}\n${feedImport}`);
 
-// repair-activation-news runs immediately before this script and may already
-// have changed the grid from five columns to four and inserted EducationFeed.
-// Match both the original five-column source and the normalized four-column
-// source without depending on the exact number of nested closing divs.
+// repair-activation-news inserts the local EducationFeed function. If an older
+// checkout has no function yet, fail clearly instead of reintroducing an import.
+if (!dashboard.includes('function EducationFeed(){')) {
+  throw new Error('Inline EducationFeed function is missing after news repair.');
+}
+
 const dashboardPattern = /\n<div className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-(?:4|5)">[\s\S]*?(?=<nav className="fixed bottom-0)/;
 if (!dashboardPattern.test(dashboard)) {
   const hasExpectedGrid = dashboard.includes('className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4"');
   const hasBottomNav = dashboard.includes('<nav className="fixed bottom-0');
-  if (!hasExpectedGrid || !hasBottomNav) {
-    throw new Error('Dashboard navigation grid block not found after previous repair.');
-  }
+  if (!hasExpectedGrid || !hasBottomNav) throw new Error('Dashboard navigation grid block not found after previous repair.');
 } else {
   const dashboardReplacement = `\n<div className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">{nav.filter(({name:n})=>n!=='PERSONAL').map(({name:n,icon:Icon,href})=>{const l=locked(n);return <button type="button" key={n} onClick={()=>go(href,n)} className={\`min-h-[150px] rounded-2xl border p-5 text-left shadow-sm transition \${l?'border-slate-200 bg-white/70 opacity-60':'border-slate-200 bg-white hover:-translate-y-0.5'}\`}><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><Icon size={19}/></span>{l?<LockKeyhole size={16}/>:<CheckCircle2 size={16} className="text-emerald-500"/>}</div><p className="mt-4 text-sm font-black">{n}</p><p className="mt-1 text-xs text-slate-400">{l?'Locked until activation':n==='QUIZ'?\`Create a personalized \${category} quiz\`:'Open section'}</p></button>})}</div>\n<div className="mt-4 flex justify-center">{nav.filter(({name:n})=>n==='PERSONAL').map(({name:n,icon:Icon,href})=>{const l=locked(n);return <button type="button" key={n} onClick={()=>go(href,n)} className={\`w-full max-w-md min-h-[150px] rounded-2xl border p-5 text-left shadow-sm transition \${l?'border-slate-200 bg-white/70 opacity-60':'border-slate-200 bg-white hover:-translate-y-0.5'}\`}><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-cyan-700"><Icon size={19}/></span>{l?<LockKeyhole size={16}/>:<CheckCircle2 size={16} className="text-emerald-500"/>}</div><p className="mt-4 text-sm font-black">{n}</p><p className="mt-1 text-xs text-slate-400">Open your personal learning profile and switch category</p></button>})}</div>\n<div className="mt-8 flex justify-center"><div className="w-full max-w-5xl"><EducationFeed /></div></div></div>`;
   dashboard = dashboard.replace(dashboardPattern, dashboardReplacement);
 }
+
+if (dashboard.includes(feedImport) || dashboard.includes(dynamicImport) || dashboard.includes(feedDeclaration)) throw new Error('External EducationFeed import/declaration remains.');
 write(dashboardPath, dashboard);
 
-// Admin: activation status must be derived from a currently valid WilliToken,
-// not stale account flags. Revoking the final token therefore makes the user
-// immediately inactive in the Admin UI.
+// Admin: activation status must be derived from a currently valid WilliToken.
 let admin = read(adminPath);
 const activeFn = /function isUserActive\(user: User, tokens: WilliToken\[\]\): boolean \{[\s\S]*?\n\}/;
 if (!activeFn.test(admin)) throw new Error('Admin isUserActive function not found');
