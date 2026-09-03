@@ -9,11 +9,22 @@ const write = (path, value) => fs.writeFileSync(path, value);
 // Dashboard: make the first four navigation cards a stable four-column row,
 // put Personal on its own centered row, and put the news feed directly below it.
 let dashboard = read(dashboardPath);
-if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) {
-  const marker = "import ContactSupport from '@/components/ContactSupport';";
-  if (!dashboard.includes(marker)) throw new Error('Dashboard ContactSupport import not found');
-  dashboard = dashboard.replace(marker, `${marker}\nimport EducationFeed from '@/components/EducationFeed';`);
-}
+
+// repair-activation-news runs immediately before this script and owns the
+// EducationFeed client-only import/declaration. Never reintroduce a static
+// EducationFeed import here: doing so conflicts with the local dynamic binding.
+const feedImport = "import EducationFeed from '@/components/EducationFeed';";
+const dynamicImport = "import dynamic from 'next/dynamic';";
+const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedImport)}\\s*\\n?`, 'm'), '');
+dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(dynamicImport)}\\s*\\n?`, 'm'), '');
+dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\\n?`, 'm'), '');
+
+const marker = "import { auth, db } from '@/lib/firebase';";
+if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found');
+dashboard = dashboard.replace(marker, `${dynamicImport}\n${marker}`);
+dashboard = dashboard.replace(marker, `${marker}\n${feedDeclaration}`);
 
 // repair-activation-news runs immediately before this script and may already
 // have changed the grid from five columns to four and inserted EducationFeed.
