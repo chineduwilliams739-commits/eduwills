@@ -31,19 +31,24 @@ dashboard = dashboard.replace(
 );
 
 // Put the news feed below the dashboard cards. Use the fixed bottom-nav as a
-// stable anchor rather than the previous exact closing-div sequence, because
-// other repair scripts may legitimately rewrite the card layout before the
-// package prebuild hook runs. Repeated runs remain safe.
+// stable anchor when available. During npm prebuild the other repair scripts
+// may already have rewritten the bottom navigation, so repeated runs must not
+// fail merely because that anchor is gone.
 const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const hasFeed = /<EducationFeed\s*\/>/.test(dashboard);
 if (!hasFeed) {
   const navMarker = '<nav className="fixed bottom-0';
   const navIndex = dashboard.indexOf(navMarker);
-  if (navIndex < 0) throw new Error('Dashboard bottom navigation insertion point not found.');
-  dashboard = dashboard.slice(0, navIndex) + '<div className="mt-6 w-full"><EducationFeed /></div>' + dashboard.slice(navIndex);
+  if (navIndex >= 0) {
+    dashboard = dashboard.slice(0, navIndex) + '<div className="mt-6 w-full"><EducationFeed /></div>' + dashboard.slice(navIndex);
+  } else {
+    const mainEnd = dashboard.lastIndexOf('</main>');
+    if (mainEnd < 0) throw new Error('Dashboard main closing point not found.');
+    dashboard = dashboard.slice(0, mainEnd) + '<div className="mt-6 w-full"><EducationFeed /></div>' + dashboard.slice(mainEnd);
+  }
 } else {
   // Collapse any repeated wrappers from older runs to one feed component.
-  dashboard = dashboard.replace(/(?:<div className="mt-6 w-full">\s*)+<EducationFeed\s*\/>(?:\s*<\/div>)+/g, '<div className="mt-6 w-full"><EducationFeed /></div>');
+  dashboard = dashboard.replace(/(?:<div className="mt-6 w-full">\s*)+<EducationFeed\s*\/>\s*(?:<\/div>)+/g, '<div className="mt-6 w-full"><EducationFeed /></div>');
 }
 if (!dashboard.includes(feedImport)) throw new Error('EducationFeed import was not preserved.');
 fs.writeFileSync(dashboardPath, dashboard);
