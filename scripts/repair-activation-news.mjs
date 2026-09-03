@@ -4,33 +4,36 @@ const activationPath = 'app/dashboard/activation/page.tsx';
 const dashboardPath = 'app/dashboard/page.tsx';
 const feedPath = 'components/EducationFeed.tsx';
 
-// Activation page: keep exactly one support control (the floating button).
 let activation = fs.readFileSync(activationPath, 'utf8');
 activation = activation.replace(/<ContactSupport\s+box\s*\/>/g, '');
 fs.writeFileSync(activationPath, activation);
 
-// Dashboard: restore the education-news feed and keep it directly below the
-// Personal card, centered inside the same dashboard content column.
 let dashboard = fs.readFileSync(dashboardPath, 'utf8');
 const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const dynamicImport = "import dynamic from 'next/dynamic';";
 const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
+const feedMarker = "function categoryLabel(v:any){";
+const feedFunction = `function EducationFeed(){
+ const [items,setItems]=useState<any[]>([]),[loading,setLoading]=useState(true);
+ useEffect(()=>{fetch(\`${BASE}/education-news.json?v=\${Date.now()}\`,{cache:'no-store'}).then(r=>r.ok?r.json():{items:[]}).then(d=>setItems(Array.isArray(d.items)?d.items.slice(0,20):[])).catch(()=>setItems([])).finally(()=>setLoading(false));},[]);
+ return <section className="mt-7 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft sm:p-8"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-600">EDUWILLS feed</p><h2 className="mt-1 text-2xl font-black text-slate-950">Education news & updates</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Fresh education stories collected daily from education and news sources.</p></div><span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">Updated daily</span></div>{loading?<div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="h-24 animate-pulse rounded-2xl bg-slate-100"/><div className="h-24 animate-pulse rounded-2xl bg-slate-100"/></div>:items.length?<div className="mt-6 grid gap-4 md:grid-cols-2">{items.map((item,i)=><a key={\`\${item.link}-\${i}\`} href={item.link} target="_blank" rel="noreferrer" className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-white"><div className="flex items-start justify-between gap-4"><span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-700">{item.source||'Education news'}</span><span className="text-[10px] font-bold text-slate-400">{item.publishedAt||''}</span></div><h3 className="mt-3 font-black leading-6 text-slate-900 group-hover:text-cyan-700">{item.title}</h3>{item.description&&<p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{item.description}</p>}<p className="mt-4 text-xs font-black text-cyan-700">Read source →</p></a>)}</div>:<div className="mt-6 rounded-2xl bg-slate-50 p-5 text-sm font-bold text-slate-500">The daily feed is preparing its next update. Please check back shortly.</div>}</section>;
+}
+`;
 
-// DashboardPage is already a client component, so use a normal static import.
-// The previous dynamic() workaround caused Next.js static export to fail with
-// "Cannot access default.then on the server" during /dashboard prerendering.
-// Normalize every older dynamic/static form before inserting exactly one static
-// import. This is intentionally idempotent for repeated CI execution.
+// The dashboard is already a Client Component. Keep the news feed in the same
+// client module instead of importing a second client module through the page's
+// static-export graph. This avoids the Next 14 prerender boundary bug that was
+// producing "Cannot access default.then on the server".
 dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedImport)}\\s*\\n?`, 'm'), '');
 dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(dynamicImport)}\\s*\\n?`, 'm'), '');
 dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\\n?`, 'm'), '');
+const oldLocalFeed = /function EducationFeed\(\)\{[\s\S]*?\n\}\n(?=function DashboardPage\(\))/;
+dashboard = dashboard.replace(oldLocalFeed, '');
+if (!dashboard.includes(feedMarker)) throw new Error('Dashboard categoryLabel marker not found.');
+if (!dashboard.includes('function EducationFeed(){')) {
+  dashboard = dashboard.replace(feedMarker, feedFunction + '\n' + feedMarker);
+}
 
-const marker = "import { auth, db } from '@/lib/firebase';";
-if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found.');
-dashboard = dashboard.replace(marker, `${marker}\n${feedImport}`);
-
-// Four equal cards on the first row; Personal becomes a wider centered card
-// on the second row instead of being squeezed into a fifth grid column.
 dashboard = dashboard.replace(
   'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5"',
   'className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4"'
@@ -41,34 +44,28 @@ dashboard = dashboard.replace(
   'className={`rounded-2xl border p-5 text-left shadow-sm transition ${n===\'PERSONAL\'?\'lg:col-span-4 lg:mx-auto lg:w-1/2 \':\'\'}${l?'
 );
 
-// Put the news feed below the dashboard cards. Use the fixed bottom-nav as a
-// stable anchor when available. During CI the other repair scripts may already
-// have rewritten the bottom navigation, so repeated runs must not fail merely
-// because that anchor is gone.
 const hasFeed = /<EducationFeed\s*\/>/.test(dashboard);
 if (!hasFeed) {
   const navMarker = '<nav className="fixed bottom-0';
   const navIndex = dashboard.indexOf(navMarker);
-  if (navIndex >= 0) {
-    dashboard = dashboard.slice(0, navIndex) + '<div className="mt-6 w-full"><EducationFeed /></div>' + dashboard.slice(navIndex);
-  } else {
+  const feed = '<div className="mt-6 w-full"><EducationFeed /></div>';
+  if (navIndex >= 0) dashboard = dashboard.slice(0, navIndex) + feed + dashboard.slice(navIndex);
+  else {
     const mainEnd = dashboard.lastIndexOf('</main>');
     if (mainEnd < 0) throw new Error('Dashboard main closing point not found.');
-    dashboard = dashboard.slice(0, mainEnd) + '<div className="mt-6 w-full"><EducationFeed /></div>' + dashboard.slice(mainEnd);
+    dashboard = dashboard.slice(0, mainEnd) + feed + dashboard.slice(mainEnd);
   }
 } else {
-  // Collapse any repeated wrappers from older runs to one feed component.
   dashboard = dashboard.replace(/(?:<div className="mt-6 w-full">\s*)+<EducationFeed\s*\/>\s*(?:<\/div>)+/g, '<div className="mt-6 w-full"><EducationFeed /></div>');
 }
-if (!dashboard.includes(feedImport)) throw new Error('EducationFeed static import was not preserved.');
+if (!dashboard.includes('function EducationFeed(){')) throw new Error('Inline EducationFeed function was not installed.');
+if (dashboard.includes(feedImport) || dashboard.includes(dynamicImport) || dashboard.includes(feedDeclaration)) throw new Error('External EducationFeed import/declaration remains.');
 fs.writeFileSync(dashboardPath, dashboard);
 
-// Show 20 items so the visible feed can be exactly 70% Nigerian / 30% foreign.
 let feed = fs.readFileSync(feedPath, 'utf8');
 feed = feed.replace(/\.slice\(0, 12\)/, '.slice(0, 20)');
 fs.writeFileSync(feedPath, feed);
 
-// Normalize an already-generated feed so an existing deployment also gets the requested mix.
 const jsonPath = 'public/education-news.json';
 if (fs.existsSync(jsonPath)) {
   try {
