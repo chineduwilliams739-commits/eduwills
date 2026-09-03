@@ -16,18 +16,17 @@ const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const dynamicImport = "import dynamic from 'next/dynamic';";
 const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
 
-// EducationFeed uses browser-side state/fetching. Loading it with ssr:false
-// prevents Next's static prerenderer from trying to inspect the client module
-// while still preserving the feed in the dashboard UI after hydration.
-if (dashboard.includes(feedImport)) {
-  dashboard = dashboard.replace(feedImport, `${dynamicImport}\n${feedDeclaration}`);
-} else if (!dashboard.includes(feedDeclaration)) {
-  const marker = "import { auth, db } from '@/lib/firebase';";
-  if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found.');
-  if (!dashboard.includes(dynamicImport)) dashboard = dashboard.replace(marker, `${dynamicImport}\n${marker}`);
-  const importAnchor = dashboard.includes(dynamicImport) ? dynamicImport : marker;
-  dashboard = dashboard.replace(importAnchor, `${importAnchor}\n${feedDeclaration}`);
-}
+// Normalize both forms before inserting the client-only declaration. This is
+// intentionally idempotent because this repair can run more than once during
+// CI/build preparation and older revisions may already contain either form.
+dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedImport)}\\s*\\n?`, 'm'), '');
+dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(dynamicImport)}\\s*\\n?`, 'm'), '');
+dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\\n?`, 'm'), '');
+
+const marker = "import { auth, db } from '@/lib/firebase';";
+if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found.');
+dashboard = dashboard.replace(marker, `${dynamicImport}\n${marker}`);
+dashboard = dashboard.replace(marker, `${marker}\n${feedDeclaration}`);
 
 // Four equal cards on the first row; Personal becomes a wider centered card
 // on the second row instead of being squeezed into a fifth grid column.
@@ -89,6 +88,10 @@ if (fs.existsSync(jsonPath)) {
   } catch (error) {
     console.warn('Could not normalize existing education-news.json:', error?.message || error);
   }
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 console.log('Activation support and dashboard Personal/news layout repair applied.');
