@@ -6,13 +6,8 @@ const adminPath = 'app/admin/page.tsx';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const write = (path, value) => fs.writeFileSync(path, value);
 
-// Dashboard: make the first four navigation cards a stable four-column row,
-// put Personal on its own centered row, and keep the news feed below it.
 let dashboard = read(dashboardPath);
 
-// repair-activation-news owns the inline client-side EducationFeed function.
-// Do not add an imported client component here: the previous import caused
-// Next 14 static export to cross the client/server module boundary incorrectly.
 const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const dynamicImport = "import dynamic from 'next/dynamic';";
 const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
@@ -24,10 +19,23 @@ dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\
 const marker = "import { auth, db } from '@/lib/firebase';";
 if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found');
 
-// repair-activation-news inserts the local EducationFeed function. If an older
-// checkout has no function yet, fail clearly instead of reintroducing an import.
+// Keep the news feed entirely inside the already-client dashboard module.
+// This makes the repair idempotent and avoids the previous client/server
+// dynamic-import failure during Next static export.
 if (!dashboard.includes('function EducationFeed(){')) {
-  throw new Error('Inline EducationFeed function is missing after news repair.');
+  const feedFunction = `function EducationFeed(){
+ const [items,setItems]=useState<any[]>([]),[loading,setLoading]=useState(true);
+ useEffect(()=>{fetch(\`/eduwills/education-news.json?v=\${Date.now()}\`,{cache:'no-store'}).then(r=>r.ok?r.json():{items:[]}).then(d=>setItems(Array.isArray(d.items)?d.items.slice(0,20):[])).catch(()=>setItems([])).finally(()=>setLoading(false));},[]);
+ return <section className="mt-7 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-soft sm:p-8"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-black uppercase tracking-[.2em] text-cyan-600">EDUWILLS feed</p><h2 className="mt-1 text-2xl font-black text-slate-950">Education news & updates</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Fresh education stories collected daily from education and news sources.</p></div><span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-500">Updated daily</span></div>{loading?<div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="h-24 animate-pulse rounded-2xl bg-slate-100"/><div className="h-24 animate-pulse rounded-2xl bg-slate-100"/></div>:items.length?<div className="mt-6 grid gap-4 md:grid-cols-2">{items.map((item,i)=><a key={\`\${item.link}-\${i}\`} href={item.link} target="_blank" rel="noreferrer" className="group rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-white"><div className="flex items-start justify-between gap-4"><span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-700">{item.source||'Education news'}</span><span className="text-[10px] font-bold text-slate-400">{item.publishedAt||''}</span></div><h3 className="mt-3 font-black leading-6 text-slate-900 group-hover:text-cyan-700">{item.title}</h3>{item.description&&<p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{item.description}</p>}<p className="mt-4 text-xs font-black text-cyan-700">Read source →</p></a>)}</div>:<div className="mt-6 rounded-2xl bg-slate-50 p-5 text-sm font-bold text-slate-500">The daily feed is preparing its next update. Please check back shortly.</div>}</section>;
+}
+`;
+  const categoryMarker = 'function categoryLabel(v:any){';
+  if (dashboard.includes(categoryMarker)) dashboard = dashboard.replace(categoryMarker, feedFunction + '\n' + categoryMarker);
+  else {
+    const functionInsert = dashboard.indexOf('\nexport default');
+    if (functionInsert < 0) throw new Error('Dashboard function insertion point not found.');
+    dashboard = dashboard.slice(0, functionInsert) + '\n' + feedFunction + dashboard.slice(functionInsert);
+  }
 }
 
 const dashboardPattern = /\n<div className="mt-7 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-(?:4|5)">[\s\S]*?(?=<nav className="fixed bottom-0)/;
@@ -40,10 +48,10 @@ if (!dashboardPattern.test(dashboard)) {
   dashboard = dashboard.replace(dashboardPattern, dashboardReplacement);
 }
 
+if (!dashboard.includes('function EducationFeed(){')) throw new Error('Inline EducationFeed function is missing after dashboard repair.');
 if (dashboard.includes(feedImport) || dashboard.includes(dynamicImport) || dashboard.includes(feedDeclaration)) throw new Error('External EducationFeed import/declaration remains.');
 write(dashboardPath, dashboard);
 
-// Admin: activation status must be derived from a currently valid WilliToken.
 let admin = read(adminPath);
 const activeFn = /function isUserActive\(user: User, tokens: WilliToken\[\]\): boolean \{[\s\S]*?\n\}/;
 if (!activeFn.test(admin)) throw new Error('Admin isUserActive function not found');
