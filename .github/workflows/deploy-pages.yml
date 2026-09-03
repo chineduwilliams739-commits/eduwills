@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Verify dashboard navigation before repair scripts
@@ -55,6 +55,8 @@ jobs:
         run: node scripts/repair-activation-final.mjs
       - name: Apply Admin WilliToken data hardening
         run: node scripts/harden-admin-willitoken-data.mjs
+      - name: Apply Quiz Studio interactive-control repair
+        run: node scripts/fix-quiz-studio-interactive-controls.mjs
       - name: Verify source repairs
         run: |
           set -euo pipefail
@@ -74,6 +76,7 @@ jobs:
           dashboard_repair = Path('scripts/repair-dashboard-token-status.mjs').read_text()
           dashboard_news_repair = Path('scripts/repair-activation-news.mjs').read_text()
           admin_hardening = Path('scripts/harden-admin-willitoken-data.mjs').read_text()
+          quiz_script = Path('scripts/fix-quiz-studio-interactive-controls.mjs').read_text()
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
           layout_repair = dashboard_news_repair.replace('\\', '')
 
@@ -104,6 +107,7 @@ jobs:
               'payment token starts inactive': 'active:false' in cp,
               'activation redeems token as active': 'active:true' in ca,
               'payment redemption owner': 'redeemedBy:uid' in ca or 'redeemedBy:current.uid' in ca,
+              'quiz repair is idempotent': 'already-fixed fragments were safely skipped' in quiz_script,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
