@@ -16,17 +16,18 @@ const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const dynamicImport = "import dynamic from 'next/dynamic';";
 const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
 
-// Normalize both forms before inserting the client-only declaration. This is
-// intentionally idempotent because this repair can run more than once during
-// CI/build preparation and older revisions may already contain either form.
+// DashboardPage is already a client component, so use a normal static import.
+// The previous dynamic() workaround caused Next.js static export to fail with
+// "Cannot access default.then on the server" during /dashboard prerendering.
+// Normalize every older dynamic/static form before inserting exactly one static
+// import. This is intentionally idempotent for repeated CI execution.
 dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedImport)}\\s*\\n?`, 'm'), '');
 dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(dynamicImport)}\\s*\\n?`, 'm'), '');
 dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\\n?`, 'm'), '');
 
 const marker = "import { auth, db } from '@/lib/firebase';";
 if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found.');
-dashboard = dashboard.replace(marker, `${dynamicImport}\n${marker}`);
-dashboard = dashboard.replace(marker, `${marker}\n${feedDeclaration}`);
+dashboard = dashboard.replace(marker, `${marker}\n${feedImport}`);
 
 // Four equal cards on the first row; Personal becomes a wider centered card
 // on the second row instead of being squeezed into a fifth grid column.
@@ -41,9 +42,9 @@ dashboard = dashboard.replace(
 );
 
 // Put the news feed below the dashboard cards. Use the fixed bottom-nav as a
-// stable anchor when available. During npm prebuild the other repair scripts
-// may already have rewritten the bottom navigation, so repeated runs must not
-// fail merely because that anchor is gone.
+// stable anchor when available. During CI the other repair scripts may already
+// have rewritten the bottom navigation, so repeated runs must not fail merely
+// because that anchor is gone.
 const hasFeed = /<EducationFeed\s*\/>/.test(dashboard);
 if (!hasFeed) {
   const navMarker = '<nav className="fixed bottom-0';
@@ -59,7 +60,7 @@ if (!hasFeed) {
   // Collapse any repeated wrappers from older runs to one feed component.
   dashboard = dashboard.replace(/(?:<div className="mt-6 w-full">\s*)+<EducationFeed\s*\/>\s*(?:<\/div>)+/g, '<div className="mt-6 w-full"><EducationFeed /></div>');
 }
-if (!dashboard.includes(feedDeclaration)) throw new Error('EducationFeed client declaration was not preserved.');
+if (!dashboard.includes(feedImport)) throw new Error('EducationFeed static import was not preserved.');
 fs.writeFileSync(dashboardPath, dashboard);
 
 // Show 20 items so the visible feed can be exactly 70% Nigerian / 30% foreign.
