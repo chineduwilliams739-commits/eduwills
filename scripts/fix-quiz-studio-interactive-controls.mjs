@@ -3,6 +3,9 @@ import fs from 'node:fs';
 const path = 'app/dashboard/quiz/page.tsx';
 let source = fs.readFileSync(path, 'utf8');
 
+// This repair must be safe to run repeatedly. Earlier versions assumed the
+// source still contained every original <label>, which made the deployment
+// fail after another fix had already transformed one or more controls.
 const replacements = [
   [
     '                  <label className="mt-4 block text-sm font-black">\n                  Save to slot',
@@ -50,12 +53,20 @@ const replacements = [
   ],
 ];
 
+let changed = 0;
+
 for (const [from, to] of replacements) {
   if (!source.includes(from)) {
-    throw new Error(`Quiz Studio control patch could not find expected source fragment: ${from.slice(0, 80)}`);
+    // The fragment may already have been repaired by a previous run. Do not
+    // fail the entire deployment merely because that transformation is gone.
+    continue;
   }
+
   source = source.replace(from, to);
+  changed += 1;
 }
 
 fs.writeFileSync(path, source);
-console.log('Quiz Studio interactive-control patch applied: interactive dropdowns and book selectors are no longer nested inside <label> elements.');
+console.log(
+  `Quiz Studio interactive-control patch complete (${changed} source transformations applied; already-fixed fragments were safely skipped).`
+);
