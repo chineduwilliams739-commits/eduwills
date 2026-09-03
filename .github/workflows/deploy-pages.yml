@@ -77,9 +77,6 @@ jobs:
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
           layout_repair = dashboard_news_repair.replace('\\', '')
 
-          # Navigation is validated before repair scripts because the scripts are
-          # intentionally allowed to rewrite the dashboard layout after checkout.
-          # Post-repair validation focuses on the implementation markers below.
           checks = {
               'country options': 'Other countries' in activation and 'Nigeria' in activation,
               'currency options': 'USD — US Dollar' in activation and 'NGN — Nigerian Naira' in activation,
@@ -94,6 +91,8 @@ jobs:
               'signup categories': all(x in signup for x in ('Senior Secondary', 'Junior Secondary', 'Primary', 'Book Learner')),
               'signup has phone selector': 'PhoneInput' in signup or 'country' in signup.lower(),
               'dashboard layout repair': 'lg:grid-cols-4' in layout_repair and "n==='PERSONAL'" in layout_repair and 'lg:col-span-4' in layout_repair,
+              'dashboard inline news feed': 'function EducationFeed(){' in dashboard and '<EducationFeed />' in dashboard,
+              'dashboard no external news feed import': "@/components/EducationFeed" not in dashboard,
               'dashboard support': '<ContactSupport />' in dashboard or 'ContactSupport' in dashboard,
               'paid-token access guard': 'no-active-willitoken' in ai,
               'admin active-status logic': 'isUserActive' in admin and 'return tokens.some' in admin,
