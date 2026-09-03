@@ -12,10 +12,21 @@ fs.writeFileSync(activationPath, activation);
 // Dashboard: restore the education-news feed and keep it directly below the
 // Personal card, centered inside the same dashboard content column.
 let dashboard = fs.readFileSync(dashboardPath, 'utf8');
-if (!dashboard.includes("import EducationFeed from '@/components/EducationFeed';")) {
+const feedImport = "import EducationFeed from '@/components/EducationFeed';";
+const dynamicImport = "import dynamic from 'next/dynamic';";
+const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
+
+// EducationFeed uses browser-side state/fetching. Loading it with ssr:false
+// prevents Next's static prerenderer from trying to inspect the client module
+// while still preserving the feed in the dashboard UI after hydration.
+if (dashboard.includes(feedImport)) {
+  dashboard = dashboard.replace(feedImport, `${dynamicImport}\n${feedDeclaration}`);
+} else if (!dashboard.includes(feedDeclaration)) {
   const marker = "import { auth, db } from '@/lib/firebase';";
   if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found.');
-  dashboard = dashboard.replace(marker, `${marker}\nimport EducationFeed from '@/components/EducationFeed';`);
+  if (!dashboard.includes(dynamicImport)) dashboard = dashboard.replace(marker, `${dynamicImport}\n${marker}`);
+  const importAnchor = dashboard.includes(dynamicImport) ? dynamicImport : marker;
+  dashboard = dashboard.replace(importAnchor, `${importAnchor}\n${feedDeclaration}`);
 }
 
 // Four equal cards on the first row; Personal becomes a wider centered card
@@ -34,7 +45,6 @@ dashboard = dashboard.replace(
 // stable anchor when available. During npm prebuild the other repair scripts
 // may already have rewritten the bottom navigation, so repeated runs must not
 // fail merely because that anchor is gone.
-const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const hasFeed = /<EducationFeed\s*\/>/.test(dashboard);
 if (!hasFeed) {
   const navMarker = '<nav className="fixed bottom-0';
@@ -50,7 +60,7 @@ if (!hasFeed) {
   // Collapse any repeated wrappers from older runs to one feed component.
   dashboard = dashboard.replace(/(?:<div className="mt-6 w-full">\s*)+<EducationFeed\s*\/>\s*(?:<\/div>)+/g, '<div className="mt-6 w-full"><EducationFeed /></div>');
 }
-if (!dashboard.includes(feedImport)) throw new Error('EducationFeed import was not preserved.');
+if (!dashboard.includes(feedDeclaration)) throw new Error('EducationFeed client declaration was not preserved.');
 fs.writeFileSync(dashboardPath, dashboard);
 
 // Show 20 items so the visible feed can be exactly 70% Nigerian / 30% foreign.
