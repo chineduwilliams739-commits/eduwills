@@ -10,9 +10,9 @@ const write = (path, value) => fs.writeFileSync(path, value);
 // put Personal on its own centered row, and put the news feed directly below it.
 let dashboard = read(dashboardPath);
 
-// repair-activation-news runs immediately before this script and owns the
-// EducationFeed client-only import/declaration. Never reintroduce a static
-// EducationFeed import here: doing so conflicts with the local dynamic binding.
+// repair-activation-news runs immediately before this script. DashboardPage is
+// already a client component, so keep EducationFeed as a normal static import.
+// Normalize every older dynamic/static form so repeated CI runs are idempotent.
 const feedImport = "import EducationFeed from '@/components/EducationFeed';";
 const dynamicImport = "import dynamic from 'next/dynamic';";
 const feedDeclaration = "const EducationFeed = dynamic(() => import('@/components/EducationFeed'), { ssr: false });";
@@ -23,8 +23,7 @@ dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\
 
 const marker = "import { auth, db } from '@/lib/firebase';";
 if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found');
-dashboard = dashboard.replace(marker, `${dynamicImport}\n${marker}`);
-dashboard = dashboard.replace(marker, `${marker}\n${feedDeclaration}`);
+dashboard = dashboard.replace(marker, `${marker}\n${feedImport}`);
 
 // repair-activation-news runs immediately before this script and may already
 // have changed the grid from five columns to four and inserted EducationFeed.
