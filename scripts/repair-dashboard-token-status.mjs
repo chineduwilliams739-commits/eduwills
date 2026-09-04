@@ -19,9 +19,6 @@ dashboard = dashboard.replace(new RegExp(`^${escapeRegExp(feedDeclaration)}\\s*\
 const marker = "import { auth, db } from '@/lib/firebase';";
 if (!dashboard.includes(marker)) throw new Error('Dashboard Firebase import not found');
 
-// Keep the news feed entirely inside the already-client dashboard module.
-// This makes the repair idempotent and avoids the previous client/server
-// dynamic-import failure during Next static export.
 if (!dashboard.includes('function EducationFeed(){')) {
   const feedFunction = `function EducationFeed(){
  const [items,setItems]=useState<any[]>([]),[loading,setLoading]=useState(true);
@@ -59,10 +56,13 @@ admin = admin.replace(activeFn, `function isUserActive(user: User, tokens: Willi
 
 const revokeOld = `const uid = t.userId || t.uid || '';\n      if (!uid) throw new Error('Token has no owner');\n\n      await deleteDoc(doc(db, 'williTokens', t.id));\n\n      const remainingSnapshot = await getDocs(collection(db, 'williTokens'));\n      const now = Date.now();\n      const remainingTokens = remainingSnapshot.docs\n        .map(x => ({ id: x.id, ...x.data() } as WilliToken))\n        .filter(token => {\n          const owner = token.userId || token.uid;\n          const expiry = expiryDate(token);\n          return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > now;\n        });`;
 const revokeNew = `const uid = t.userId || t.uid || '';\n      if (!uid) throw new Error('Token has no owner');\n      const userDocId = users.find(user => (user.uid || user.id) === uid)?.id || uid;\n\n      await deleteDoc(doc(db, 'williTokens', t.id));\n\n      const remainingSnapshot = await getDocs(collection(db, 'williTokens'));\n      const now = Date.now();\n      const remainingTokens = remainingSnapshot.docs\n        .map(x => ({ id: x.id, ...x.data() } as WilliToken))\n        .filter(token => {\n          const owner = token.userId || token.uid;\n          const expiry = expiryDate(token);\n          return owner === uid && token.revoked !== true && token.cancelled !== true && !!expiry && expiry.getTime() > now;\n        });`;
-if (!admin.includes(revokeOld)) throw new Error('Admin revoke block not found');
-admin = admin.replace(revokeOld, revokeNew);
-admin = admin.replaceAll("updateDoc(doc(db, 'users', uid), {", "updateDoc(doc(db, 'users', userDocId), {");
-admin = admin.replace("          activationExpiresAt: null,\n        });", "          activationExpiresAt: null,\n          activeWilliToken: null,\n        });");
+if (admin.includes(revokeOld)) {
+  admin = admin.replace(revokeOld, revokeNew);
+  admin = admin.replaceAll("updateDoc(doc(db, 'users', uid), {", "updateDoc(doc(db, 'users', userDocId), {");
+  admin = admin.replace("          activationExpiresAt: null,\n        });", "          activationExpiresAt: null,\n          activeWilliToken: null,\n        });");
+} else if (!admin.includes('const userDocId = users.find(user => (user.uid || user.id) === uid)?.id || uid;')) {
+  throw new Error('Admin revoke logic is neither the old form nor the repaired form.');
+}
 write(adminPath, admin);
 
 console.log('Dashboard layout and WilliToken-derived Admin status repair applied.');
