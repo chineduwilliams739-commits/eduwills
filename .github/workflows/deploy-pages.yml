@@ -57,11 +57,6 @@ jobs:
         run: node scripts/harden-admin-willitoken-data.mjs
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
-      # Quiz Studio is already repaired in the repository. Do not run the old
-      # mutation script here because its broad JSX replacements can corrupt
-      # matching <label> structures and make the TypeScript build fail.
-      # Keep the dashboard feed repair last because the other dashboard repair
-      # scripts may rewrite the same source file. The repair is idempotent.
       - name: Re-apply dashboard Personal and news repair
         run: node scripts/repair-activation-news.mjs
       - name: Verify source repairs
@@ -111,7 +106,7 @@ jobs:
               'AI four categories': all(x in ai_page for x in ('Book Learner', 'Senior Secondary', 'Junior Secondary', 'Primary')),
               'AI ten per category': 'QUESTIONS_PER_CATEGORY = 10' in ai_page and 'usage[category]' in ai_page,
               'AI daily category reset': 'toISOString().slice(0, 10)' in ai_page and 'eduwills-ai-category-questions' in ai_page,
-              'quiz v24': "v24-grounded-diverse-fast-generator" in quiz_client,
+              'quiz reliable v25': "v25-grounded-reliable-generator" in quiz_client,
               'faster quiz model': "gemini-3.6-flash" in quiz_client,
               'quiz diversity rules': 'DIVERSITY RULE' in quiz_client and 'DISTRIBUTION RULE' in quiz_client,
               'admin active-status logic': 'isUserActive' in admin and 'return tokens.some' in admin,
