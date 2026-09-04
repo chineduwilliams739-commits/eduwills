@@ -45,3 +45,35 @@ VERIFIED EXACT-BOOK EVIDENCE:
 source = source.slice(0, start) + prompt + source.slice(end);
 fs.writeFileSync(path, source);
 console.log('Quiz generator v24 upgrade applied safely.');
+
+const pagePath = 'app/dashboard/quiz/page.tsx';
+let page = fs.readFileSync(pagePath, 'utf8');
+
+// The page already performs the same research inside generateQuiz(). Doing it here
+// as well doubled the wait time before the first AI request and made timeouts much
+// more likely. Let the generator own research and resume/caching.
+page = page.replace(
+  `      const research = await researchBooks(\n        current.books\n      );\n\n`,
+  ''
+);
+page = page.replace(
+  `        recent,\n        research\n      );`,
+  `        recent\n      );`
+);
+
+const generateMarker = `  async function generate(current: Setup) {`;
+if (!page.includes(generateMarker)) throw new Error('Could not locate quiz generate function safely.');
+page = page.replace(
+  generateMarker,
+  `  async function retryGeneration() {\n    if (!setup) return;\n    setQuizError('');\n    setQuizLoading(true);\n    await generate(setup);\n  }\n\n${generateMarker}`
+);
+
+const resultsMarker = `  /* ------------------------------------------------------------------------ */\n  /* Results                                                                   */\n  /* ------------------------------------------------------------------------ */`;
+if (!page.includes(resultsMarker)) throw new Error('Could not locate quiz results section safely.');
+page = page.replace(
+  resultsMarker,
+  `  /* ------------------------------------------------------------------------ */\n  /* Generation failure                                                        */\n  /* ------------------------------------------------------------------------ */\n\n  if (setup && quizError && !quizLoading && !qs.length && !done) {\n    return (\n      <main className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-cyan-50 p-6">\n        <div className="w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-soft">\n          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-amber-100 text-amber-700">\n            <XCircle size={30} />\n          </div>\n          <h1 className="mt-5 text-2xl font-black">Quiz generation needs another attempt</h1>\n          <p className="mt-2 text-sm leading-6 text-slate-500">{quizError}</p>\n          <p className="mt-3 text-xs leading-5 text-slate-400">Your saved generation progress is kept so EDUWILLS can resume instead of starting from zero.</p>\n          <div className="mt-6 flex gap-3">\n            <button type="button" onClick={retryGeneration} className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-3 font-black text-white">Try again</button>\n            <button type="button" onClick={resetQuiz} className="flex-1 rounded-xl border border-slate-200 px-4 py-3 font-black text-slate-700">Back to Quiz Studio</button>\n          </div>\n        </div>\n      </main>\n    );\n  }\n\n${resultsMarker}`
+);
+
+fs.writeFileSync(pagePath, page);
+console.log('Quiz Studio generation fallback and duplicate research repair applied.');
