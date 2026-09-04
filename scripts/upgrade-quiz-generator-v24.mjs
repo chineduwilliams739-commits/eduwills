@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
-source = source.replace("const CACHE_VERSION = 'v23-grounded-generator-resume';", "const CACHE_VERSION = 'v24-grounded-diverse-fast-generator';");
+source = source.replace("const CACHE_VERSION = 'v23-grounded-generator-resume';", "const CACHE_VERSION = 'v25-grounded-reliable-generator';");
 source = source.replace("model: 'gemini-3.5-flash-lite',", "model: 'gemini-3.6-flash',");
 source = source.replace("    temperature: 0.1,\n", '');
 
@@ -43,8 +43,58 @@ VERIFIED EXACT-BOOK EVIDENCE:
 }`;
 
 source = source.slice(0, start) + prompt + source.slice(end);
+
+const batchStart = source.indexOf('async function generateBatch(');
+const batchEnd = source.indexOf('\n\nexport async function generateQuiz(', batchStart);
+if (batchStart < 0 || batchEnd < 0) throw new Error('Could not locate quiz batch function safely.');
+
+const batch = `async function generateBatch(
+  book: QuizBook,
+  count: number,
+  difficulty: string,
+  instructions: string,
+  previous: string[],
+  research: string,
+) {
+  // Smaller batches are much more reliable than asking the model for a large
+  // JSON payload. The caller can immediately validate and persist each batch.
+  const safeCount = Math.min(5, Math.max(1, count));
+  const prompt = promptFor(book, safeCount, difficulty, instructions, previous, research);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const text = await gateway(prompt, 45000);
+      const parsed = parseQuestions(text);
+      if (parsed.length) return parsed;
+      lastError = new Error('Gateway returned no valid questions');
+    } catch (error) {
+      lastError = error;
+    }
+
+    // Always try the direct Gemini fallback after a gateway failure OR an
+    // unusable gateway response. Previously an empty gateway response skipped
+    // the fallback and caused the whole batch to fail unnecessarily.
+    try {
+      const fallbackText = await geminiText(prompt, 45000);
+      const parsed = parseQuestions(fallbackText);
+      if (parsed.length) return parsed;
+      lastError = new Error('Gemini fallback returned no valid questions');
+    } catch (fallbackError) {
+      lastError = fallbackError;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('AI generation failed');
+}`;
+
+source = source.slice(0, batchStart) + batch + source.slice(batchEnd);
+source = source.replace('const batchSize = Math.min(10, share - local.length);', 'const batchSize = Math.min(5, share - local.length);');
+source = source.replace('while (local.length < share && guard < 8) {', 'while (local.length < share && guard < 12) {');
+source = source.replace('if (!added && guard >= 3) break;', 'if (!added && guard >= 4) break;');
+
 fs.writeFileSync(path, source);
-console.log('Quiz generator v24 upgrade applied safely.');
+console.log('Quiz generator v25 reliability upgrade applied safely.');
 
 const pagePath = 'app/dashboard/quiz/page.tsx';
 let page = fs.readFileSync(pagePath, 'utf8');
