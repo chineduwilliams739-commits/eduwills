@@ -17,7 +17,7 @@ const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const makeToken = () => Array.from({ length: 10 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
 
 type User = { id: string; uid?: string; fullName?: string; username?: string; phone?: string; activated?: boolean; activationStatus?: string; williTokenActive?: boolean; category?: string; categories?: string[]; educationLevel?: string; educationLevels?: string[]; schoolLevel?: string; schoolLevels?: string[]; activationExpiresAt?: any };
-type WilliToken = { id: string; token?: string; userId?: string; uid?: string; username?: string; categories?: string[]; duration?: string; durationMs?: number; createdAt?: any; expiresAt?: any; used?: boolean; redeemed?: boolean; revoked?: boolean; cancelled?: boolean };
+type WilliToken = { id: string; token?: string; userId?: string; uid?: string; username?: string; categories?: string[] | string; duration?: string; durationMs?: number; createdAt?: any; expiresAt?: any; used?: boolean; redeemed?: boolean; revoked?: boolean; cancelled?: boolean };
 type Book = { id: string; userId: string; slot?: number; title: string; author: string };
 type Tab = 'users' | 'tokens' | 'books' | 'accounts';
 
@@ -38,6 +38,19 @@ function getCategories(user: User): string[] {
     user.category || '', user.educationLevel || '', user.schoolLevel || '',
   ].map(String).map(normalizeCategory).filter(Boolean);
   return [...new Set(values)];
+}
+
+function getTokenCategories(token: WilliToken): string[] {
+  const value = token.categories;
+  if (Array.isArray(value)) return [...new Set(value.map(String).map(normalizeCategory).filter(Boolean))];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return [...new Set(parsed.map(String).map(normalizeCategory).filter(Boolean))];
+    } catch {}
+    return [...new Set(value.split(',').map(String).map(normalizeCategory).filter(Boolean))];
+  }
+  return [];
 }
 
 function expiryDate(token?: WilliToken): Date | null {
@@ -177,7 +190,7 @@ export default function AdminPage() {
     if (!q) return source;
     return source.filter(t => {
       const owner = userName(t.userId || t.uid || '');
-      const text = `${t.token || t.id} ${t.username || ''} ${owner} ${(t.categories || []).join(' ')} ${t.duration || ''} ${t.redeemed || t.used ? 'redeemed' : 'not redeemed'}`;
+      const text = `${t.token || t.id} ${t.username || ''} ${owner} ${getTokenCategories(t).join(' ')} ${t.duration || ''} ${t.redeemed || t.used ? 'redeemed' : 'not redeemed'}`;
       return text.toLowerCase().includes(q);
     });
   }, [tokens, tokenSearch, selectedUid, users]);
@@ -272,7 +285,7 @@ export default function AdminPage() {
 
   const deleteExpiredToken = async (t: WilliToken) => {
     if (!window.confirm('Delete this expired WilliToken permanently?')) return;
-    try { await deleteDoc(doc(db, 'williTokens', t.id)); await load(); } catch { alert('Could not delete the token.'); }
+    try { await deleteDoc(doc(db, 'williTokens', t.id)); await load(); } catch { alert('Could not delete the expired WilliToken.'); }
   };
 
   const saveCategories = async () => {
@@ -360,7 +373,7 @@ export default function AdminPage() {
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-cyan-300">Token records</p><h2 className="mt-1 text-2xl font-black">Redeemed, active and expired</h2></div><button onClick={() => load(true)} className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm font-black">Refresh</button></div>
               <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4"><Search size={18} className="text-slate-400" /><input value={tokenSearch} onChange={e => setTokenSearch(e.target.value)} placeholder="Search token, user, category or status" className="w-full bg-transparent py-3.5 text-sm outline-none" /></div>
-              <div className="mt-4 space-y-3">{filteredTokens.map(t => { const exp = expiryDate(t); const expired = !!exp && exp.getTime() <= Date.now(); return <div key={t.id} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><code className="font-black text-cyan-200">{t.token || t.id}</code><p className="mt-1 text-xs text-slate-400">{userName(t.userId || t.uid || '')} · {t.categories?.join(', ') || 'No category recorded'}</p></div><div className="text-right text-xs font-bold"><p className={t.revoked ? 'text-red-300' : expired ? 'text-slate-400' : 'text-emerald-300'}>{t.revoked ? 'Revoked' : expired ? 'Expired' : 'Active'}</p><p className="text-slate-500">{t.redeemed || t.used ? 'Redeemed' : 'Not redeemed'}</p></div></div><p className="mt-2 text-xs text-slate-500">Expires: {formatDate(exp)} · {remaining(exp)}</p><div className="mt-3 flex flex-wrap gap-2">{!expired && !t.revoked && <button onClick={() => revokeToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Revoke</button>}{expired && <button onClick={() => deleteExpiredToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Delete expired</button>}</div></div>})}</div>
+              <div className="mt-4 space-y-3">{filteredTokens.map(t => { const exp = expiryDate(t); const expired = !!exp && exp.getTime() <= Date.now(); const categories = getTokenCategories(t); return <div key={t.id} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><code className="font-black text-cyan-200">{t.token || t.id}</code><p className="mt-1 text-xs text-slate-400">{userName(t.userId || t.uid || '')} · {categories.join(', ') || 'No category recorded'}</p></div><div className="text-right text-xs font-bold"><p className={t.revoked ? 'text-red-300' : expired ? 'text-slate-400' : 'text-emerald-300'}>{t.revoked ? 'Revoked' : expired ? 'Expired' : 'Active'}</p><p className="text-slate-500">{t.redeemed || t.used ? 'Redeemed' : 'Not redeemed'}</p></div></div><p className="mt-2 text-xs text-slate-500">Expires: {formatDate(exp)} · {remaining(exp)}</p><div className="mt-3 flex flex-wrap gap-2">{!expired && !t.revoked && <button onClick={() => revokeToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Revoke</button>}{expired && <button onClick={() => deleteExpiredToken(t)} className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200"><Trash2 size={14}/> Delete expired</button>}</div></div>})}</div>
               {!filteredTokens.length && <p className="mt-4 rounded-2xl border border-white/10 bg-slate-900/50 p-5 text-center text-sm text-slate-500">No WilliTokens match your search.</p>}
             </div>
           </section>
