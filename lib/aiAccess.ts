@@ -55,12 +55,11 @@ async function findActiveToken(uid: string, username: string, now: number): Prom
   const candidates = new Map<string, any>();
   const collect = (snap: any) => snap.docs.forEach((item: any) => candidates.set(item.id, { id: item.id, ...item.data() }));
 
-  collect(await getDocs(query(collection(db, 'williTokens'), where('uid', '==', uid))));
+  // The Firestore rule authorizes token reads by userId. Queries on uid or
+  // username can be rejected because Firestore must prove every returned
+  // document satisfies the rule. That rejection was making activated users
+  // appear as "Activation check: checking" on EDUWILLS AI.
   collect(await getDocs(query(collection(db, 'williTokens'), where('userId', '==', uid))));
-  if (username) {
-    collect(await getDocs(query(collection(db, 'williTokens'), where('username', '==', username))));
-    collect(await getDocs(query(collection(db, 'williTokens'), where('username', '==', `@${username.replace(/^@/, '')}`))));
-  }
 
   const linked = String((await getDoc(doc(db, 'users', uid))).data()?.activeWilliToken || '').trim();
   if (linked && !candidates.has(linked)) {
