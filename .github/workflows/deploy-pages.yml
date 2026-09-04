@@ -57,8 +57,9 @@ jobs:
         run: node scripts/repair-activation-final.mjs
       - name: Apply Admin WilliToken data hardening
         run: node scripts/harden-admin-willitoken-data.mjs
-      - name: Apply Quiz Studio interactive-control repair
-        run: node scripts/fix-quiz-studio-interactive-controls.mjs
+      # The Quiz Studio source is already repaired in the repository. The old
+      # mutation script could rewrite matched JSX labels into an invalid tag
+      # structure during deployment, so do not mutate this page in CI.
       # Keep the dashboard feed repair last because the other dashboard repair
       # scripts may rewrite the same source file. The repair is idempotent.
       - name: Re-apply dashboard Personal and news repair
