@@ -51,7 +51,7 @@ export default function AIPage() {
           tokenCategories = tokens.docs.flatMap(x => { const t: any = x.data(); const exp = tokenExpiry(t.expiresAt || t.activationExpiresAt || t.expiry); if (t.revoked === true || t.cancelled === true || (exp && exp <= now)) return []; return Array.isArray(t.categories) ? t.categories : []; });
         } catch {}
         const categories = normaliseCategories([...(Array.isArray(d.categories) ? d.categories : []), ...(Array.isArray(d.educationLevels) ? d.educationLevels : []), ...(Array.isArray(d.schoolLevels) ? d.schoolLevels : []), d.category, d.educationLevel, d.schoolLevel, ...tokenCategories]);
-        const available = categories.length ? categories : ['Book Learner'];
+        const available: Category[] = categories.length ? categories : ['Book Learner'];
         setUnlocked(available);
         const saved = categoryLabel(d.activeCategory || sessionStorage.getItem('eduwills_active_category') || localStorage.getItem('eduwills_active_category'));
         if (saved && available.includes(saved)) setCategory(saved); else if (!available.includes(category)) setCategory(available[0]);
