@@ -60,6 +60,10 @@ page = page.replace(
   `        recent,\n        research\n      );`,
   `        recent\n      );`
 );
+page = page.replace(
+  `  explainFailure as explainQuizFailure,\n  generateQuiz,\n  generateRemarks,\n  researchBooks,\n`,
+  `  explainFailure as explainQuizFailure,\n  generateQuiz,\n  generateRemarks,\n`
+);
 
 const generateMarker = `  async function generate(current: Setup) {`;
 if (!page.includes(generateMarker)) throw new Error('Could not locate quiz generate function safely.');
