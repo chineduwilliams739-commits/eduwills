@@ -28,6 +28,44 @@ source = source.replace(/\n\s*const fallbackError: unknown;\n/, '\n');
 source = source.replace(/\n\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
 source = source.replace(/ \| firebase=' \+ describe\(fallbackError\)/g, '');
 
+// Replace the whole batch function after all earlier quiz hardening scripts have
+// run. This makes the gateway path deterministic and adds exponential backoff
+// for transient 429/5xx/network failures without ever reintroducing Gemini.
+const batchStart = source.indexOf('async function generateBatch(');
+const batchEnd = source.indexOf('\n\nexport async function generateQuiz(', batchStart);
+if (batchStart >= 0 && batchEnd > batchStart) {
+  const batchBlock = `async function generateBatch(
+  book: QuizBook,
+  count: number,
+  difficulty: string,
+  instructions: string,
+  previous: string[],
+  research: string,
+) {
+  const prompt = promptFor(book, count, difficulty, instructions, previous, research);
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const text = await gateway(prompt, 45000);
+      const parsed = parseQuestions(text);
+      if (parsed.length) return parsed;
+      lastError = new Error('Gateway returned no valid questions');
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < 4) {
+      const delay = Math.min(12000, 1200 * (2 ** attempt) + Math.floor(Math.random() * 900));
+      await new Promise((resolve) => window.setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('AI generation failed');
+}`;
+  source = source.slice(0, batchStart) + batchBlock + source.slice(batchEnd);
+}
+
 // Keep the real parallel constants at 10 x 10. The parallel hardening script
 // already owns the actual orchestration; these replacements are a final guard.
 source = source.replace(/const QUIZ_BATCH_SIZE = 8;/g, 'const QUIZ_BATCH_SIZE = 10;');
@@ -57,8 +95,8 @@ source = source.replace(/\bgeminiText\([^\n]*\)\s*;?/g, '');
 source = source.replace(/\n\s*const fallbackError: unknown;?/g, '');
 source = source.replace(/\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
 
-// Keep the deployment's existing v29 source-verification contract.
-source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v29-gateway-first-fast-generator';");
+// Keep the deployment's existing v30 source-verification contract.
+source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v30-gateway-retry-resume';");
 
 // Legacy CI marker only: the historical verifier expects the old model name.
 // It is not used as a provider or model configuration.
@@ -71,11 +109,14 @@ if (/getAI\(|GoogleAIBackend|gemini\.generateContent|geminiText\(/.test(source))
 if (/firebase='|fallbackError|firebase\s*\+/.test(source)) {
   throw new Error('Quiz client still contains the removed Firebase/Gemini fallback error path.');
 }
+if (!/gateway\(prompt, 45000\)/.test(source)) {
+  throw new Error('Gateway retry batch finalizer was not applied.');
+}
 
 fs.writeFileSync(path, source);
 
 // Compatibility marker for the existing deployment verifier. The actual
-// parallel implementation in this script remains 10 concurrent x 10 questions.
+// parallel implementation in this script remains 10 concurrent x 10-question batches.
 const parallelPath = 'scripts/harden-quiz-parallel-generation.mjs';
 let parallelSource = fs.readFileSync(parallelPath, 'utf8');
 const legacyParallelMarkers = '\n// Legacy CI markers only; production target is 10 concurrent x 10-question batches.\n// QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8\n';
@@ -84,4 +125,4 @@ if (!parallelSource.includes('QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8'))
   fs.writeFileSync(parallelPath, parallelSource);
 }
 
-console.log('Quiz provider policy finalized: Groq -> OpenRouter -> validated cache; 10 concurrent 10-question batches.');
+console.log('Quiz provider policy finalized: Groq -> OpenRouter -> validated cache; 10 concurrent 10-question batches with retry/backoff.');
