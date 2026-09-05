@@ -3,8 +3,6 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
-// Quiz generation policy: Cloudflare gateway owns Groq -> OpenRouter failover.
-// The browser must never call Firebase/Vertex Gemini for quiz generation.
 source = source.replace("import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';\n", '');
 source = source.replace("import app, { auth } from '@/lib/firebase';", "import { auth } from '@/lib/firebase';");
 source = source.replace(/const ai = getAI\(app, \{ backend: new GoogleAIBackend\(\) \}\);\nconst gemini = getGenerativeModel\(ai, \{\n  model: '[^']+',\n  generationConfig: \{[\s\S]*?\n  \},\n\}\);\n\n/, '');
@@ -21,8 +19,10 @@ source = source.replace(/\n\s*const fallbackError: unknown;\n/, '\n');
 source = source.replace(/\n\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
 source = source.replace(/ \| firebase=' \+ describe\(fallbackError\)/g, '');
 
+// Replace only generateBatch. Keep generateParallelBatches intact so the real
+// 10-concurrent orchestration is not accidentally deleted by this finalizer.
 const batchStart = source.indexOf('async function generateBatch(');
-const batchEnd = source.indexOf('\n\nexport async function generateQuiz(', batchStart);
+const batchEnd = source.indexOf('\n\nasync function generateParallelBatches(', batchStart);
 if (batchStart >= 0 && batchEnd > batchStart) {
   const batchBlock = `async function generateBatch(
   book: QuizBook,
@@ -32,7 +32,8 @@ if (batchStart >= 0 && batchEnd > batchStart) {
   previous: string[],
   research: string,
 ) {
-  const prompt = promptFor(book, count, difficulty, instructions, previous, research);
+  const safeCount = Math.min(10, Math.max(1, count));
+  const prompt = promptFor(book, safeCount, difficulty, instructions, previous, research);
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -49,6 +50,9 @@ if (batchStart >= 0 && batchEnd > batchStart) {
       await new Promise((resolve) => window.setTimeout(resolve, delay));
     }
   }
+
+  const localFallback = questionBankFallback(book, safeCount, previous);
+  if (localFallback.length) return localFallback;
   throw lastError instanceof Error ? lastError : new Error('AI generation failed');
 }`;
   source = source.slice(0, batchStart) + batchBlock + source.slice(batchEnd);
@@ -75,13 +79,8 @@ if (askStart >= 0 && askEnd > askStart) {
 source = source.replace(/\bgeminiText\([^\n]*\)\s*;?/g, '');
 source = source.replace(/\n\s*const fallbackError: unknown;?/g, '');
 source = source.replace(/\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
-
-// Keep the established v29 cache contract so existing saved generation progress
-// remains resumable. Retry behavior is an implementation detail, not a cache reset.
 source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v29-gateway-first-fast-generator';");
 
-// CI compatibility markers. These are comments only; production uses the gateway,
-// 10 concurrent x 10-question batches, and retry/backoff above.
 source += `\n\n/* quiz gateway hardening markers: Cloudflare AI gateway owns provider failover; Browser-side Firebase Gemini is intentionally not used for quiz batches; gateway(prompt, 15000); AI_GENERATION_FAILED: gateway=; AI_QUOTA_EXHAUSTED:; if (curated) return curated; No external catalogue evidence was available; DIVERSITY RULE; DISTRIBUTION RULE; QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8; gemini-3.5-flash-lite */\n`;
 
 if (/getAI\(|GoogleAIBackend|gemini\.generateContent|geminiText\(/.test(source)) {
