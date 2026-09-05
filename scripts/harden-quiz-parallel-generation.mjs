@@ -67,19 +67,25 @@ async function generateParallelBatches(
     });
 
     const settled = await Promise.allSettled(jobs);
-    let produced = 0;
+    const wave: QuizQuestion[] = [];
+    const waveSeen = new Set<string>();
     for (const result of settled) {
       if (result.status !== 'fulfilled') continue;
-      results.push(result.value);
-      produced += result.value.length;
+      for (const question of result.value) {
+        const key = fingerprint(question.question);
+        if (!key || waveSeen.has(key)) continue;
+        if (wave.some((item) => similar(item.question, question.question))) continue;
+        waveSeen.add(key);
+        wave.push(question);
+      }
     }
 
-    if (produced === 0) break;
-    remaining -= produced;
-    if (results.flat().length >= needed) break;
+    if (!wave.length) break;
+    results.push(wave);
+    remaining = Math.max(0, needed - results.flat().length);
+    if (remaining === 0) break;
 
-    const waveQuestions = results.flat().map((question) => question.question);
-    previous = [...previous, ...waveQuestions].slice(-100);
+    previous = [...previous, ...wave.map((question) => question.question)].slice(-100);
   }
 
   return results.flat();
