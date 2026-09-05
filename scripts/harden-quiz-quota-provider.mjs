@@ -39,8 +39,15 @@ source = source.replace(/const QUIZ_BATCH_CONCURRENCY = 4;/g, 'const QUIZ_BATCH_
 const askStart = source.indexOf('export async function askEduwills(');
 const askEnd = source.indexOf('\n\nexport async function explainFailure(', askStart);
 if (askStart >= 0 && askEnd > askStart) {
-  let askBlock = source.slice(askStart, askEnd);
-  askBlock = askBlock.replace(/\n\s*try \{\n\s*return clean\(await geminiText\([\s\S]*?\n\s*\} catch \{\n\s*return 'EDUWILLS AI is temporarily busy\\. Please try again in a moment\\.';\n\s*\}/, "\n    return 'EDUWILLS AI is temporarily busy. Please try again in a moment.';");
+  const askBlock = `export async function askEduwills(conversation: string) {
+  const instruction = \`You are EDUWILLS AI, a study assistant. Answer directly and accurately. If the learner asks about a specific book and the evidence is insufficient, say so instead of inventing details. Plain readable text only. Conversation:\\n\${conversation}\`;
+
+  try {
+    return clean(await gateway(instruction, 30000));
+  } catch {
+    return 'EDUWILLS AI is temporarily busy. Please try again in a moment.';
+  }
+}`;
   source = source.slice(0, askStart) + askBlock + source.slice(askEnd);
 }
 
