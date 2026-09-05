@@ -1,0 +1,38 @@
+name: Harden Quiz Runtime Diagnostics
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quiz-runtime-hardening
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply quiz runtime hardening
+        run: node scripts/harden-quiz-runtime-errors.mjs
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No quiz runtime changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/quizAiClientStable.ts app/dashboard/quiz/page.tsx
+          git commit -m 'Harden quiz runtime failure reporting'
+          git push origin HEAD:main
