@@ -32,8 +32,6 @@ client = client.replace(/const QUIZ_BATCH_CONCURRENCY = \d+;/, 'const QUIZ_BATCH
 client = client.replace(/const QUIZ_BATCH_SIZE = \d+;/, 'const QUIZ_BATCH_SIZE = 8;');
 client = client.replace(/const QUIZ_PROVIDER_TIMEOUT = \d+;/, 'const QUIZ_PROVIDER_TIMEOUT = 12000;');
 
-// Keep the retry path short and deterministic. A temporary provider failure should not
-// leave the student waiting for many minutes before seeing a usable result.
 const generateBatchStart = client.indexOf('async function generateBatch(');
 const generateBatchEnd = client.indexOf('\n\nasync function generateParallelBatches(', generateBatchStart);
 if (generateBatchStart >= 0 && generateBatchEnd > generateBatchStart) {
@@ -47,7 +45,6 @@ fs.writeFileSync(clientPath, client);
 const pagePath = 'app/dashboard/quiz/page.tsx';
 let page = fs.readFileSync(pagePath, 'utf8');
 
-// The exam clock must begin only after all questions have been validated and rendered.
 page = page.replace(/\n\s*const startedAtMs = Date\.now\(\);\n\n\s*const minutes =/, '\n      const minutes =');
 page = page.replace(
   /startedAtMs,\n\s*endAtMs: minutes\n\s*\? startedAtMs \+ minutes \* 60000\n\s*: null,/,
@@ -79,7 +76,6 @@ const newReady = `      const readyAtMs = Date.now();
       } catch {}`;
 if (page.includes(oldReady)) page = page.replace(oldReady, newReady);
 
-// Never expose empty JSON/string payloads from the failure explanation endpoint.
 const oldExplain = `      setWhy((p) => ({
         ...p,
         [i]: cleanText(text),
@@ -98,11 +94,5 @@ const newExplain = `      let readable = cleanText(text);
       setWhy((p) => ({ ...p, [i]: readable }));`;
 if (page.includes(oldExplain)) page = page.replace(oldExplain, newExplain);
 
-// Do not expose the retry UI immediately. The generator is allowed to recover silently.
-page = page.replace(
-  "      setQuizError(\n        rawError === 'AI_QUOTA_EXHAUSTED'",
-  "      setQuizError(\n        rawError === 'AI_QUOTA_EXHAUSTED'",
-);
-
 fs.writeFileSync(pagePath, page);
-console.log('Quiz generation UX hardening applied: bounded research, faster recovery, full timer after generation, safe explanations.');
+console.log('Quiz generation UX hardening applied successfully.');
