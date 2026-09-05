@@ -112,7 +112,7 @@ jobs:
               'quiz reliable v27': "v27-fast-reliable-generator" in quiz_client,
               'faster quiz model': "gemini-3.6-flash" in quiz_client,
               'quiz diversity rules': 'DIVERSITY RULE' in quiz_client and 'DISTRIBUTION RULE' in quiz_client,
-              'quiz fast batches': 'const safeCount = Math.min(10' in quiz_client and 'gateway(prompt, 45000)' in quiz_client,
+              'quiz fast batches': 'gateway(prompt, 30000)' in quiz_client and 'geminiText(prompt, 30000)' in quiz_client,
               'quiz curated research shortcut': 'if (curated) return curated;' in quiz_client,
               'quiz no-evidence fallback': 'No external catalogue evidence was available' in quiz_client,
               'quiz preserves gateway error': 'AI_GENERATION_FAILED: gateway=' in quiz_client and 'firebase=' in quiz_client,
