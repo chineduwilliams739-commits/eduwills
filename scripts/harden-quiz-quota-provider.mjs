@@ -95,6 +95,32 @@ if (!/gateway\(prompt, 45000\)/.test(source)) {
 
 fs.writeFileSync(path, source);
 
+// Inject the quiz integrity guard into the page during the production build.
+// Keeping this finalizer idempotent makes repeated CI repairs safe.
+const quizPagePath = 'app/dashboard/quiz/page.tsx';
+let quizPage = fs.readFileSync(quizPagePath, 'utf8');
+
+if (!quizPage.includes("QuizTabSwitchGuard from '@/components/QuizTabSwitchGuard'")) {
+  quizPage = quizPage.replace(
+    "} from '@/lib/quizAiClient';",
+    "} from '@/lib/quizAiClient';\nimport QuizTabSwitchGuard from '@/components/QuizTabSwitchGuard';"
+  );
+}
+
+const activeQuizMain = '<main className="min-h-screen bg-paper text-ink">';
+const guardMarkup = `\n        <QuizTabSwitchGuard\n          quizId={setup.id}\n          active={!done && !quizLoading}\n          onAutoSubmit={() => submitQuiz(true)}\n        />`;
+
+if (!quizPage.includes('<QuizTabSwitchGuard')) {
+  const mainIndex = quizPage.indexOf(activeQuizMain);
+  if (mainIndex < 0) {
+    throw new Error('Could not locate the active quiz page root for integrity guard injection.');
+  }
+  const insertAt = mainIndex + activeQuizMain.length;
+  quizPage = quizPage.slice(0, insertAt) + guardMarkup + quizPage.slice(insertAt);
+}
+
+fs.writeFileSync(quizPagePath, quizPage);
+
 const parallelPath = 'scripts/harden-quiz-parallel-generation.mjs';
 let parallelSource = fs.readFileSync(parallelPath, 'utf8');
 const legacyParallelMarkers = '\n// Legacy CI markers only; production target is 10 concurrent x 10-question batches.\n// QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8\n';
@@ -103,4 +129,4 @@ if (!parallelSource.includes('QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8'))
   fs.writeFileSync(parallelPath, parallelSource);
 }
 
-console.log('Quiz provider policy finalized: Groq -> OpenRouter -> validated cache; 10 concurrent 10-question batches with retry/backoff.');
+console.log('Quiz provider policy finalized: Groq -> OpenRouter -> validated cache; 10 concurrent 10-question batches with retry/backoff. Quiz tab-switch guard enabled: warnings 1 and 2, automatic submission on violation 3.');
