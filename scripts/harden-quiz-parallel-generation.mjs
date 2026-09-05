@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
-const cacheHelpersMarker = 'const QUIZ_BATCH_CONCURRENCY = 4;';
+const cacheHelpersMarker = "const BASE = '/eduwills';";
 const cacheHelpers = `const QUESTION_BANK_VERSION = 'v1';
 const QUESTION_BANK_PREFIX = 'eduwills_quiz_question_bank:';
 const QUESTION_BANK_MAX = 1200;
@@ -63,8 +63,8 @@ function questionBankFallback(book: QuizBook, count: number, previous: string[])
 const QUIZ_BATCH_CONCURRENCY = 4;`;
 
 if (!source.includes('const QUESTION_BANK_VERSION')) {
-  if (!source.includes(cacheHelpersMarker)) throw new Error('Could not locate quiz batch concurrency marker safely.');
-  source = source.replace(cacheHelpersMarker, cacheHelpers);
+  if (!source.includes(cacheHelpersMarker)) throw new Error('Could not locate quiz cache insertion marker safely.');
+  source = source.replace(cacheHelpersMarker, cacheHelpers + '\n\n' + cacheHelpersMarker);
 }
 
 const start = source.indexOf('async function generateBatch(');
