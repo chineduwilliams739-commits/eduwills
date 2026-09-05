@@ -5,7 +5,7 @@ let source = fs.readFileSync(path, 'utf8');
 
 source = source.replace("import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';\n", '');
 source = source.replace("import app, { auth } from '@/lib/firebase';", "import { auth } from '@/lib/firebase';");
-source = source.replace(/const ai = getAI\(app, \{ backend: new GoogleAIBackend\(\) \}\);\nconst gemini = getGenerativeModel\(ai, \{\n  model: '[^']+',\n  generationConfig: \{[\s\S]*?\n  \},\n\}\);\n\n/, '');
+source = source.replace(/const ai = getAI\(app, \{ backend: new GoogleAIBackend\(\) \}\);\nconst gemini = getGenerativeModel\(ai, \{[\s\S]*?\n\}\);\n\n/, '');
 
 const geminiStart = source.indexOf('async function geminiText(');
 if (geminiStart >= 0) {
@@ -19,8 +19,6 @@ source = source.replace(/\n\s*const fallbackError: unknown;\n/, '\n');
 source = source.replace(/\n\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
 source = source.replace(/ \| firebase=' \+ describe\(fallbackError\)/g, '');
 
-// Replace only generateBatch. Keep generateParallelBatches intact so the real
-// 10-concurrent orchestration is not accidentally deleted by this finalizer.
 const batchStart = source.indexOf('async function generateBatch(');
 const batchEnd = source.indexOf('\n\nasync function generateParallelBatches(', batchStart);
 if (batchStart >= 0 && batchEnd > batchStart) {
@@ -79,9 +77,7 @@ if (askStart >= 0 && askEnd > askStart) {
 source = source.replace(/\bgeminiText\([^\n]*\)\s*;?/g, '');
 source = source.replace(/\n\s*const fallbackError: unknown;?/g, '');
 source = source.replace(/\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
-source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v29-gateway-first-fast-generator';");
-
-source += `\n\n/* quiz gateway hardening markers: Cloudflare AI gateway owns provider failover; Browser-side Firebase Gemini is intentionally not used for quiz batches; gateway(prompt, 15000); AI_GENERATION_FAILED: gateway=; AI_QUOTA_EXHAUSTED:; if (curated) return curated; No external catalogue evidence was available; DIVERSITY RULE; DISTRIBUTION RULE; QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8; gemini-3.5-flash-lite */\n`;
+source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v30-explanation-timer-gateway-first';");
 
 if (/getAI\(|GoogleAIBackend|gemini\.generateContent|geminiText\(/.test(source)) {
   throw new Error('Quiz client still contains a browser-side Gemini path after finalization.');
@@ -95,8 +91,6 @@ if (!/gateway\(prompt, 45000\)/.test(source)) {
 
 fs.writeFileSync(path, source);
 
-// Inject the quiz integrity guard into the page during the production build.
-// Keeping this finalizer idempotent makes repeated CI repairs safe.
 const quizPagePath = 'app/dashboard/quiz/page.tsx';
 let quizPage = fs.readFileSync(quizPagePath, 'utf8');
 
@@ -112,11 +106,15 @@ const guardMarkup = `\n        <QuizTabSwitchGuard\n          quizId={setup.id}\
 
 if (!quizPage.includes('<QuizTabSwitchGuard')) {
   const mainIndex = quizPage.indexOf(activeQuizMain);
-  if (mainIndex < 0) {
-    throw new Error('Could not locate the active quiz page root for integrity guard injection.');
-  }
+  if (mainIndex < 0) throw new Error('Could not locate quiz page root.');
   const insertAt = mainIndex + activeQuizMain.length;
   quizPage = quizPage.slice(0, insertAt) + guardMarkup + quizPage.slice(insertAt);
+}
+
+const generatedMarker = `      setQs(\n        generated.slice(\n          0,\n          current.questions\n        )\n      );\n\n      setQuizError('');`;
+const generatedReplacement = `      const readyQuestions = generated.slice(\n        0,\n        current.questions\n      );\n\n      setQs(readyQuestions);\n\n      const actualStartMs = Date.now();\n      const timedSetup = {\n        ...current,\n        startedAtMs: actualStartMs,\n        endAtMs: current.duration\n          ? actualStartMs + current.duration * 60000\n          : null,\n      };\n\n      setSetup(timedSetup);\n      setElapsed(0);\n      setSeconds(\n        current.duration\n          ? current.duration * 60\n          : null\n      );\n      setTimeWarning('');\n\n      setQuizError('');`;
+if (quizPage.includes(generatedMarker) && !quizPage.includes('const actualStartMs = Date.now();')) {
+  quizPage = quizPage.replace(generatedMarker, generatedReplacement);
 }
 
 fs.writeFileSync(quizPagePath, quizPage);
@@ -129,4 +127,4 @@ if (!parallelSource.includes('QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8'))
   fs.writeFileSync(parallelPath, parallelSource);
 }
 
-console.log('Quiz provider policy finalized: Groq -> OpenRouter -> validated cache; 10 concurrent 10-question batches with retry/backoff. Quiz tab-switch guard enabled: warnings 1 and 2, automatic submission on violation 3.');
+console.log('Quiz provider policy finalized: gateway-first generation, 10 concurrent 10-question batches, and quiz timer starts only after generated questions are ready.');
