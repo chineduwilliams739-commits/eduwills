@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
-source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v26-fast-reliable-generator';");
+source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v27-fast-reliable-generator';");
 source = source.replace(/model: 'gemini-[^']+',/, "model: 'gemini-3.6-flash',");
 source = source.replace("    temperature: 0.1,\n", '');
 
@@ -19,13 +19,14 @@ const prompt = `function promptFor(
   previous: string[],
   research: string,
 ) {
+  const evidence = research.trim() || 'No external catalogue evidence was available. Use only facts you are genuinely confident belong to this exact book and do not invent or infer unsupported details.';
   return \`You are EDUWILLS Book Intelligence AI, an expert educational quiz writer.
 
 Generate EXACTLY \${count} factual multiple-choice questions about ONLY this exact book: \${book.title} by \${book.author}.
 
 IDENTITY LOCK: The title and author together identify the exact work. Never substitute another edition, adaptation, similarly named work, mythology source, city, person, or general-knowledge fact.
 
-EVIDENCE LOCK: Every question, option, correct answer, and explanation must be supported by the exact-book evidence below. If the evidence does not establish a fact, do not use it. Never infer plot, gender, age, occupation, relationships, chronology, setting, nationality, appearance, or events from names or stereotypes.
+EVIDENCE LOCK: Prefer the exact-book evidence below. When external evidence is present, every question, option, correct answer, and explanation must be supported by it. When external evidence is unavailable, use only well-established knowledge you are genuinely confident is about this exact book. Never guess. Never infer plot, gender, age, occupation, relationships, chronology, setting, nationality, appearance, or events from names or stereotypes.
 
 DIVERSITY RULE: Rotate across characters, relationships, events, motivations, setting, chronology, causes, consequences, themes, conflict, decisions, important details, supported inference, literary techniques, symbolism, vocabulary-in-context, and interpretation. Do not ask the same fact twice or use the same question pattern repeatedly.
 
@@ -38,7 +39,8 @@ FORMAT: Return ONLY valid JSON: {\"questions\":[{\"question\":\"...\",\"options\
 USER INSTRUCTIONS: \${instructions || 'Create a diverse quiz from the actual book content.'}
 PREVIOUS QUESTIONS TO AVOID: \${previous.slice(-30).join(' | ')}
 
-VERIFIED EXACT-BOOK EVIDENCE:\n\${research.slice(0, 50000)}\`;
+VERIFIED EXACT-BOOK EVIDENCE:
+\${evidence.slice(0, 50000)}\`;
 }`;
 
 source = source.slice(0, start) + prompt + source.slice(end);
@@ -50,9 +52,6 @@ if (researchStart < 0 || researchEnd < 0) throw new Error('Could not locate rese
 const research = `export async function researchBooks(books: QuizBook[]): Promise<string> {
   if (!books.length) return '';
 
-  // Curated verified evidence is already sufficient for books we explicitly know.
-  // Do not make extra Google Books/Open Library requests for those books: that
-  // duplicate network work was a major source of Quiz Studio latency.
   const curated = curatedFor(books);
   if (curated) return curated;
 
@@ -99,8 +98,6 @@ const batch = `async function generateBatch(
   previous: string[],
   research: string,
 ) {
-  // One call should normally produce the whole small batch. This removes the
-  // previous 2-3 attempt loop that made a 10-question quiz painfully slow.
   const safeCount = Math.min(10, Math.max(1, count));
   const prompt = promptFor(book, safeCount, difficulty, instructions, previous, research);
   let lastError: unknown;
@@ -114,7 +111,6 @@ const batch = `async function generateBatch(
     lastError = error;
   }
 
-  // One direct Gemini fallback only when the gateway fails or returns unusable data.
   try {
     const fallbackText = await geminiText(prompt, 25000);
     const parsed = parseQuestions(fallbackText);
@@ -134,9 +130,10 @@ source = source.replace('while (local.length < share && guard < 12) {', 'while (
 source = source.replace('while (local.length < share && guard < 8) {', 'while (local.length < share && guard < 6) {');
 source = source.replace('if (!added && guard >= 4) break;', 'if (!added && guard >= 2) break;');
 source = source.replace('if (!added && guard >= 3) break;', 'if (!added && guard >= 2) break;');
+source = source.replace("    if (!evidence.trim()) {\n      throw new Error(`No verified evidence was found for ${book.title} by ${book.author}.`);\n    }\n", '');
 
 fs.writeFileSync(path, source);
-console.log('Quiz generator v26 fast/reliable upgrade applied safely.');
+console.log('Quiz generator v27 fast/reliable upgrade applied safely.');
 
 const pagePath = 'app/dashboard/quiz/page.tsx';
 let page = fs.readFileSync(pagePath, 'utf8');
