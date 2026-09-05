@@ -8,11 +8,10 @@ let source = fs.readFileSync(path, 'utf8');
 source = source.replace("import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';\n", '');
 source = source.replace("import app, { auth } from '@/lib/firebase';", "import { auth } from '@/lib/firebase';");
 
-const aiStart = source.indexOf('const ai = getAI(');
-const normStart = source.indexOf('const norm = (value: string) =>');
-if (aiStart >= 0 && normStart > aiStart) {
-  source = source.slice(0, aiStart) + source.slice(normStart);
-}
+// Remove only the Firebase Gemini initialization block. Do not slice from the
+// AI declaration to `norm`: the parallel hardening script deliberately inserts
+// question-bank helpers between those locations.
+source = source.replace(/const ai = getAI\(app, \{ backend: new GoogleAIBackend\(\) \}\);\nconst gemini = getGenerativeModel\(ai, \{\n  model: '[^']+',\n  generationConfig: \{[\s\S]*?\n  \},\n\}\);\n\n/, '');
 
 const geminiStart = source.indexOf('async function geminiText(');
 if (geminiStart >= 0) {
@@ -29,21 +28,22 @@ source = source.replace(/\n\s*const fallbackError: unknown;\n/, '\n');
 source = source.replace(/\n\s*\| firebase=' \+ describe\(fallbackError\)/g, '');
 source = source.replace(/ \| firebase=' \+ describe\(fallbackError\)/g, '');
 
-// The parallel-generation repair installs the batch orchestration. Keep the
-// final production target at ten 10-question batches: one wave can issue up to
-// 100 questions in parallel, subject to provider latency/rate limits.
+// Keep the real parallel constants at 10 x 10. The parallel hardening script
+// already owns the actual orchestration; these replacements are a final guard.
 source = source.replace(/const QUIZ_BATCH_SIZE = 8;/g, 'const QUIZ_BATCH_SIZE = 10;');
 source = source.replace(/const QUIZ_BATCH_CONCURRENCY = 4;/g, 'const QUIZ_BATCH_CONCURRENCY = 10;');
 
-// Remove the old browser-Gemini fallback from the general EduWills assistant.
+// Replace the entire general EduWills assistant function so no broken partial
+// try/catch remains after removing the browser Gemini fallback. Preserve the
+// optional timeout argument used by the AI page.
 const askStart = source.indexOf('export async function askEduwills(');
 const askEnd = source.indexOf('\n\nexport async function explainFailure(', askStart);
 if (askStart >= 0 && askEnd > askStart) {
-  const askBlock = `export async function askEduwills(conversation: string) {
+  const askBlock = `export async function askEduwills(conversation: string, _timeout = 30000) {
   const instruction = \`You are EDUWILLS AI, a study assistant. Answer directly and accurately. If the learner asks about a specific book and the evidence is insufficient, say so instead of inventing details. Plain readable text only. Conversation:\\n\${conversation}\`;
 
   try {
-    return clean(await gateway(instruction, 30000));
+    return clean(await gateway(instruction, _timeout));
   } catch {
     return 'EDUWILLS AI is temporarily busy. Please try again in a moment.';
   }
