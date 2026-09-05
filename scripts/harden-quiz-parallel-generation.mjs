@@ -3,12 +3,74 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
+const cacheHelpersMarker = 'const QUIZ_BATCH_CONCURRENCY = 4;';
+const cacheHelpers = `const QUESTION_BANK_VERSION = 'v1';
+const QUESTION_BANK_PREFIX = 'eduwills_quiz_question_bank:';
+const QUESTION_BANK_MAX = 1200;
+
+function questionBankKey(book: QuizBook) {
+  return \`${QUESTION_BANK_PREFIX}\${QUESTION_BANK_VERSION}:\${bookKey(book)}\`;
+}
+
+function readQuestionBank(book: QuizBook): CachedQuestion[] {
+  try {
+    const raw = localStorage.getItem(questionBankKey(book));
+    if (!raw) return [];
+    const value = JSON.parse(raw);
+    if (!value || value.version !== QUESTION_BANK_VERSION || !Array.isArray(value.questions)) return [];
+    return value.questions.filter((question: unknown) => valid(question)).slice(-QUESTION_BANK_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function writeQuestionBank(book: QuizBook, questions: CachedQuestion[]) {
+  try {
+    const unique: CachedQuestion[] = [];
+    const seen = new Set<string>();
+    for (const question of questions) {
+      if (!valid(question)) continue;
+      const key = fingerprint(question.question);
+      if (!key || seen.has(key)) continue;
+      if (unique.some((item) => similar(item.question, question.question))) continue;
+      seen.add(key);
+      unique.push({ ...question, bookKey: bookKey(book) });
+    }
+    localStorage.setItem(questionBankKey(book), JSON.stringify({
+      version: QUESTION_BANK_VERSION,
+      book: { title: book.title, author: book.author },
+      questions: unique.slice(-QUESTION_BANK_MAX),
+      updatedAt: Date.now(),
+    }));
+  } catch {
+    // Question-bank caching is an optimization; storage failure must never stop a quiz.
+  }
+}
+
+function questionBankFallback(book: QuizBook, count: number, previous: string[]) {
+  const bank = readQuestionBank(book);
+  const blocked = new Set(previous.map(fingerprint).filter(Boolean));
+  const output: QuizQuestion[] = [];
+  for (const cached of bank) {
+    if (!valid(cached) || blocked.has(fingerprint(cached.question))) continue;
+    if (output.some((item) => similar(item.question, cached.question))) continue;
+    output.push(cached);
+    if (output.length >= count) break;
+  }
+  return output;
+}
+
+const QUIZ_BATCH_CONCURRENCY = 4;`;
+
+if (!source.includes('const QUESTION_BANK_VERSION')) {
+  source = source.replace(cacheHelpersMarker, cacheHelpers);
+}
+
 const start = source.indexOf('async function generateBatch(');
 const end = source.indexOf('\n\nexport async function generateQuiz(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz batch function safely.');
 
-const batch = `const QUIZ_BATCH_CONCURRENCY = 4;
-const QUIZ_BATCH_SIZE = 8;
+const batch = `const QUIZ_BATCH_SIZE = 8;
 const QUIZ_PROVIDER_TIMEOUT = 15000;
 
 async function generateBatch(
@@ -41,7 +103,8 @@ async function generateBatch(
     }
   }
 
-  const localFallback = knownBookFallback(book, safeCount, previous);
+  // If providers are exhausted, reuse validated questions already stored for this book.
+  const localFallback = questionBankFallback(book, safeCount, previous);
   if (localFallback.length) return localFallback;
 
   const describe = (error: unknown) => error instanceof Error ? error.message : String(error || 'unknown error');
@@ -100,9 +163,9 @@ async function generateParallelBatches(
 }`;
 source = source.slice(0, start) + batch + source.slice(end);
 
-const loopStart = source.indexOf('    let guard = 0;\n\n    while (local.length < share');
+const loopStart = source.indexOf('    const needed = share - local.length;');
 const loopEnd = source.indexOf('\n    if (local.length < share) {', loopStart);
-if (loopStart < 0 || loopEnd < 0) throw new Error('Could not locate sequential quiz generation loop safely.');
+if (loopStart < 0 || loopEnd < 0) throw new Error('Could not locate parallel quiz generation loop safely.');
 
 const parallelLoop = `    const needed = share - local.length;
     const questions = await generateParallelBatches(
@@ -129,6 +192,11 @@ const parallelLoop = `    const needed = share - local.length;
       cacheState.questions.push({ ...question, bookKey: bookKey(book) });
       cacheState.updatedAt = Date.now();
       writeGenerationCache(cacheState);
+
+      // Every validated question becomes reusable book-specific cache. A later quiz
+      // can use this bank even when Groq/OpenRouter quotas are exhausted.
+      const bank = readQuestionBank(book);
+      writeQuestionBank(book, [...bank, { ...question, bookKey: bookKey(book) }]);
       onPartial?.(question, book, output.length, requested);
 
       if (local.length >= share || output.length >= requested) break;
@@ -136,8 +204,40 @@ const parallelLoop = `    const needed = share - local.length;
 `;
 source = source.slice(0, loopStart) + parallelLoop + source.slice(loopEnd);
 
+// Use the reusable question bank before any provider call. This is deliberately
+// separate from the resumable generation cache, so successful questions survive
+// completed quizzes and cache-version changes.
+const bankInsert = `  const bankQuestions = books.flatMap((book) => readQuestionBank(book));
+  for (const cachedQuestion of bankQuestions) {
+    if (!valid(cachedQuestion)) continue;
+    const matchingBook = books.find((book) => bookKey(book) === cachedQuestion.bookKey);
+    if (!matchingBook) continue;
+    const evidence = evidenceByBook[books.indexOf(matchingBook)] || '';
+    if (metadata(cachedQuestion)) continue;
+    if (evidence.trim() && !groundedForBooks([matchingBook], cachedQuestion, evidence)) continue;
+    const key = fingerprint(cachedQuestion.question);
+    if (!key || seen.has(key)) continue;
+    if (output.some((item) => similar(item.question, cachedQuestion.question))) continue;
+    output.push({
+      question: cachedQuestion.question,
+      options: cachedQuestion.options,
+      answer: cachedQuestion.answer,
+      explanation: cachedQuestion.explanation,
+      evidence: cachedQuestion.evidence,
+    });
+    seen.add(key);
+    if (output.length >= requested) break;
+  }
+
+`;
+const bankMarker = '  const output: QuizQuestion[] = [];\n  const seen = new Set(recent.map(fingerprint).filter(Boolean));\n';
+if (!source.includes('const bankQuestions = books.flatMap')) {
+  if (!source.includes(bankMarker)) throw new Error('Could not locate quiz output state safely.');
+  source = source.replace(bankMarker, bankMarker + '\n' + bankInsert);
+}
+
 source = source.replace(/gateway\\(prompt, 30000\\)/g, 'gateway(prompt, 15000 /* gateway(prompt, 30000) */)');
 source = source.replace(/geminiText\\(prompt, 30000\\)/g, 'geminiText(prompt, 15000)');
 
 fs.writeFileSync(path, source);
-console.log('Quiz parallel generation hardened: gateway-first provider failover, 8-question batches, resumable cache.');
+console.log('Quiz parallel generation hardened: 4 concurrent 8-question batches plus reusable question-bank cache.');
