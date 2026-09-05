@@ -79,32 +79,30 @@ jobs:
 
           client = Path('lib/quizAiClientStable.ts').read_text()
           page = Path('app/dashboard/quiz/page.tsx').read_text()
-          quota = Path('scripts/harden-quiz-quota-provider.mjs').read_text()
           ux = Path('scripts/harden-quiz-generation-ux.mjs').read_text()
 
           checks = {
               'gateway timeout helper': 'async function fetchWithTimeout' in client,
-              'research fetch timeout': 'fetchWithTimeout(url, { cache: \'no-store\' }, 7000)' in client,
-              'gateway config timeout': 'fetchWithTimeout(`${BASE}/ai-gateway.json?v=30`, { cache: \'no-store\' }, 5000)' in client,
+              'research fetch timeout': "fetchWithTimeout(url, { cache: 'no-store' }, 7000)" in client,
+              'gateway config timeout': "fetchWithTimeout(`${BASE}/ai-gateway.json?v=30`, { cache: 'no-store' }, 5000)" in client,
               'batch concurrency': 'const QUIZ_BATCH_CONCURRENCY = 4;' in client,
               'batch size': 'const QUIZ_BATCH_SIZE = 8;' in client,
               'provider timeout': 'const QUIZ_PROVIDER_TIMEOUT = 12000;' in client,
-              'gateway-only generation': 'Browser-side Firebase Gemini is intentionally not used for quiz batches.' in client,
-              'no browser Gemini implementation': not re.search(r'getAI\\(|GoogleAIBackend|gemini\\.generateContent|geminiText\\(', client),
+              'gateway-only generation': 'geminiText(' not in client and 'getGenerativeModel(' not in client and 'GoogleAIBackend' not in client,
+              'no browser Gemini implementation': not re.search(r'\bgetAI\s*\(|\bGoogleAIBackend\b|\bgemini\.generateContent\s*\(|\bgeminiText\s*\(', client),
               'quota hardening version': "v31-quiz-runtime-hardening" in client,
               'timer starts after generation': 'const actualStartMs = Date.now();' in page,
               'safe explanation parser': 'readableExplanation' in client and "value === '{}'" in client,
-              'explanation page guard': 'JSON.parse(readable)' in page or 'JSON.parse(readable)' in ux,
+              'explanation UX guard': 'JSON.parse(readable)' in page or 'JSON.parse(readable)' in ux,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
           if missing:
-              print('Quiz source verification failed:')
+              print('Quiz generation hardening verification failed:')
               for item in missing:
                   print(' -', item)
               raise SystemExit(1)
           print(f'Quiz generation hardening verified ({len(checks)} checks).')
-          print('Dashboard/activation/admin repair scripts remain in the build pipeline.')
           PY
 
       - name: Typecheck
