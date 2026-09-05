@@ -35,15 +35,16 @@ source = source.replace(/const QUIZ_BATCH_CONCURRENCY = 4;/g, 'const QUIZ_BATCH_
 
 // Replace the entire general EduWills assistant function so no broken partial
 // try/catch remains after removing the browser Gemini fallback. Preserve the
-// optional timeout argument used by the AI page.
+// legacy second argument (the AI page passes its string[] conversation history).
 const askStart = source.indexOf('export async function askEduwills(');
 const askEnd = source.indexOf('\n\nexport async function explainFailure(', askStart);
 if (askStart >= 0 && askEnd > askStart) {
-  const askBlock = `export async function askEduwills(conversation: string, _timeout = 30000) {
+  const askBlock = `export async function askEduwills(conversation: string, _legacyContext: string[] | number = 30000) {
+  const timeout = typeof _legacyContext === 'number' ? _legacyContext : 30000;
   const instruction = \`You are EDUWILLS AI, a study assistant. Answer directly and accurately. If the learner asks about a specific book and the evidence is insufficient, say so instead of inventing details. Plain readable text only. Conversation:\\n\${conversation}\`;
 
   try {
-    return clean(await gateway(instruction, _timeout));
+    return clean(await gateway(instruction, timeout));
   } catch {
     return 'EDUWILLS AI is temporarily busy. Please try again in a moment.';
   }
