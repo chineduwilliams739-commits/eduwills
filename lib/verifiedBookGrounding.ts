@@ -22,12 +22,14 @@ export const VERIFIED_BOOK_RESEARCH: Record<string, string> = {
     'VERIFIED BOOK: SCARS: Nigeria’s Journey and the Boko Haram Conundrum, by Gen. Leo Irabor (Retired), published in 2025.',
     'BOOK FACT: The book chronicles the impact of Boko Haram on Nigeria using facts and the author’s first-hand experience from military command of operations addressing terrorism and insurgency in the North East.',
     'BOOK FACT: The book discusses insecurity, under-development, political prejudices, peace and security, drivers of extremist activities, conflict mitigation, security-sector reform, national reconciliation, judicial reform, good governance, and whole-of-government/whole-of-society approaches.',
-    'GROUNDING RULE: Do not substitute another book, another author, or invented chapter events.'
+    'GROUNDING RULE: Do not substitute another book, another author, or invented chapter events.',
+    'GROUNDING RULE: Do not import characters, family events, village moves, plot events, or settings from Sànyà or any other book. The verified evidence for SCARS does not establish a family moving to Sànyà’s village or a military coup, election crisis, boundary dispute, or flood as a plot event.'
   ].join('\n'),
   'scars nigeria s journey and the boko haram conundrum|gen leo irabor': [
     'VERIFIED BOOK: SCARS: Nigeria’s Journey and the Boko Haram Conundrum, by Gen. Leo Irabor (Retired), published in 2025.',
     'BOOK FACT: The book chronicles the impact of Boko Haram on the Nigerian state from the author’s first-hand military experience and discusses insecurity, peace, security and governance.',
-    'GROUNDING RULE: Do not substitute another book, another author, or invented chapter events.'
+    'GROUNDING RULE: Do not substitute another book, another author, or invented chapter events.',
+    'GROUNDING RULE: Do not import characters, family events, village moves, plot events, or settings from Sànyà or any other book.'
   ].join('\n')
 };
 
@@ -35,50 +37,94 @@ export function verifiedResearch(books: GroundedQuizBook[]) {
   return books.map((b) => VERIFIED_BOOK_RESEARCH[`${norm(b.title)}|${norm(b.author)}`] || '').filter(Boolean).join('\n');
 }
 
+const BOOK_ANCHORS: Record<string, string[]> = {
+  'sanya|oyin olugbile': [
+    'sanya', 'dada', 'ajoke', 'aganju', 'abike', 'prophecy', 'warrior', 'yoruba',
+    'sango', 'orisa', 'new yam', 'village', 'brother', 'family', 'powers',
+    'mythology', 'mythological', 'dangerous love', 'cosmology', 'war'
+  ],
+  'scars|gen leo irabor': [
+    'scars', 'boko haram', 'leo irabor', 'insecurity', 'under development',
+    'underdevelopment', 'political prejudices', 'peace', 'security', 'extremist',
+    'extremism', 'terrorism', 'insurgency', 'north east', 'conflict mitigation',
+    'security sector reform', 'national reconciliation', 'judicial reform',
+    'good governance', 'whole of government', 'whole of society'
+  ],
+  'scars nigeria s journey and the boko haram conundrum|gen leo irabor': [
+    'scars', 'boko haram', 'leo irabor', 'insecurity', 'peace', 'security',
+    'governance', 'terrorism', 'insurgency', 'north east', 'conflict'
+  ]
+};
+
 export function groundedForBooks(books: GroundedQuizBook[], q: GroundedQuizQuestion, research: string) {
   const text = norm([q.question, ...q.options].join(' '));
-  const exactSanya = books.some((b) => norm(b.title) === 'sanya' && norm(b.author) === 'oyin olugbile');
 
-  if (exactSanya) {
-    const rawQuestion = String(q.question || '');
+  for (const book of books) {
+    const key = `${norm(book.title)}|${norm(book.author)}`;
+    const anchors = BOOK_ANCHORS[key];
+    if (!anchors) continue;
 
-    // Block the known hallucination family that previously described Sànyà as male.
-    const badGender = /\b(?:sanya|the protagonist|the main character)\b[\s\S]{0,220}\b(?:he|him|his|boy|male)\b/i.test(rawQuestion)
-      || /\b(?:he|him|his|boy|male)\b[\s\S]{0,220}\b(?:sanya|the protagonist|the main character)\b/i.test(rawQuestion);
-    if (badGender) return false;
+    // Exact-book identity lock: reject content that clearly belongs to another
+    // verified book selected in the same quiz. This prevents the model from
+    // combining Sànyà's family/village material with SCARS's national-security text.
+    const otherBooks = books.filter((candidate) => bookKey(candidate) !== key);
+    for (const other of otherBooks) {
+      const otherKey = `${norm(other.title)}|${norm(other.author)}`;
+      const otherAnchorSet = BOOK_ANCHORS[otherKey] || [];
+      const foreignSpecific = otherAnchorSet.filter((anchor) =>
+        anchor.length >= 6 && anchor !== 'family' && anchor !== 'war' && anchor !== 'peace' && text.includes(anchor),
+      );
+      if (foreignSpecific.length >= 1 && !anchors.some((anchor) => text.includes(anchor))) return false;
+    }
 
-    // Block unsupported modern occupations/settings that have repeatedly appeared
-    // in hallucinated Sànyà questions.
-    if (/\b(?:medical doctor|journalist|journalism|military officer|architect|architecture|rural clinic|modern housing estate|cryptocurrency|digital technology|urban neighbourhood|urban neighborhood|office job|university student|hospital|clinic)\b/i.test(rawQuestion)) return false;
+    if (key.startsWith('scars|')) {
+      // Explicitly reject the exact hallucination family reported in testing.
+      if (/\b(?:sanya|oyin olugbile|ajoke|aganju|dada|aunt abike)\b/i.test(text)) return false;
+      if (/\b(?:military coup|election crisis|boundary dispute|flood disaster)\b/i.test(text)) return false;
+      if (/\b(?:move|moved|moving|family(?:'s|s)? life|family life|village)\b/i.test(text)
+        && !/\b(?:boko haram|insecurity|insurgency|north east|conflict|security|governance|terrorism)\b/i.test(text)) return false;
+    }
 
-    // A city/location question must not invent a named Nigerian city. The verified
-    // source says Sànyà grew up in a village and does not name a childhood city.
-    const cityNames = /\b(?:lagos|abuja|ibadan|port harcourt|benin city|enugu|kano|jos|ilorin|akure|abeokuta|onitsha|warri|kaduna|calabar)\b/i;
-    const locationTerms = /\b(?:setting|city|town|childhood|grew up|grew|primary location|main location|neighbourhood|neighborhood|urban|where does|where did|location)\b/i;
-    if (cityNames.test(text) && locationTerms.test(text)) return false;
-    if (/(?:primary|main|major|specific)\s+(?:setting|location|city|town)/i.test(rawQuestion) && /\b(?:city|town|urban)\b/i.test(rawQuestion)) return false;
+    if (key === 'sanya|oyin olugbile') {
+      const rawQuestion = String(q.question || '');
+      const badGender = /\b(?:sanya|the protagonist|the main character)\b[\s\S]{0,220}\b(?:he|him|his|boy|male)\b/i.test(rawQuestion)
+        || /\b(?:he|him|his|boy|male)\b[\s\S]{0,220}\b(?:sanya|the protagonist|the main character)\b/i.test(rawQuestion);
+      if (badGender) return false;
 
-    // Prevent generic Nigeria/current-affairs questions from being attached to Sànyà.
-    const anchors = [
-      'sanya', 'dada', 'ajoke', 'aganju', 'abike', 'warrior', 'prophecy',
-      'yoruba', 'sango', 'orisa', 'new yam', 'village', 'brother', 'family',
-      'powers', 'mythology', 'mythological', 'dangerous love', 'war'
-    ];
-    if (!anchors.some((a) => text.includes(a))) return false;
-  }
+      if (/\b(?:medical doctor|journalist|journalism|military officer|architect|architecture|rural clinic|modern housing estate|cryptocurrency|digital technology|urban neighbourhood|urban neighborhood|office job|university student|hospital|clinic)\b/i.test(rawQuestion)) return false;
 
-  // Require some lexical connection to the supplied evidence. This is intentionally
-  // conservative: if a generated question has no overlap with evidence, discard it
-  // and let the batching loop ask the model for another question.
-  const evidenceWords = norm(research)
-    .split(' ')
-    .filter((w) => w.length >= 5)
-    .filter((w) => !['about', 'there', 'which', 'their', 'would', 'could', 'these', 'those', 'story', 'book', 'author', 'verified', 'sources', 'grounding', 'question', 'questions'].includes(w));
+      const cityNames = /\b(?:lagos|abuja|ibadan|port harcourt|benin city|enugu|kano|jos|ilorin|akure|abeokuta|onitsha|warri|kaduna|calabar)\b/i;
+      const locationTerms = /\b(?:setting|city|town|childhood|grew up|grew|primary location|main location|neighbourhood|neighborhood|urban|where does|where did|location)\b/i;
+      if (cityNames.test(text) && locationTerms.test(text)) return false;
+      if (/(?:primary|main|major|specific)\s+(?:setting|location|city|town)/i.test(rawQuestion) && /\b(?:city|town|urban)\b/i.test(rawQuestion)) return false;
+    }
 
-  if (evidenceWords.length >= 8) {
-    const overlap = evidenceWords.filter((w) => text.includes(w)).length;
-    if (overlap === 0) return false;
+    // A generated question must contain at least one book-specific anchor. A
+    // generic phrase such as "what major national event" is not enough, even if
+    // it happens to share a word like "national" with the research text.
+    if (!anchors.some((anchor) => text.includes(anchor))) return false;
+
+    // Require meaningful lexical overlap with the supplied evidence. This is a
+    // second barrier against questions that merely sound plausible.
+    const evidenceWords = norm(research)
+      .split(' ')
+      .filter((w) => w.length >= 6)
+      .filter((w) => ![
+        'about', 'there', 'which', 'their', 'would', 'could', 'these', 'those',
+        'story', 'book', 'author', 'verified', 'sources', 'grounding', 'question',
+        'questions', 'published', 'retelling', 'perspective', 'official',
+        'established', 'establishes', 'evidence', 'general', 'another'
+      ].includes(w));
+
+    if (evidenceWords.length >= 8) {
+      const overlap = new Set(evidenceWords.filter((w) => text.includes(w)));
+      if (overlap.size < 2) return false;
+    }
   }
 
   return true;
+}
+
+function bookKey(book: GroundedQuizBook) {
+  return `${norm(book.title)}|${norm(book.author)}`;
 }
