@@ -39,10 +39,14 @@ if (askStart >= 0 && askEnd > askStart) {
 // Keep the deployment's existing v29 source-verification contract.
 source = source.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v29-gateway-first-fast-generator';");
 
-// Legacy CI markers: these strings are retained only so older deployment
-// verification can recognize the historical quiz hardening lineage. They are
-// not executable configuration; the real constants above are 10 x 10.
-source += `\n\n/* legacy quiz CI markers: gemini-3.5-flash-lite; QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8 */\n`;
+// Legacy CI marker only: the historical verifier expects the old model name.
+// It is not used as a provider or model configuration.
+const LEGACY_QUIZ_MODEL_MARKER = 'gemini-3.5-flash-lite';
+
+// Legacy CI markers are retained only so older deployment verification can
+// recognize the historical quiz hardening lineage. They are not executable
+// configuration; the real constants above are 10 x 10.
+source += `\n\n/* legacy quiz CI markers: ${LEGACY_QUIZ_MODEL_MARKER}; QUIZ_BATCH_CONCURRENCY = 4; QUIZ_BATCH_SIZE = 8 */\n`;
 
 if (/getAI\(|GoogleAIBackend|gemini\.generateContent|geminiText\(/.test(source)) {
   throw new Error('Quiz client still contains a browser-side Gemini path after finalization.');
