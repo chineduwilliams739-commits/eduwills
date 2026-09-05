@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
-const cacheHelpersMarker = "const BASE = '/eduwills';";
+const cacheHelpersMarker = 'const norm = (value: string) =>';
 const cacheHelpers = `const QUESTION_BANK_VERSION = 'v1';
 const QUESTION_BANK_PREFIX = 'eduwills_quiz_question_bank:';
 const QUESTION_BANK_MAX = 1200;
@@ -60,15 +60,17 @@ function questionBankFallback(book: QuizBook, count: number, previous: string[])
   return output;
 }
 
-const QUIZ_BATCH_CONCURRENCY = 4;`;
+const QUIZ_BATCH_CONCURRENCY = 4;
+
+`;
 
 if (!source.includes('const QUESTION_BANK_VERSION')) {
   if (!source.includes(cacheHelpersMarker)) throw new Error('Could not locate quiz cache insertion marker safely.');
-  source = source.replace(cacheHelpersMarker, cacheHelpers + '\n\n' + cacheHelpersMarker);
+  source = source.replace(cacheHelpersMarker, cacheHelpers + cacheHelpersMarker);
 }
 
 const start = source.indexOf('async function generateBatch(');
-const end = source.indexOf('\\n\\nexport async function generateQuiz(', start);
+const end = source.indexOf('\n\nexport async function generateQuiz(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz batch function safely.');
 
 const batch = `const QUIZ_BATCH_SIZE = 8;
@@ -240,8 +242,8 @@ const parallelLoop = `    const needed = share - local.length;
     }`;
 source = source.slice(0, loopStart) + parallelLoop + source.slice(loopEnd);
 
-source = source.replace(/gateway\\(prompt, 30000\\)/g, 'gateway(prompt, 15000 /* gateway(prompt, 30000) */)');
-source = source.replace(/geminiText\\(prompt, 30000\\)/g, 'geminiText(prompt, 15000)');
+source = source.replace(/gateway\(prompt, 30000\)/g, 'gateway(prompt, 15000 /* gateway(prompt, 30000) */)');
+source = source.replace(/geminiText\(prompt, 30000\)/g, 'geminiText(prompt, 15000)');
 
 fs.writeFileSync(path, source);
 console.log('Quiz parallel generation hardened: 4 concurrent 8-question batches plus reusable question-bank cache.');
