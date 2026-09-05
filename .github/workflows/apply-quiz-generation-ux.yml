@@ -1,0 +1,55 @@
+name: Apply EduWills quiz generation UX hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/harden-quiz-generation-ux.mjs'
+      - 'lib/quizAiClientStable.ts'
+      - 'app/dashboard/quiz/page.tsx'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quiz-generation-ux-hardening
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply quiz generation UX hardening
+        run: |
+          set -euo pipefail
+          node --check scripts/harden-quiz-generation-ux.mjs
+          node scripts/harden-quiz-generation-ux.mjs
+      - name: Verify quiz hardening
+        run: |
+          set -euo pipefail
+          grep -q 'fetchWithTimeout' lib/quizAiClientStable.ts
+          grep -q 'QUIZ_BATCH_CONCURRENCY = 4' lib/quizAiClientStable.ts
+          grep -q 'QUIZ_BATCH_SIZE = 8' lib/quizAiClientStable.ts
+          grep -q 'QUIZ_PROVIDER_TIMEOUT = 12000' lib/quizAiClientStable.ts
+          grep -q 'const readyAtMs = Date.now()' app/dashboard/quiz/page.tsx
+          grep -q 'startedAtMs: readyAtMs' app/dashboard/quiz/page.tsx
+          grep -q 'readable ===.*{}' app/dashboard/quiz/page.tsx
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'Quiz hardening already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/quizAiClientStable.ts app/dashboard/quiz/page.tsx scripts/harden-quiz-generation-ux.mjs
+          git commit -m 'Fix quiz generation delays and start timer after readiness'
+          git push origin HEAD:main
