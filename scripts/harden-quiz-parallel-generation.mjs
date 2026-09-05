@@ -9,7 +9,7 @@ const QUESTION_BANK_PREFIX = 'eduwills_quiz_question_bank:';
 const QUESTION_BANK_MAX = 1200;
 
 function questionBankKey(book: QuizBook) {
-  return \`${QUESTION_BANK_PREFIX}\${QUESTION_BANK_VERSION}:\${bookKey(book)}\`;
+  return QUESTION_BANK_PREFIX + QUESTION_BANK_VERSION + ':' + bookKey(book);
 }
 
 function readQuestionBank(book: QuizBook): CachedQuestion[] {
