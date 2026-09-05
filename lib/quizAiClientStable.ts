@@ -165,7 +165,8 @@ async function gateway(prompt: string, timeout = 60000) {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(String(data?.error || `AI_GATEWAY_${response.status}`));
+      const detail = String(data?.error || data?.message || '').trim();
+      throw new Error(`AI_GATEWAY_${response.status}${detail ? `: ${detail}` : ''}`);
     }
     return String(data?.text || '');
   } finally {

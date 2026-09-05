@@ -865,10 +865,13 @@ export default function QuizPage() {
     } catch (e: any) {
       console.warn(e);
 
+      const rawError = e instanceof Error ? e.message : String(e?.message || e || 'Unknown error');
       setQuizError(
-        e?.message === 'AI_QUOTA_EXHAUSTED'
+        rawError === 'AI_QUOTA_EXHAUSTED'
           ? 'EDUWILLS AI has reached today’s generation limit for this account. Please try again tomorrow.'
-          : 'EDUWILLS AI could not finish the requested batch. Please try again.'
+          : rawError === 'AUTHENTICATION_REQUIRED'
+            ? 'Your EDUWILLS login session is not ready. Please sign in again and retry.'
+            : rawError || 'EDUWILLS AI could not finish the requested batch. Please try again.'
       );
 
       setQs([]);
