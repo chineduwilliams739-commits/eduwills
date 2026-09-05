@@ -8,7 +8,8 @@ const end = source.indexOf('\n\nexport async function generateQuiz(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz batch function safely.');
 
 const batch = `const QUIZ_BATCH_CONCURRENCY = 4;
-const QUIZ_PROVIDER_TIMEOUT = 12000;
+const QUIZ_BATCH_SIZE = 8;
+const QUIZ_PROVIDER_TIMEOUT = 15000;
 
 async function generateBatch(
   book: QuizBook,
@@ -18,34 +19,33 @@ async function generateBatch(
   previous: string[],
   research: string,
 ) {
-  const safeCount = Math.min(10, Math.max(1, count));
+  const safeCount = Math.min(QUIZ_BATCH_SIZE, Math.max(1, count));
   const prompt = promptFor(book, safeCount, difficulty, instructions, previous, research);
   let gatewayError: unknown;
-  let fallbackError: unknown;
 
-  try {
-    const text = await gateway(prompt, QUIZ_PROVIDER_TIMEOUT);
-    const parsed = parseQuestions(text);
-    if (parsed.length) return parsed;
-    gatewayError = new Error('Gateway returned no valid questions');
-  } catch (error) {
-    gatewayError = error;
-  }
-
-  try {
-    const fallbackText = await geminiText(prompt, QUIZ_PROVIDER_TIMEOUT);
-    const parsed = parseQuestions(fallbackText);
-    if (parsed.length) return parsed;
-    fallbackError = new Error('Gemini fallback returned no valid questions');
-  } catch (error) {
-    fallbackError = error;
+  // The Cloudflare AI gateway owns provider failover (Groq -> OpenRouter).
+  // Do not fall back to browser-side Firebase Gemini here: its free quota can be
+  // exhausted independently and caused otherwise healthy quiz runs to stop.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const text = await gateway(prompt, QUIZ_PROVIDER_TIMEOUT);
+      const parsed = parseQuestions(text);
+      if (parsed.length) return parsed;
+      gatewayError = new Error('Gateway returned no valid questions');
+    } catch (error) {
+      gatewayError = error;
+      if (attempt === 0 && /AI_GATEWAY_(408|429|500|502|503|504)/i.test(String(error instanceof Error ? error.message : error))) {
+        continue;
+      }
+      break;
+    }
   }
 
   const localFallback = knownBookFallback(book, safeCount, previous);
   if (localFallback.length) return localFallback;
 
   const describe = (error: unknown) => error instanceof Error ? error.message : String(error || 'unknown error');
-  throw new Error('AI_GENERATION_FAILED: gateway=' + describe(gatewayError) + ' | firebase=' + describe(fallbackError));
+  throw new Error('AI_GENERATION_FAILED: gateway=' + describe(gatewayError));
 }
 
 async function generateParallelBatches(
@@ -60,15 +60,15 @@ async function generateParallelBatches(
   let remaining = needed;
 
   while (remaining > 0) {
-    const waveCount = Math.min(QUIZ_BATCH_CONCURRENCY, Math.ceil(remaining / 10));
+    const waveCount = Math.min(QUIZ_BATCH_CONCURRENCY, Math.ceil(remaining / QUIZ_BATCH_SIZE));
     const jobs = Array.from({ length: waveCount }, (_, index) => {
-      const count = Math.min(10, remaining - index * 10);
+      const count = Math.min(QUIZ_BATCH_SIZE, remaining - index * QUIZ_BATCH_SIZE);
       return generateBatch(book, count, difficulty, instructions, previous, research);
     });
 
     const settled = await Promise.allSettled(jobs);
     const quotaError = settled.find((result) =>
-      result.status === 'rejected' && /429|quota|resource_exhausted|rate.?limit/i.test(String(result.reason?.message || result.reason || ''))
+      result.status === 'rejected' && /429|quota|resource_exhausted|rate.?limit|AI_QUOTA_EXHAUSTED/i.test(String(result.reason?.message || result.reason || ''))
     );
     if (quotaError?.status === 'rejected') {
       const message = String(quotaError.reason?.message || quotaError.reason || 'AI quota exceeded');
@@ -136,8 +136,8 @@ const parallelLoop = `    const needed = share - local.length;
 `;
 source = source.slice(0, loopStart) + parallelLoop + source.slice(loopEnd);
 
-source = source.replace(/gateway\(prompt, 30000\)/g, 'gateway(prompt, 12000 /* gateway(prompt, 30000) */)');
-source = source.replace(/geminiText\(prompt, 30000\)/g, 'geminiText(prompt, 12000)');
+source = source.replace(/gateway\\(prompt, 30000\\)/g, 'gateway(prompt, 15000 /* gateway(prompt, 30000) */)');
+source = source.replace(/geminiText\\(prompt, 30000\\)/g, 'geminiText(prompt, 15000)');
 
 fs.writeFileSync(path, source);
-console.log('Quiz parallel batch generation applied with quota-aware waves.');
+console.log('Quiz parallel generation hardened: gateway-first provider failover, 8-question batches, resumable cache.');
