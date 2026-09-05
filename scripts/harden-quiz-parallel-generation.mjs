@@ -70,7 +70,7 @@ if (!source.includes('const QUESTION_BANK_VERSION')) {
 }
 
 const start = source.indexOf('async function generateBatch(');
-const end = source.indexOf('\n\nexport async function generateQuiz(', start);
+const end = source.indexOf('\\n\\nexport async function generateQuiz(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz batch function safely.');
 
 const batch = `const QUIZ_BATCH_SIZE = 8;
@@ -163,7 +163,9 @@ async function generateParallelBatches(
 }`;
 source = source.slice(0, start) + batch + source.slice(end);
 
-const loopStart = source.indexOf('    while (local.length < share && guard < 8) {');
+// The preceding quiz hardening scripts can legitimately change the loop's guard
+// count. Match the stable beginning of the loop instead of one exact guard value.
+const loopStart = source.indexOf('    while (local.length < share');
 if (loopStart < 0) throw new Error('Could not locate quiz generation loop safely.');
 
 let depth = 0;
