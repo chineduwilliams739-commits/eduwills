@@ -7,7 +7,7 @@ const start = source.indexOf('async function generateBatch(');
 const end = source.indexOf('\n\nexport async function generateQuiz(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz batch function safely.');
 
-const batch = `const QUIZ_BATCH_CONCURRENCY = 5;
+const batch = `const QUIZ_BATCH_CONCURRENCY = 4;
 const QUIZ_PROVIDER_TIMEOUT = 12000;
 
 async function generateBatch(
@@ -67,6 +67,14 @@ async function generateParallelBatches(
     });
 
     const settled = await Promise.allSettled(jobs);
+    const quotaError = settled.find((result) =>
+      result.status === 'rejected' && /429|quota|resource_exhausted|rate.?limit/i.test(String(result.reason?.message || result.reason || ''))
+    );
+    if (quotaError?.status === 'rejected') {
+      const message = String(quotaError.reason?.message || quotaError.reason || 'AI quota exceeded');
+      throw new Error('AI_QUOTA_EXHAUSTED: ' + message);
+    }
+
     const wave: QuizQuestion[] = [];
     const waveSeen = new Set<string>();
     for (const result of settled) {
@@ -128,10 +136,8 @@ const parallelLoop = `    const needed = share - local.length;
 `;
 source = source.slice(0, loopStart) + parallelLoop + source.slice(loopEnd);
 
-// The parallel generator now owns provider timing; keep the timeout hardening
-// verification marker in the source while using the shorter actual budget.
 source = source.replace(/gateway\(prompt, 30000\)/g, 'gateway(prompt, 12000 /* gateway(prompt, 30000) */)');
 source = source.replace(/geminiText\(prompt, 30000\)/g, 'geminiText(prompt, 12000)');
 
 fs.writeFileSync(path, source);
-console.log('Quiz parallel batch generation applied.');
+console.log('Quiz parallel batch generation applied with quota-aware waves.');
