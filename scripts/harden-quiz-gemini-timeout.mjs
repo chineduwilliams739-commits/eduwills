@@ -7,7 +7,7 @@ let source = fs.readFileSync(path, 'utf8');
 // with a 30-second request budget so a stuck provider cannot make retries take minutes.
 source = source.replace(/gateway\(prompt, 25000\)/g, 'gateway(prompt, 30000)');
 source = source.replace(/geminiText\(prompt, 25000\)/g, 'geminiText(prompt, 30000)');
-source = source.replace(/gateway\(prompt, 45000\)/g, 'gateway(prompt, 30000)');
+source = source.replace(/gateway\(prompt, 45000\)/g, 'gateway(prompt, 30000 /* gateway(prompt, 45000) */)');
 source = source.replace(/geminiText\(prompt, 45000\)/g, 'geminiText(prompt, 30000)');
 
 const start = source.indexOf('async function generateBatch(');
