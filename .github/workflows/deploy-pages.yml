@@ -120,7 +120,7 @@ jobs:
               'quiz diversity rules': 'DIVERSITY RULE' in quiz_client and 'DISTRIBUTION RULE' in quiz_client,
               'quiz fast gateway': 'gateway(prompt, 15000' in quiz_client,
               'quiz parallel batches': 'QUIZ_BATCH_CONCURRENCY = 4' in quiz_client and 'QUIZ_BATCH_SIZE = 8' in quiz_client and 'Promise.allSettled' in quiz_client,
-              'quiz gateway-only batch': 'Cloudflare AI gateway owns provider failover' in quiz_client and 'Do not fall back to browser-side Firebase Gemini here' in quiz_client,
+              'quiz gateway-only batch': 'Cloudflare AI gateway owns provider failover' in quiz_client and 'Browser-side Firebase Gemini is intentionally not used for quiz batches' in quiz_client,
               'quiz curated research shortcut': 'if (curated) return curated;' in quiz_client,
               'quiz no-evidence fallback': 'No external catalogue evidence was available' in quiz_client,
               'quiz preserves gateway error': 'AI_GENERATION_FAILED: gateway=' in quiz_client and 'firebase=' not in quiz_client,
