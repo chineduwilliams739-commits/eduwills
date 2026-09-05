@@ -60,7 +60,7 @@ function questionBankFallback(book: QuizBook, count: number, previous: string[])
   return output;
 }
 
-const QUIZ_BATCH_CONCURRENCY = 4;
+const QUIZ_BATCH_CONCURRENCY = 10;
 
 `;
 
@@ -73,7 +73,7 @@ const start = source.indexOf('async function generateBatch(');
 const end = source.indexOf('\n\nexport async function generateQuiz(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz batch function safely.');
 
-const batch = `const QUIZ_BATCH_SIZE = 8;
+const batch = `const QUIZ_BATCH_SIZE = 10;
 const QUIZ_PROVIDER_TIMEOUT = 15000;
 
 async function generateBatch(
@@ -243,7 +243,6 @@ const parallelLoop = `    const needed = share - local.length;
 source = source.slice(0, loopStart) + parallelLoop + source.slice(loopEnd);
 
 source = source.replace(/gateway\(prompt, 30000\)/g, 'gateway(prompt, 15000 /* gateway(prompt, 30000) */)');
-source = source.replace(/geminiText\(prompt, 30000\)/g, 'geminiText(prompt, 15000)');
 
 fs.writeFileSync(path, source);
-console.log('Quiz parallel generation hardened: 4 concurrent 8-question batches plus reusable question-bank cache.');
+console.log('Quiz parallel generation hardened: 10 concurrent 10-question batches plus reusable question-bank cache.');
