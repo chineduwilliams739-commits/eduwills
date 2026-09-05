@@ -42,7 +42,7 @@ const batch = `async function generateBatch(
   }
 
   const describe = (error: unknown) => error instanceof Error ? error.message : String(error || 'unknown error');
-  throw new Error(`AI_GENERATION_FAILED: gateway=${describe(gatewayError)} | firebase=${describe(fallbackError)}`);
+  throw new Error('AI_GENERATION_FAILED: gateway=' + describe(gatewayError) + ' | firebase=' + describe(fallbackError));
 }`;
 
 source = source.slice(0, start) + batch + source.slice(end);
