@@ -61,6 +61,8 @@ jobs:
         run: node scripts/harden-quiz-gemini-timeout.mjs
       - name: Apply parallel quiz batch generation
         run: node scripts/harden-quiz-parallel-generation.mjs
+      - name: Apply quota-aware quiz provider
+        run: node scripts/harden-quiz-quota-provider.mjs
       - name: Re-apply dashboard Personal and news repair
         run: node scripts/repair-activation-news.mjs
       - name: Verify source repairs
@@ -87,6 +89,7 @@ jobs:
           quiz_upgrade = Path('scripts/upgrade-quiz-generator-v24.mjs').read_text()
           quiz_timeout = Path('scripts/harden-quiz-gemini-timeout.mjs').read_text()
           quiz_parallel = Path('scripts/harden-quiz-parallel-generation.mjs').read_text()
+          quiz_quota = Path('scripts/harden-quiz-quota-provider.mjs').read_text()
           ca, cad, cp = compact(activation), compact(admin), compact(payment)
           layout_repair = dashboard_news_repair.replace('\\', '')
 
@@ -112,14 +115,15 @@ jobs:
               'AI four categories': all(x in ai_page for x in ('Book Learner', 'Senior Secondary', 'Junior Secondary', 'Primary')),
               'AI ten per category': 'QUESTIONS_PER_CATEGORY = 10' in ai_page and 'usage[category]' in ai_page,
               'AI daily category reset': 'toISOString().slice(0, 10)' in ai_page and 'eduwills-ai-category-questions' in ai_page,
-              'quiz reliable v27': "v27-fast-reliable-generator" in quiz_client,
-              'faster quiz model': "gemini-3.6-flash" in quiz_client,
+              'quiz reliable v28': "v28-quota-aware-fast-generator" in quiz_client,
+              'faster quiz model': "gemini-3.5-flash-lite" in quiz_client,
               'quiz diversity rules': 'DIVERSITY RULE' in quiz_client and 'DISTRIBUTION RULE' in quiz_client,
               'quiz fast batches': 'gateway(prompt, 12000' in quiz_client and 'geminiText(prompt, 12000)' in quiz_client,
-              'quiz parallel batches': 'QUIZ_BATCH_CONCURRENCY = 5' in quiz_client and 'Promise.allSettled' in quiz_client,
+              'quiz parallel batches': 'QUIZ_BATCH_CONCURRENCY = 4' in quiz_client and 'Promise.allSettled' in quiz_client,
               'quiz curated research shortcut': 'if (curated) return curated;' in quiz_client,
               'quiz no-evidence fallback': 'No external catalogue evidence was available' in quiz_client,
               'quiz preserves gateway error': 'AI_GENERATION_FAILED: gateway=' in quiz_client and 'firebase=' in quiz_client,
+              'quiz quota error': 'AI_QUOTA_EXHAUSTED:' in quiz_client,
               'admin active-status logic': 'isUserActive' in admin and 'return tokens.some' in admin,
               'admin status reconciliation': 'statusActive' in admin_hardening and "statusActive ? 'Active' : 'Inactive'" in admin_hardening,
               'admin cleanup': 'disposableTokens' in admin and 'disposableIds' in admin,
@@ -132,7 +136,8 @@ jobs:
               'quiz repair is idempotent': 'already-fixed fragments were safely skipped' in quiz_script,
               'quiz upgrade script present': 'gemini-3.6-flash' in quiz_upgrade and 'DIVERSITY RULE' in quiz_upgrade,
               'quiz timeout hardening script': 'gateway(prompt, 45000)' in quiz_timeout and 'AI_GENERATION_FAILED' in quiz_timeout,
-              'quiz parallel hardening script': 'QUIZ_BATCH_CONCURRENCY = 5' in quiz_parallel and 'Promise.allSettled' in quiz_parallel,
+              'quiz parallel hardening script': 'QUIZ_BATCH_CONCURRENCY = 4' in quiz_parallel and 'Promise.allSettled' in quiz_parallel,
+              'quiz quota hardening script': 'gemini-3.5-flash-lite' in quiz_quota and 'v28-quota-aware-fast-generator' in quiz_quota,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
