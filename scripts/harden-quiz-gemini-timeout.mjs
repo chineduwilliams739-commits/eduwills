@@ -3,6 +3,8 @@ import fs from 'node:fs';
 const path = 'lib/quizAiClientStable.ts';
 let source = fs.readFileSync(path, 'utf8');
 
+// The old 45-second form (gateway(prompt, 45000)) is intentionally replaced below
+// with a 30-second request budget so a stuck provider cannot make retries take minutes.
 source = source.replace(/gateway\(prompt, 25000\)/g, 'gateway(prompt, 30000)');
 source = source.replace(/geminiText\(prompt, 25000\)/g, 'geminiText(prompt, 30000)');
 source = source.replace(/gateway\(prompt, 45000\)/g, 'gateway(prompt, 30000)');
