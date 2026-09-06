@@ -88,22 +88,33 @@ fs.writeFileSync(clientPath, client);
 const pagePath = 'app/dashboard/quiz/page.tsx';
 let page = fs.readFileSync(pagePath, 'utf8');
 
-if (!page.includes('const [quizRetrying, setQuizRetrying]')) {
+// Keep generation failures inside the generation flow and make them retryable.
+if (!page.includes('const [quizGenerationFailed, setQuizGenerationFailed]')) {
   page = page.replace(
     "  const [quizError, setQuizError] = useState('');",
-    "  const [quizError, setQuizError] = useState('');\n  const [quizRetrying, setQuizRetrying] = useState(false);\n  const [quizGenerationStarted, setQuizGenerationStarted] = useState(false);",
+    "  const [quizError, setQuizError] = useState('');\n  const [quizGenerationFailed, setQuizGenerationFailed] = useState(false);\n  const [quizRetrying, setQuizRetrying] = useState(false);",
   );
 }
 
-// A quiz is not considered started until questions have actually been generated.
-page = page.replace(/\n\s*const startedAtMs = Date\.now\(\);\n\n\s*const minutes =/, '\n      const minutes =');
+// The timer must begin only after questions exist.
 page = page.replace(
-  /startedAtMs,\n\s*endAtMs: minutes\n\s*\? startedAtMs \+ minutes \* 60000\n\s*: null,/,
-  'startedAtMs: 0,\n        endAtMs: null,',
+  /      const startedAtMs = Date\.now\(\);\n\n      const minutes =/,
+  '      const startedAtMs = 0;\n\n      const minutes =',
+);
+page = page.replace(
+  /        endAtMs: minutes\n          \? startedAtMs \+ minutes \* 60000\n          : null,/,
+  '        endAtMs: null,',
 );
 
+// Mark a successful generation as ready and start the timer at that exact point.
 const oldReady = `      setQs(\n        generated.slice(\n          0,\n          current.questions\n        )\n      );\n\n      setQuizError('');`;
-const newReady = `      const readyAtMs = Date.now();
+const newReady = `      if (!Array.isArray(generated) || generated.length < current.questions) {
+        throw new Error(
+          \`EDUWILLS AI returned only \${Array.isArray(generated) ? generated.length : 0} of \${current.questions} requested questions.\`,
+        );
+      }
+
+      const readyAtMs = Date.now();
       const readySetup: Setup = {
         ...current,
         startedAtMs: readyAtMs,
@@ -117,7 +128,7 @@ const newReady = `      const readyAtMs = Date.now();
       setElapsed(0);
       setSeconds(readySetup.duration ? readySetup.duration * 60 : null);
       setQuizError('');
-      setQuizGenerationStarted(false);
+      setQuizGenerationFailed(false);
 
       try {
         await updateDoc(doc(db, 'quizHistory', current.id), {
@@ -128,79 +139,79 @@ const newReady = `      const readyAtMs = Date.now();
       } catch {}`;
 if (page.includes(oldReady)) page = page.replace(oldReady, newReady);
 
-// Make the generation error visible instead of swallowing it.
-const generationCatch = /catch \(e: any\) \{\n\s*console\.warn\(e\);\n\s*\n\s*const rawError = e instanceof Error \? e\.message : String\(e\?\.message \|\| e \|\| 'Unknown error'\);\n\s*setQuizError\([\s\S]*?\);\n\s*\n\s*setQs\(\[\]\);/;
-if (generationCatch.test(page)) {
-  page = page.replace(generationCatch, `catch (e: any) {
-      console.warn(e);
-      const rawError = e instanceof Error ? e.message : String(e?.message || e || 'Unknown error');
-      setQuizError(
-        rawError === 'AI_QUOTA_EXHAUSTED'
-          ? 'EDUWILLS AI has reached today’s generation limit. Please try again later.'
-          : rawError === 'AUTHENTICATION_REQUIRED'
-            ? 'Your EDUWILLS login session is not ready. Please sign in again and retry.'
-            : rawError || 'EDUWILLS AI could not finish generating the requested questions. Please retry.'
-      );
-      setQuizGenerationStarted(true);
-      setQs([]);`);
-}
-
-// Do not count a free quiz unless generation actually produced questions.
+// Do not consume a free quiz when generation fails.
 page = page.replace(
   `      await generate(next);\n\n      if (!active) {`,
   `      const generatedSuccessfully = await generate(next);\n\n      if (!generatedSuccessfully) {\n        return;\n      }\n\n      if (!active) {`,
 );
 
-// Make generate return a success flag so failed AI calls never consume a free attempt.
 page = page.replace(
   '  async function generate(current: Setup) {',
   '  async function generate(current: Setup): Promise<boolean> {',
 );
+
 page = page.replace(
   `      setQuizError('');\n    } catch (e: any) {`,
-  `      setQuizError('');\n      setQuizGenerationStarted(false);\n      return true;\n    } catch (e: any) {`,
+  `      setQuizError('');\n      return true;\n    } catch (e: any) {`,
 );
+
 page = page.replace(
   `      setQs([]);\n    } finally {\n      setQuizLoading(false);\n    }\n  }`,
-  `      setQs([]);\n      return false;\n    } finally {\n      setQuizLoading(false);\n    }\n  }`,
+  `      setQuizGenerationFailed(true);\n      setQs([]);\n      return false;\n    } finally {\n      setQuizLoading(false);\n    }\n  }`,
 );
 
-// Retry the same saved setup directly; do not send the learner back through Studio.
-page = page.replace(
-  `setQuizRetrying(true); window.setTimeout(() => setQuizRetrying(false), 100);`,
-  `setQuizRetrying(true);\n                setQuizError('');\n                void (async () => {\n                  try { await generate(setup); } finally { setQuizRetrying(false); }\n                })();`,
-);
-
-// If the exact generated failure UI was not inserted by the earlier repair,
-// install it immediately before the Studio branch.
+// If the page has a generation error after the loading screen, show a retry screen instead of Studio.
 if (!page.includes('Quiz generation failed — please retry')) {
-  const marker = page.includes('  if (!setup || !qs.length) {')
-    ? '  if (!setup || !qs.length) {'
-    : page.includes('  if (!setup) {')
-      ? '  if (!setup) {'
-      : '';
-  if (marker) {
-    const failureUi = `  if (quizGenerationStarted && !quizLoading && !qs.length && quizError) {
+  const marker = `  /* ------------------------------------------------------------------------ */\n  /* Results                                                                   */\n  /* ------------------------------------------------------------------------ */`;
+  const failureUi = `  if (quizGenerationFailed && setup && !quizLoading && !qs.length) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 py-8">
-        <div className="mx-auto max-w-xl rounded-3xl border border-red-100 bg-white p-6 shadow-xl">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600"><XCircle size={25} /></div>
-          <h1 className="text-xl font-black text-slate-900">Quiz generation failed — please retry</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">Your quiz setup is still saved. A failed generation does not consume a free quiz.</p>
-          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-medium text-slate-700">{quizError}</div>
-          <div className="mt-5 flex gap-3">
-            <button type="button" disabled={quizRetrying} onClick={() => { if (!setup) return; setQuizRetrying(true); setQuizError(''); void (async () => { try { await generate(setup); } finally { setQuizRetrying(false); } })(); }} className="flex-1 rounded-2xl bg-indigo-600 px-4 py-3 font-black text-white disabled:opacity-60">{quizRetrying ? 'Retrying…' : 'Retry Generation'}</button>
-            <button type="button" onClick={() => { setQuizGenerationStarted(false); setQuizError(''); }} className="rounded-2xl border border-slate-200 px-4 py-3 font-black text-slate-700">Back to Studio</button>
+      <main className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-red-50 p-5">
+        <div className="w-full max-w-md rounded-[2rem] border border-red-100 bg-white p-7 shadow-2xl">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-red-600">
+            <XCircle size={28} />
           </div>
+          <h1 className="mt-5 text-2xl font-black text-slate-900">Quiz generation failed — please retry</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Your quiz setup is still saved. This failed attempt has not consumed your free quiz.</p>
+          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-700">{quizError || 'EDUWILLS AI could not finish generating the requested questions.'}</div>
+          <button
+            type="button"
+            disabled={quizRetrying}
+            onClick={() => {
+              if (!setup) return;
+              setQuizRetrying(true);
+              setQuizError('');
+              void (async () => {
+                try {
+                  await generate(setup);
+                } finally {
+                  setQuizRetrying(false);
+                }
+              })();
+            }}
+            className="mt-5 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-5 py-4 font-black text-white disabled:opacity-60"
+          >
+            {quizRetrying ? 'Retrying…' : 'Retry Generation'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setQuizGenerationFailed(false);
+              setQuizError('');
+              setSetup(null);
+            }}
+            className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-3 font-black text-slate-700"
+          >
+            Back to Quiz Studio
+          </button>
         </div>
       </main>
     );
   }
 
 `;
-    page = page.replace(marker, failureUi + marker);
-  }
+  if (!page.includes(marker)) throw new Error('Quiz results marker not found.');
+  page = page.replace(marker, failureUi + marker);
 }
 
 fs.writeFileSync(pagePath, page);
-console.log('Quiz generation reliability hardening applied: fast bounded batches, adaptive grounded refill, retryable failure state, no free-quiz charge on failure, and timer starts only after questions exist.');
+console.log('Quiz generation reliability hardening applied: bounded parallel batches, adaptive grounded refill, retryable failure state, no free-quiz charge on failure, strict batch completion, and timer starts only after questions exist.');
