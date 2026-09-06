@@ -86,14 +86,14 @@ if (!stable.includes('async function auditAnswerKeys(')) {
     '    `OPTIONS: 0=${q.options[0]} | 1=${q.options[1]} | 2=${q.options[2]} | 3=${q.options[3]}`',
     '  ].join("\\n")).join("\\n");',
     '  const prompt = [',
-    '    \'You are EDUWILLS answer-key quality control.\'',
-    '    `Verify ONLY the answer index for each multiple-choice question about the exact book "${book.title}" by ${book.author}.`',
-    '    \'Use ONLY the verified evidence below. Do not guess or import facts from another work.\'',
-    '    `Return ONLY JSON: ${JSON.stringify({ answers: questions.map(() => -1) })}`',
-    '    `The answers array must contain exactly ${questions.length} integers. Use 0-3 only when the evidence clearly proves that option is correct; use -1 when evidence is insufficient.`',
-    '    \'VERIFIED EVIDENCE:\'',
+    '    \'You are EDUWILLS answer-key quality control.\',',
+    '    `Verify ONLY the answer index for each multiple-choice question about the exact book "${book.title}" by ${book.author}.`,',
+    '    \'Use ONLY the verified evidence below. Do not guess or import facts from another work.\',',
+    '    `Return ONLY JSON: ${JSON.stringify({ answers: questions.map(() => -1) })}`,',
+    '    `The answers array must contain exactly ${questions.length} integers. Use 0-3 only when the evidence clearly proves that option is correct; use -1 when evidence is insufficient.`,',
+    '    \'VERIFIED EVIDENCE:\',',
     '    research.slice(0, 65000),',
-    '    \'QUESTIONS:\'',
+    '    \'QUESTIONS:\',',
     '    questionText,',
     '  ].join("\\n\\n");',
     '  try {',
@@ -114,7 +114,7 @@ if (!stable.includes('async function auditAnswerKeys(')) {
     '}',
     '',
   ];
-  const marker = '\nasync function generateBatch(';
+  const marker = '\nasync function generateBatch('; 
   const index = stable.indexOf(marker);
   if (index < 0) throw new Error('Could not locate generateBatch function for answer-audit insertion.');
   stable = stable.slice(0, index) + '\n' + auditLines.join('\n') + stable.slice(index);
