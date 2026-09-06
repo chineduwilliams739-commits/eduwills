@@ -44,7 +44,6 @@ function waitForAuthenticatedUser(timeoutMs = 10000) {
   });
 }
 
-/** Robust book lookup used by the quiz setup UI. Uses multiple independent catalogues. */
 export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<stable.BookSearchResult[]> {
   const query = value.trim(); if (!query) return [];
   const e = encodeURIComponent(query);
@@ -70,7 +69,6 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
   return out.slice(0, 160);
 }
 
-/** Broader book research layer used by quiz generation. */
 export async function researchBooks(books: QuizBook[]): Promise<string> {
   const parts: string[] = [];
   await Promise.all(books.map(async b => {
@@ -99,32 +97,20 @@ export async function generateQuiz(...args: Parameters<typeof stable.generateQui
   return stable.generateQuiz(books, requested, difficulty, effectiveInstructions, recent || [], research || '', onPartial);
 }
 
-function stripMarkup(value: string) {
-  return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-}
+function stripMarkup(value: string) { return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
 
 async function fetchJson(url: string, timeoutMs = 6500): Promise<any | null> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController(); const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try { const response = await fetch(url, { cache: 'no-store', signal: controller.signal }); return response.ok ? await response.json() : null; }
-  catch { return null; }
-  finally { window.clearTimeout(timer); }
+  catch { return null; } finally { window.clearTimeout(timer); }
 }
 
 async function fetchText(url: string, timeoutMs = 6500): Promise<string> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const controller = new AbortController(); const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try { const response = await fetch(url, { cache: 'no-store', signal: controller.signal }); return response.ok ? await response.text() : ''; }
-  catch { return ''; }
-  finally { window.clearTimeout(timer); }
+  catch { return ''; } finally { window.clearTimeout(timer); }
 }
 
-/**
- * Lightweight public-web research layer. It deliberately uses public APIs/catalogues
- * and never attempts to bypass logins, CAPTCHAs, robots rules, or private content.
- * Social-network APIs are optional integrations: TikTok Research API access requires
- * approval, so the assistant records the requested platform but does not fabricate data.
- */
 async function researchInternet(query: string): Promise<string> {
   const q = query.trim(); if (!q) return '';
   const e = encodeURIComponent(q);
@@ -142,15 +128,11 @@ async function researchInternet(query: string): Promise<string> {
   for (const item of archive?.response?.docs || []) chunks.push(`INTERNET ARCHIVE: ${item.title || ''} — ${(item.creator || []).toString()} — ${stripMarkup(item.description || '')}`);
   if (news) {
     const matches = [...news.matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0, 8);
-    for (const match of matches) {
-      const title = match[1].match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '';
-      const description = match[1].match(/<description>([\s\S]*?)<\/description>/i)?.[1] || '';
-      chunks.push(`GOOGLE NEWS: ${stripMarkup(title)} — ${stripMarkup(description)}`);
-    }
+    for (const match of matches) { const title = match[1].match(/<title>([\s\S]*?)<\/title>/i)?.[1] || ''; const description = match[1].match(/<description>([\s\S]*?)<\/description>/i)?.[1] || ''; chunks.push(`GOOGLE NEWS: ${stripMarkup(title)} — ${stripMarkup(description)}`); }
   }
   const lower = q.toLowerCase();
   if (/\b(tiktok|facebook|instagram|meta)\b/.test(lower)) {
-    chunks.push('SOCIAL-SOURCE NOTE: Public social-network data may require the platform\'s approved API and credentials. Do not claim a social post, follower count, video, comment, or profile fact unless retrieved from an authorized public source.');
+    chunks.push('SOCIAL-SOURCE NOTE: Public social-network data may require the platform approved API and credentials. Do not claim a social post, follower count, video, comment, or profile fact unless retrieved from an authorized public source.');
     if (lower.includes('tiktok')) chunks.push('TIKTOK: EDUWILLS can integrate TikTok Research API data when an approved research client is available; current TikTok documentation requires an approved project for Research API access.');
   }
   return chunks.filter(Boolean).join('\n').slice(0, 14000);
@@ -159,13 +141,7 @@ async function researchInternet(query: string): Promise<string> {
 export async function askEduwills(prompt: string, history: string[] = []) {
   const conversation = [...history.slice(-8), `Learner: ${prompt}`].join('\n');
   const research = await researchInternet(prompt);
-  const instruction = `You are EDUWILLS AI, a general educational and knowledge assistant. Answer the learner's actual question, not a generic version of it. You can answer schoolwork, books, explanations, reasoning, writing, calculations, and current/general-knowledge questions.\n\nWEB RESEARCH RULES:\n- Use the supplied research evidence when it is relevant.\n- Treat retrieved web material as evidence, not as unquestionable truth; cross-check conflicting claims and state uncertainty.\n- Never invent a source, quote, social-media post, statistic, person, or event.\n- Do not claim to have accessed private, login-gated, deleted, or restricted content.\n- For current or time-sensitive facts, prefer dated/recent evidence and explicitly say when the evidence is incomplete.\n- If the learner asks about TikTok, Facebook/Meta, Instagram, or another social platform, only state platform-specific facts that are actually supported by retrieved public/authorized data.\n- If the available research is insufficient, say what is unknown and answer only the supported part.\n\nRETRIEVED PUBLIC RESEARCH:\n${research || 'No external research result was available for this query. Do not pretend that web research was performed successfully.'}\n\nCONVERSATION:\n${conversation}`;
-  try { return stripMarkup(await stable['__gatewayForChat']?.(instruction)); }
-  catch {
-    try { return stripMarkup(await stable.askEduwills(instruction, [])); }
-    catch {
-      try { return stripMarkup(await (stable as any).askEduwills(instruction, [])); }
-      catch { return 'EDUWILLS AI is temporarily busy. Please try again in a moment.'; }
-    }
-  }
+  const instruction = `You are EDUWILLS AI, a general educational and knowledge assistant. Answer the learner's actual question, not a generic version of it. You can answer schoolwork, books, explanations, reasoning, writing, calculations, and current/general-knowledge questions.\n\nWEB RESEARCH RULES:\n- Use the supplied research evidence when relevant.\n- Treat retrieved web material as evidence, not unquestionable truth; cross-check conflicting claims and state uncertainty.\n- Never invent a source, quote, social-media post, statistic, person, or event.\n- Do not claim to have accessed private, login-gated, deleted, or restricted content.\n- For current or time-sensitive facts, prefer dated/recent evidence and explicitly say when the evidence is incomplete.\n- If the learner asks about TikTok, Facebook/Meta, Instagram, or another social platform, only state platform-specific facts actually supported by retrieved public/authorized data.\n- If the available research is insufficient, say what is unknown and answer only the supported part.\n\nRETRIEVED PUBLIC RESEARCH:\n${research || 'No external research result was available for this query. Do not pretend that web research was performed successfully.'}\n\nCONVERSATION:\n${conversation}`;
+  try { return stripMarkup(await stable.askEduwills(instruction, [])); }
+  catch { return 'EDUWILLS AI is temporarily busy. Please try again in a moment.'; }
 }
