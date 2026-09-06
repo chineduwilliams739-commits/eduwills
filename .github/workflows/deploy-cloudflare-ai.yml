@@ -37,6 +37,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -44,9 +45,10 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           test -n "$GROQ_API_KEY" || { echo 'Missing GROQ_API_KEY'; exit 1; }
           test -n "$OPENROUTER_API_KEY" || { echo 'Missing OPENROUTER_API_KEY'; exit 1; }
+          test -n "$GEMINI_API_KEY" || { echo 'Missing GEMINI_API_KEY'; exit 1; }
 
           umask 077
-          printf 'GROQ_API_KEY=%s\nOPENROUTER_API_KEY=%s\n' "$GROQ_API_KEY" "$OPENROUTER_API_KEY" > .env.production
+          printf 'GROQ_API_KEY=%s\nOPENROUTER_API_KEY=%s\nGEMINI_API_KEY=%s\n' "$GROQ_API_KEY" "$OPENROUTER_API_KEY" "$GEMINI_API_KEY" > .env.production
           trap 'rm -f .env.production deploy.log' EXIT
 
           npx wrangler deploy --config wrangler.toml --secrets-file .env.production 2>&1 | tee deploy.log
