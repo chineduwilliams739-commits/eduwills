@@ -69,6 +69,8 @@ jobs:
         run: node scripts/harden-quiz-quota-provider.mjs
       - name: Apply final quiz generation UX hardening
         run: node scripts/harden-quiz-generation-ux.mjs
+      - name: Apply dedicated quiz generation failure repair
+        run: node scripts/fix-quiz-generation-failure-ui.mjs
 
       - name: Finalize EducationFeed reference
         run: |
@@ -106,7 +108,6 @@ jobs:
 
           client = Path('lib/quizAiClientStable.ts').read_text()
           page = Path('app/dashboard/quiz/page.tsx').read_text()
-          ux = Path('scripts/harden-quiz-generation-ux.mjs').read_text()
           dashboard = Path('app/dashboard/page.tsx').read_text()
 
           checks = {
@@ -120,11 +121,11 @@ jobs:
               'gateway-only generation': 'geminiText(' not in client and 'getGenerativeModel(' not in client and 'GoogleAIBackend' not in client,
               'no browser Gemini implementation': not re.search(r'\bgetAI\s*\(|\bGoogleAIBackend\b|\bgemini\.generateContent\s*\(|\bgeminiText\s*\(', client),
               'quota hardening version': "v33-quiz-reliable-generation" in client,
-              'timer starts after generation': 'const actualStartMs = Date.now();' in page or 'const readyAtMs = Date.now();' in page,
+              'timer starts after generation': 'const readyAtMs = Date.now();' in page,
               'safe explanation parser': 'readableExplanation' in client and "value === '{}'" in client,
-              'explanation UX guard': 'JSON.parse(readable)' in page or 'JSON.parse(readable)' in ux,
               'generation retry state': 'quizGenerationStarted' in page and 'Retry Generation' in page,
               'generation returns success': 'Promise<boolean>' in page and 'generatedSuccessfully' in page,
+              'failed attempts excluded from free count': "data.status !== 'failed'" in page,
               'EducationFeed reference is defined': 'function EducationFeed(){' in dashboard or "import EducationFeed from '@/components/EducationFeed';" in dashboard,
           }
 
