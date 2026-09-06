@@ -56,6 +56,11 @@ jobs:
   };'''
           p.write_text(s[:start] + new + s[end:])
           PY
+      - name: Apply deterministic Gemini Google Search bridge
+        run: |
+          set -euxo pipefail
+          node --check scripts/force-gemini-research-bridge.mjs
+          node scripts/force-gemini-research-bridge.mjs
       - name: TypeScript check
         run: |
           npm install --no-audit --no-fund
@@ -64,7 +69,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/admin/page.tsx
+          git add app/admin/page.tsx lib/quizAiClientStable.ts scripts/force-gemini-research-bridge.mjs
           if git diff --cached --quiet; then echo 'No changes needed.'; exit 0; fi
-          git commit -m "Fix WilliToken revocation account state"
+          git commit -m "Fix live Gemini research routing"
           git push origin HEAD:main
