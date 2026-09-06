@@ -11,37 +11,7 @@ const start = source.indexOf('function promptFor(');
 const end = source.indexOf('\n\nasync function generateBatch(', start);
 if (start < 0 || end < 0) throw new Error('Could not locate quiz prompt function safely.');
 
-const prompt = `function promptFor(
-  book: QuizBook,
-  count: number,
-  difficulty: string,
-  instructions: string,
-  previous: string[],
-  research: string,
-) {
-  const evidence = research.trim() || 'No external catalogue evidence was available. Use only facts you are genuinely confident belong to this exact book and do not invent or infer unsupported details.';
-  return \`You are EDUWILLS Book Intelligence AI, an expert educational quiz writer.
-
-Generate EXACTLY \${count} factual multiple-choice questions about ONLY this exact book: \${book.title} by \${book.author}.
-
-IDENTITY LOCK: The title and author together identify the exact work. Never substitute another edition, adaptation, similarly named work, mythology source, city, person, or general-knowledge fact.
-
-EVIDENCE LOCK: Prefer the exact-book evidence below. When external evidence is present, every question, option, correct answer, and explanation must be supported by it. When external evidence is unavailable, use only well-established knowledge you are genuinely confident is about this exact book. Never guess. Never infer plot, gender, age, occupation, relationships, chronology, setting, nationality, appearance, or events from names or stereotypes.
-
-DIVERSITY RULE: Rotate across characters, relationships, events, motivations, setting, chronology, causes, consequences, themes, conflict, decisions, important details, supported inference, literary techniques, symbolism, vocabulary-in-context, and interpretation. Do not ask the same fact twice or use the same question pattern repeatedly.
-
-DISTRIBUTION RULE: No single question type should exceed 25% of the batch. At least 60% must test concrete book-specific content. Avoid metadata unless explicitly requested.
-
-DIFFICULTY: \${difficulty}. Easier questions test recall and understanding; harder questions test relationships, causes, consequences, comparison, inference, or interpretation while remaining evidence-grounded.
-
-FORMAT: Return ONLY valid JSON: {\"questions\":[{\"question\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"answer\":0,\"explanation\":\"...\",\"evidence\":\"...\"}]}. Exactly four plausible options. answer is zero-based. No markdown. No duplicate or closely paraphrased questions.
-
-USER INSTRUCTIONS: \${instructions || 'Create a diverse quiz from the actual book content.'}
-PREVIOUS QUESTIONS TO AVOID: \${previous.slice(-30).join(' | ')}
-
-VERIFIED EXACT-BOOK EVIDENCE:
-\${evidence.slice(0, 50000)}\`;
-}`;
+const prompt = `function promptFor(\n  book: QuizBook,\n  count: number,\n  difficulty: string,\n  instructions: string,\n  previous: string[],\n  research: string,\n) {\n  const evidence = research.trim() || 'No external catalogue evidence was available. Use only facts you are genuinely confident belong to this exact book and do not invent or infer unsupported details.';\n  return \\`You are EDUWILLS Book Intelligence AI, an expert educational quiz writer.\\n\\nGenerate EXACTLY \\${count} factual multiple-choice questions about ONLY this exact book: \\${book.title} by \\${book.author}.\\n\\nIDENTITY LOCK: The title and author together identify the exact work. Never substitute another edition, adaptation, similarly named work, mythology source, city, person, or general-knowledge fact.\\n\\nEVIDENCE LOCK: Prefer the exact-book evidence below. When external evidence is present, every question, option, correct answer, and explanation must be supported by it. When external evidence is unavailable, use only well-established knowledge you are genuinely confident is about this exact book. Never guess. Never infer plot, gender, age, occupation, relationships, chronology, setting, nationality, appearance, or events from names or stereotypes.\\n\\nDIVERSITY RULE: Rotate across characters, relationships, events, motivations, setting, chronology, causes, consequences, themes, conflict, decisions, important details, supported inference, literary techniques, symbolism, vocabulary-in-context, and interpretation. Do not ask the same fact twice or use the same question pattern repeatedly.\\n\\nDISTRIBUTION RULE: No single question type should exceed 25% of the batch. At least 60% must test concrete book-specific content. Avoid metadata unless explicitly requested.\\n\\nDIFFICULTY: \\${difficulty}. Easier questions test recall and understanding; harder questions test relationships, causes, consequences, comparison, inference, or interpretation while remaining evidence-grounded.\\n\\nFORMAT: Return ONLY valid JSON: {\\"questions\\":[{\\"question\\":\\"...\\",\\"options\\":[\\"...\\",\\"...\\",\\"...\\",\\"...\\"],\\"answer\\":0,\\"explanation\\":\\"...\\",\\"evidence\\":\\"...\\"}]}. Exactly four plausible options. answer is zero-based. No markdown. No duplicate or closely paraphrased questions.\\n\\nUSER INSTRUCTIONS: \\${instructions || 'Create a diverse quiz from the actual book content.'}\\nPREVIOUS QUESTIONS TO AVOID: \\${previous.slice(-30).join(' | ')}\\n\\nVERIFIED EXACT-BOOK EVIDENCE:\\n\\${evidence.slice(0, 50000)}\\`;\n}`;
 
 source = source.slice(0, start) + prompt + source.slice(end);
 
@@ -49,40 +19,10 @@ const researchStart = source.indexOf('export async function researchBooks(');
 const researchEnd = source.indexOf('\n\nfunction promptFor(', researchStart);
 if (researchStart < 0 || researchEnd < 0) throw new Error('Could not locate research function safely.');
 
-const research = `export async function researchBooks(books: QuizBook[]): Promise<string> {
-  if (!books.length) return '';
-
-  const curated = curatedFor(books);
-  if (curated) return curated;
-
-  // Unknown books still get catalogue research, but all requests run in parallel.
-  const chunks: string[] = [];
-  await Promise.all(books.map(async (book) => {
-    const title = encodeURIComponent(book.title);
-    const author = encodeURIComponent(book.author);
-    const urls = [
-      \`https://www.googleapis.com/books/v1/volumes?q=intitle:\${title}+inauthor:\${author}&maxResults=10\`,
-      \`https://openlibrary.org/search.json?title=\${title}&author=\${author}&limit=15&fields=title,author_name,first_sentence,subject,description\`,
-    ];
-    const results = await Promise.allSettled(urls.map((url) =>
-      fetch(url, { cache: 'no-store' }).then((response) => response.ok ? response.json() : null)
-    ));
-    for (const result of results) {
-      if (result.status !== 'fulfilled' || !result.value) continue;
-      const data: any = result.value;
-      for (const item of data.items || []) {
-        const info = item.volumeInfo || {};
-        if (info.description) chunks.push(\`Exact-book catalogue description for \${book.title} by \${book.author}: \${info.description}\`);
-      }
-      for (const item of data.docs || []) {
-        if (item.first_sentence) chunks.push(\`Exact-book first sentence: \${(item.first_sentence || []).join(' ')}\`);
-        if (item.subject) chunks.push(\`Exact-book subjects: \${(item.subject || []).slice(0, 40).join(', ')}\`);
-        if (item.description) chunks.push(\`Exact-book description: \${typeof item.description === 'string' ? item.description : JSON.stringify(item.description)}\`);
-      }
-    }
-  }));
-  return chunks.join('\\n').slice(0, 60000);
-}`;
+// Keep the optional focus argument because generateQuiz passes the learner's
+// instructions through to researchBooks. This fixes the TS2554 mismatch while
+// preserving the existing research behavior for known and unknown books.
+const research = `export async function researchBooks(books: QuizBook[], focus = ''): Promise<string> {\n  if (!books.length) return '';\n\n  const curated = curatedFor(books);\n  if (curated) return curated;\n\n  // Unknown books still get catalogue research, but all requests run in parallel.\n  const chunks: string[] = [];\n  await Promise.all(books.map(async (book) => {\n    const title = encodeURIComponent(book.title);\n    const author = encodeURIComponent(book.author);\n    const urls = [\n      \\`https://www.googleapis.com/books/v1/volumes?q=intitle:\\${title}+inauthor:\\${author}&maxResults=10\\`,\n      \\`https://openlibrary.org/search.json?title=\\${title}&author=\\${author}&limit=15&fields=title,author_name,first_sentence,subject,description\\`,\n    ];\n    const results = await Promise.allSettled(urls.map((url) =>\n      fetch(url, { cache: 'no-store' }).then((response) => response.ok ? response.json() : null)\n    ));\n    for (const result of results) {\n      if (result.status !== 'fulfilled' || !result.value) continue;\n      const data: any = result.value;\n      for (const item of data.items || []) {\n        const info = item.volumeInfo || {};\n        if (info.description) chunks.push(\\`Exact-book catalogue description for \\${book.title} by \\${book.author}: \\${info.description}\\`);\n      }\n      for (const item of data.docs || []) {\n        if (item.first_sentence) chunks.push(\\`Exact-book first sentence: \\${(item.first_sentence || []).join(' ')}\\`);\n        if (item.subject) chunks.push(\\`Exact-book subjects: \\${(item.subject || []).slice(0, 40).join(', ')}\\`);\n        if (item.description) chunks.push(\\`Exact-book description: \\${typeof item.description === 'string' ? item.description : JSON.stringify(item.description)}\\`);\n      }\n    }\n  }));\n  return chunks.join('\\\\n').slice(0, 60000);\n}`;
 
 source = source.slice(0, researchStart) + research + source.slice(researchEnd);
 
@@ -90,38 +30,7 @@ const batchStart = source.indexOf('async function generateBatch(');
 const batchEnd = source.indexOf('\n\nexport async function generateQuiz(', batchStart);
 if (batchStart < 0 || batchEnd < 0) throw new Error('Could not locate quiz batch function safely.');
 
-const batch = `async function generateBatch(
-  book: QuizBook,
-  count: number,
-  difficulty: string,
-  instructions: string,
-  previous: string[],
-  research: string,
-) {
-  const safeCount = Math.min(10, Math.max(1, count));
-  const prompt = promptFor(book, safeCount, difficulty, instructions, previous, research);
-  let lastError: unknown;
-
-  try {
-    const text = await gateway(prompt, 25000);
-    const parsed = parseQuestions(text);
-    if (parsed.length) return parsed;
-    lastError = new Error('Gateway returned no valid questions');
-  } catch (error) {
-    lastError = error;
-  }
-
-  try {
-    const fallbackText = await geminiText(prompt, 25000);
-    const parsed = parseQuestions(fallbackText);
-    if (parsed.length) return parsed;
-    lastError = new Error('Gemini fallback returned no valid questions');
-  } catch (fallbackError) {
-    lastError = fallbackError;
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('AI generation failed');
-}`;
+const batch = `async function generateBatch(\n  book: QuizBook,\n  count: number,\n  difficulty: string,\n  instructions: string,\n  previous: string[],\n  research: string,\n) {\n  const safeCount = Math.min(10, Math.max(1, count));\n  const prompt = promptFor(book, safeCount, difficulty, instructions, previous, research);\n  let lastError: unknown;\n\n  try {\n    const text = await gateway(prompt, 25000);\n    const parsed = parseQuestions(text);\n    if (parsed.length) return parsed;\n    lastError = new Error('Gateway returned no valid questions');\n  } catch (error) {\n    lastError = error;\n  }\n\n  try {\n    const fallbackText = await geminiText(prompt, 25000);\n    const parsed = parseQuestions(fallbackText);\n    if (parsed.length) return parsed;\n    lastError = new Error('Gemini fallback returned no valid questions');\n  } catch (fallbackError) {\n    lastError = fallbackError;\n  }\n\n  throw lastError instanceof Error ? lastError : new Error('AI generation failed');\n}`;
 
 source = source.slice(0, batchStart) + batch + source.slice(batchEnd);
 source = source.replace('const batchSize = Math.min(5, share - local.length);', 'const batchSize = Math.min(10, share - local.length);');
