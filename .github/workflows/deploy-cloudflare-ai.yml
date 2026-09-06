@@ -10,11 +10,12 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -25,6 +26,24 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
+
+      - name: Apply Gemini Search client bridge
+        run: node scripts/enable-gemini-search.mjs
+
+      - name: Persist Gemini Search client bridge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- lib/quizAiClient.ts lib/quizAiClientStable.ts; then
+            echo 'Gemini client bridge already applied.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add lib/quizAiClient.ts lib/quizAiClientStable.ts
+            git commit -m 'feat: route EDUWILLS research through Gemini Google Search'
+            git push origin HEAD:main
+          fi
 
       - name: Install dependencies
         working-directory: cloudflare
@@ -53,18 +72,20 @@ jobs:
 
           npx wrangler deploy --config wrangler.toml --secrets-file .env.production 2>&1 | tee deploy.log
 
-          # Wrangler has already successfully deployed the Worker at this point.
-          # Extract its workers.dev URL without an over-escaped regex.
           WORKER_URL="$(grep -Eo 'https://[^[:space:]]+workers\.dev' deploy.log | tail -1 | sed 's/[[:punct:]]*$//')"
           test -n "$WORKER_URL" || { echo 'Could not determine deployed Worker URL'; cat deploy.log; exit 1; }
           echo "Worker deployed at $WORKER_URL"
 
           CONTENT="$(printf '{\"url\":\"%s\"}\n' "$WORKER_URL" | base64 -w0)"
           SHA="$(gh api "repos/${GITHUB_REPOSITORY}/contents/public/ai-gateway.json" --jq '.sha')"
-
           gh api "repos/${GITHUB_REPOSITORY}/contents/public/ai-gateway.json" \
             --method PUT \
             -f message='Publish deployed AI gateway URL' \
             -f content="$CONTENT" \
             -f sha="$SHA" \
             -f branch='main' >/dev/null
+
+      - name: Dispatch GitHub Pages deployment for the persisted client changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --ref main
