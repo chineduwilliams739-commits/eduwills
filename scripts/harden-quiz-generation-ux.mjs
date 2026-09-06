@@ -28,17 +28,79 @@ client = client.replace(
   "fetch(url, { cache: 'no-store' })",
   "fetchWithTimeout(url, { cache: 'no-store' }, 7000)",
 );
-client = client.replace(/const QUIZ_BATCH_CONCURRENCY = \d+;/, 'const QUIZ_BATCH_CONCURRENCY = 4;');
-client = client.replace(/const QUIZ_BATCH_SIZE = \d+;/, 'const QUIZ_BATCH_SIZE = 8;');
-client = client.replace(/const QUIZ_PROVIDER_TIMEOUT = \d+;/, 'const QUIZ_PROVIDER_TIMEOUT = 12000;');
+
+// Keep enough parallelism to reach the target of roughly 100 questions/minute.
+// Grounding can reject a subset of model output, so generation below deliberately
+// requests a safety buffer rather than treating raw AI output as final questions.
+client = client.replace(/const QUIZ_BATCH_CONCURRENCY = \d+;/, 'const QUIZ_BATCH_CONCURRENCY = 10;');
+client = client.replace(/const QUIZ_BATCH_SIZE = \d+;/, 'const QUIZ_BATCH_SIZE = 10;');
+client = client.replace(/const QUIZ_PROVIDER_TIMEOUT = \d+;/, 'const QUIZ_PROVIDER_TIMEOUT = 15000;');
 
 const generateBatchStart = client.indexOf('async function generateBatch(');
 const generateBatchEnd = client.indexOf('\n\nasync function generateParallelBatches(', generateBatchStart);
 if (generateBatchStart >= 0 && generateBatchEnd > generateBatchStart) {
   const batch = client.slice(generateBatchStart, generateBatchEnd);
-  const patched = batch.replace('for (let attempt = 0; attempt < 2; attempt++)', 'for (let attempt = 0; attempt < 3; attempt++)');
-  client = client.slice(0, generateBatchStart) + patched + client.slice(generateBatchEnd);
+  client = client.slice(0, generateBatchStart) + batch + client.slice(generateBatchEnd);
 }
+
+// Replace the final collection loop with an adaptive grounded-generation loop.
+// The old implementation asked for N raw questions and assumed N would survive
+// grounding. That is why a request for 10 could stop at 7/10 even though the AI
+// call itself succeeded. Generate a controlled buffer and, if grounding removes
+// some, immediately request another batch instead of forcing the user to retry.
+const loopStart = client.indexOf('    const needed = share - local.length;');
+if (loopStart >= 0) {
+  const loopEndMarker = '\n    if (local.length < share)';
+  const loopEnd = client.indexOf(loopEndMarker, loopStart);
+  if (loopEnd < 0) throw new Error('Could not locate adaptive quiz generation boundary.');
+  const adaptive = `    let refillRounds = 0;
+    while (local.length < share && refillRounds < 8) {
+      refillRounds += 1;
+      const remaining = share - local.length;
+      // 1.6x buffer compensates for strict grounding/deduplication while
+      // keeping each provider request capped at 10 questions.
+      const generationTarget = Math.min(100, Math.max(remaining, Math.ceil(remaining * 1.6)));
+      const questions = await generateParallelBatches(
+        book,
+        generationTarget,
+        difficulty,
+        instructions,
+        [...recent, ...output.map((question) => question.question)],
+        evidence,
+      );
+
+      let accepted = 0;
+      for (const question of questions) {
+        const key = fingerprint(question.question);
+        if (!key || seen.has(key)) continue;
+        if (metadata(question)) continue;
+        if (local.some((item) => similar(item.question, question.question))) continue;
+        if (output.some((item) => similar(item.question, question.question))) continue;
+        if (!groundedForBooks([book], question, evidence)) continue;
+
+        local.push(question);
+        output.push(question);
+        seen.add(key);
+        accepted += 1;
+
+        cacheState.questions.push({ ...question, bookKey: bookKey(book) });
+        cacheState.updatedAt = Date.now();
+        writeGenerationCache(cacheState);
+
+        const bank = readQuestionBank(book);
+        writeQuestionBank(book, [...bank, { ...question, bookKey: bookKey(book) }]);
+        onPartial?.(question, book, output.length, requested);
+
+        if (local.length >= share || output.length >= requested) break;
+      }
+
+      if (!accepted) break;
+    }
+`;
+  client = client.slice(0, loopStart) + adaptive + client.slice(loopEnd);
+}
+
+client = client.replace(/const CACHE_VERSION = '[^']+';/, "const CACHE_VERSION = 'v32-quiz-throughput-grounded-retry';");
 
 fs.writeFileSync(clientPath, client);
 
@@ -95,4 +157,4 @@ const newExplain = `      let readable = cleanText(text);
 if (page.includes(oldExplain)) page = page.replace(oldExplain, newExplain);
 
 fs.writeFileSync(pagePath, page);
-console.log('Quiz generation UX hardening applied successfully.');
+console.log('Quiz generation UX hardening applied: 10-way parallel batches, adaptive grounded refill, and timer starts only after generation.');
