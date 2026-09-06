@@ -123,7 +123,7 @@ jobs:
               'quota hardening version': "v33-quiz-reliable-generation" in client,
               'timer starts after generation': 'const readyAtMs = Date.now();' in page,
               'safe explanation parser': 'readableExplanation' in client and "value === '{}'" in client,
-              'generation retry state': 'quizGenerationStarted' in page and 'Retry Generation' in page,
+              'generation retry state': 'quizGenerationFailed' in page and 'Retry Generation' in page,
               'generation returns success': 'Promise<boolean>' in page and 'generatedSuccessfully' in page,
               'failed attempts excluded from free count': "data.status !== 'failed'" in page,
               'EducationFeed reference is defined': 'function EducationFeed(){' in dashboard or "import EducationFeed from '@/components/EducationFeed';" in dashboard,
