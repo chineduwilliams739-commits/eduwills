@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   repair:
@@ -52,3 +53,8 @@ jobs:
           git add app/dashboard/page.tsx app/dashboard/activation/page.tsx app/dashboard/quiz/page.tsx lib/quizAiClientStable.ts scripts/repair-dashboard-session.mjs .github/workflows/repair-dashboard-session.yml
           git commit -m 'Repair dashboard and quiz search support'
           git push
+      - name: Dispatch Pages deployment
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-pages.yml --ref main --repo "${{ github.repository }}"
