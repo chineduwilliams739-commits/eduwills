@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Repair book search and author lookup
+      - name: Repair book search, author lookup, and quiz grounding
         shell: bash
         run: |
           set -euo pipefail
@@ -24,7 +24,11 @@ jobs:
           p = page.read_text()
           if '  searchBookAuthors,\n' not in p:
               p = p.replace('  researchBooks,\n', '  researchBooks,\n  searchBookAuthors,\n', 1)
-              page.write_text(p)
+          if "title: 'The Lekki Headmaster'" not in p:
+              marker = "const CURATED_BOOKS: CuratedBook[] = [\n"
+              entry = "  {\n    title: 'The Lekki Headmaster',\n    aliases: ['lekki headmaster', 'the lekki headmaster', 'lekki headmaster kabir alabi garba'],\n    authors: ['Kabir Alabi Garba'],\n  },\n"
+              p = p.replace(marker, marker + entry, 1)
+          page.write_text(p)
 
           stable = Path('lib/quizAiClientStable.ts')
           s = stable.read_text()
@@ -79,6 +83,16 @@ jobs:
           s, n = pattern.subn(replacement, s, count=1)
           if n != 1:
               raise SystemExit('Could not locate searchBookAuthors block')
+
+          # Broaden research sources without using copyrighted full text.
+          s = s.replace(
+              "const urls = [\n    `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=20`,\n    `https://openlibrary.org/search.json?q=${encoded}&limit=20`,\n  ];",
+              "const urls = [\n    `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=20`,\n    `https://openlibrary.org/search.json?q=${encoded}&limit=20`,\n    `https://archive.org/advancedsearch.php?q=title:(${encoded})&fl[]=title&fl[]=creator&fl[]=description&rows=20&page=1&output=json`,\n  ];"
+          )
+
+          # Make explicit user instructions mandatory and require broad coverage when none are supplied.
+          instruction_block = '''User quiz instructions are mandatory when provided. Treat them as a high-priority constraint after factual accuracy and safety. Every generated question must visibly follow the requested focus, topic, chapter, character, event, theme, format, or other instruction; do not silently substitute a generic question. If no user instructions are provided, deliberately vary questions across characters, relationships, events, chronology, settings, causes/consequences, themes, conflicts, language/style, symbols, decisions, and distinctive book details. Never mix facts from another book with a similar title.''' 
+          s = re.sub(r"User instructions:[\\s\\S]*?\\n\\s*\\n", instruction_block + "\\n\\n", s, count=1)
           stable.write_text(s)
           PY
 
@@ -89,5 +103,5 @@ jobs:
             echo 'No repair changes needed.'
             exit 0
           fi
-          git commit -m 'fix: restore reliable book and author search [skip ci]'
+          git commit -m 'fix: reliable book and author search plus instruction grounding [skip ci]'
           git push
