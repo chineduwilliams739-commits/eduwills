@@ -34,6 +34,7 @@ import {
   generateQuiz,
   generateRemarks,
   researchBooks,
+  searchBookAuthors,
 } from '@/lib/quizAiClient';
 
 const BASE = '/eduwills';
@@ -80,6 +81,7 @@ type QuizDropdownOption = {
 };
 
 const CURATED_BOOKS: CuratedBook[] = [
+  { title: 'The Lekki Headmaster', aliases: ['lekki headmaster', 'the lekki headmaster', 'lekki headmaster kabir alabi garba'], authors: ['Kabir Alabi Garba'] },
   {
     title: 'Sànyà',
     aliases: ['sanya', 'sanya novel', 'sanya oyin olugbile'],
@@ -548,139 +550,31 @@ export default function QuizPage() {
   ];
 
   async function findBook() {
-    const raw = title.trim();
-
-    if (!raw) return;
-
-    setSearching(true);
-    setMessage('');
-    setAuthors([]);
-    setAuthor('');
-    setAuthorQuery('');
-
-    try {
-      const n = normalize(raw);
-
-      const curated = CURATED_BOOKS.filter((b) =>
-        [b.title, ...b.aliases].some(
-          (a) =>
-            normalize(a).includes(n) ||
-            n.includes(normalize(a))
-        )
-      ).flatMap((b) => b.authors);
-
-      const found: string[] = [];
-
-      for (const q of Array.from(new Set([raw, n]))) {
-        try {
-          const r = await fetch(
-            `https://openlibrary.org/search.json?title=${encodeURIComponent(
-              q
-            )}&limit=30`
-          );
-
-          if (r.ok) {
-            const d = await r.json();
-
-            found.push(
-              ...(d.docs || []).flatMap(
-                (x: any) => x.author_name || []
-              )
-            );
-          }
-        } catch {}
-
-        try {
-          const r = await fetch(
-            `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
-              q
-            )}&maxResults=20`
-          );
-
-          if (r.ok) {
-            const d = await r.json();
-
-            found.push(
-              ...(d.items || []).flatMap(
-                (x: any) =>
-                  x.volumeInfo?.authors || []
-              )
-            );
-          }
-        } catch {}
-      }
-
-      const names = Array.from(
-        new Set(
-          [...curated, ...found].filter(Boolean)
-        )
-      ).slice(0, 50);
-
+    const raw=title.trim();
+    if(!raw)return;
+    setSearching(true);setMessage('');setAuthors([]);setAuthor('');setAuthorQuery('');
+    try{
+      const results=await searchBookAuthors('title',raw);
+      const n=normalize(raw);
+      const curated=CURATED_BOOKS.filter(b=>[b.title,...b.aliases].some(a=>{const x=normalize(a);return x.includes(n)||n.includes(x);})).flatMap(b=>b.authors);
+      const names=Array.from(new Set([...curated,...results.flatMap(r=>r.authors)].filter(Boolean))).slice(0,80);
       setAuthors(names);
-
-      setMessage(
-        names.length
-          ? 'Select a verified author from the search results. Authors cannot be entered manually.'
-          : 'No verified author was found. Search for the author by name.'
-      );
-    } catch {
-      setMessage(
-        'Book search is temporarily unavailable.'
-      );
-    } finally {
-      setSearching(false);
-    }
+      setMessage(names.length?'Select a verified author from the search results. Authors cannot be entered manually.':'No verified author was found. Try the full title or search for the author by name.');
+    }catch(error){console.error('Book search failed',error);setMessage('Book search is temporarily unavailable. Please try again.');}
+    finally{setSearching(false);}
   }
 
   async function searchAuthor() {
-    const q = authorQuery.trim();
-
-    if (!q) return;
-
-    setSearching(true);
-
-    try {
-      const e = encodeURIComponent(q);
-
-      const urls = [
-        `https://openlibrary.org/search.json?author=${e}&limit=30`,
-        `https://www.googleapis.com/books/v1/volumes?q=inauthor:${e}&maxResults=20`,
-      ];
-
-      const names: string[] = [];
-
-      for (const u of urls) {
-        try {
-          const r = await fetch(u);
-
-          if (!r.ok) continue;
-
-          const d = await r.json();
-
-          names.push(
-            ...(d.docs || []).flatMap(
-              (x: any) => x.author_name || []
-            ),
-            ...(d.items || []).flatMap(
-              (x: any) =>
-                x.volumeInfo?.authors || []
-            )
-          );
-        } catch {}
-      }
-
-      setAuthors(
-        Array.from(new Set(names)).slice(0, 50)
-      );
-
-      setMessage(
-        names.length
-          ? 'Select a verified author from the search results.'
-          : 'No verified author match was found. Try another spelling.'
-      );
-    } finally {
-      setSearching(false);
-    }
+    const q=authorQuery.trim();
+    if(!q)return;
+    setSearching(true);setMessage('');
+    try{
+      const results=await searchBookAuthors('author',q);
+      const names=Array.from(new Set(results.flatMap(r=>r.authors).filter(Boolean))).slice(0,80);
+      setAuthors(names);
+      setMessage(names.length?'Select a verified author from the search results.':'No verified author match was found. Try another spelling.');
+    }catch(error){console.error('Author search failed',error);setMessage('Author search is temporarily unavailable. Please try again.');}
+    finally{setSearching(false);}
   }
 
   async function saveBook() {

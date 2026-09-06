@@ -190,33 +190,38 @@ function parseQuestions(text: string): QuizQuestion[] {
 function curatedFor(books: QuizBook[]) { return verifiedResearch(books).slice(0, 70000); }
 
 export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
-  const query = value.trim();
-  if (!query) return [];
-  const encoded = encodeURIComponent(query);
-  const urls = kind === 'title'
-    ? [`https://openlibrary.org/search.json?title=${encoded}&limit=50&fields=title,author_name`, `https://www.googleapis.com/books/v1/volumes?q=intitle:${encoded}&maxResults=40`]
-    : [`https://openlibrary.org/search.json?author=${encoded}&limit=50&fields=title,author_name`, `https://www.googleapis.com/books/v1/volumes?q=inauthor:${encoded}&maxResults=40`];
-  const output: BookSearchResult[] = [];
-  const seen = new Set<string>();
-  await Promise.allSettled(urls.map(async (url) => {
-    try {
-      const response = await fetch(url, { cache: 'no-store' });
-      if (!response.ok) return;
-      const data: any = await response.json();
-      const rows = [...(data.docs || []), ...(data.items || []).map((item: any) => ({ title: item.volumeInfo?.title, author_name: item.volumeInfo?.authors }))];
-      for (const row of rows) {
-        const title = clean(row?.title);
-        const authors = Array.isArray(row?.author_name) ? row.author_name.map(String) : [];
-        if (!title || !authors.length) continue;
-        const key = `${norm(title)}|${authors.map(norm).join('|')}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        output.push({ title, authors, source: url.includes('openlibrary') ? 'Open Library' : 'Google Books' });
+  const query=value.trim();if(!query)return[];
+  const encoded=encodeURIComponent(query);
+  const urls=kind==='title'
+    ? [
+        `https://openlibrary.org/search.json?title=${encoded}&limit=50&fields=title,author_name,key`,
+        `https://www.googleapis.com/books/v1/volumes?q=intitle:${encoded}&maxResults=40`,
+        `https://archive.org/advancedsearch.php?q=title:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
+      ]
+    : [
+        `https://openlibrary.org/search.json?author=${encoded}&limit=50&fields=title,author_name,key`,
+        `https://www.googleapis.com/books/v1/volumes?q=inauthor:${encoded}&maxResults=40`,
+        `https://archive.org/advancedsearch.php?q=creator:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
+      ];
+  const output:BookSearchResult[]=[];const seen=new Set<string>();
+  await Promise.allSettled(urls.map(async url=>{
+    try{
+      const response=await fetch(url,{cache:'no-store'});if(!response.ok)return;
+      const data:any=await response.json();
+      const rows=[...(data.docs||[]),...(data.items||[]).map((item:any)=>({title:item.volumeInfo?.title,author_name:item.volumeInfo?.authors})),...(data.response?.docs||[])];
+      for(const row of rows){
+        const title=clean(row?.title);
+        const rawAuthors=row?.author_name??row?.authors??row?.creator??row?.author;
+        const authors=Array.isArray(rawAuthors)?rawAuthors.map((x:unknown)=>clean(x)).filter(Boolean):typeof rawAuthors==='string'?rawAuthors.split(/;|,|\|/).map(clean).filter(Boolean):[];
+        if(!title||!authors.length)continue;
+        const key=`${norm(title)}|${authors.map(norm).join('|')}`;if(seen.has(key))continue;seen.add(key);
+        output.push({title,authors,source:url.includes('openlibrary')?'Open Library':url.includes('googleapis')?'Google Books':'Internet Archive'});
       }
-    } catch {}
+    }catch{}
   }));
-  return output.slice(0, 160);
+  return output.slice(0,160);
 }
+
 
 export async function researchBooks(books: QuizBook[]): Promise<string> {
   if (!books.length) return '';
@@ -228,6 +233,7 @@ export async function researchBooks(books: QuizBook[]): Promise<string> {
     const urls = [
       `https://www.googleapis.com/books/v1/volumes?q=intitle:${title}+inauthor:${author}&maxResults=20`,
       `https://openlibrary.org/search.json?title=${title}&author=${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,
+      `https://archive.org/advancedsearch.php?q=title:(${title})%20AND%20creator:(${author})&fl[]=title&fl[]=creator&fl[]=description&fl[]=subject&rows=20&page=1&output=json`,
     ];
     const results = await Promise.allSettled(urls.map((url) => fetch(url, { cache: 'no-store' }).then((response) => response.ok ? response.json() : null)));
     for (const result of results) {
@@ -248,7 +254,7 @@ export async function researchBooks(books: QuizBook[]): Promise<string> {
 }
 
 function promptFor(book: QuizBook, count: number, difficulty: string, instructions: string, previous: string[], research: string) {
-  return `You are EDUWILLS Book Intelligence AI.\n\nGenerate EXACTLY ${count} factual multiple-choice questions about ONLY this exact book: ${book.title} by ${book.author}.\n\nIDENTITY LOCK: The title and author together identify the book. Never substitute another work, adaptation, mythology source, similarly named book, city, person, or general knowledge.\n\nEVIDENCE LOCK: Every question, every option, the correct answer, and the explanation must be supported by the exact-book evidence below. If the evidence does not establish a fact, do not use it. Never infer gender, age, occupation, family role, setting, chronology, relationship, appearance, nationality, or plot events from a name or stereotype.\n\nQUESTION QUALITY: At least 80% must test concrete book content: characters, relationships, events, actions, decisions, settings, chronology, causes, consequences, chapter details, or distinctive book-specific facts. Avoid generic questions. Do not ask unsupported modern-life or city questions. Do not ask metadata questions unless explicitly requested.\n\nFORMAT: Return ONLY valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"...","evidence":"..."}]}. Use exactly four plausible options and one correct answer. answer is zero-based. Do not prefix options with A/B/C/D. Do not include markdown. Do not duplicate previous questions.\n\nDIFFICULTY: ${difficulty}.\nUSER INSTRUCTIONS: ${instructions || 'Create a diverse quiz from the actual book content.'}\nPREVIOUS QUESTIONS TO AVOID: ${previous.slice(-40).join(' | ')}\n\nVERIFIED EXACT-BOOK EVIDENCE:\n${research.slice(0, 65000)}`;
+  return `You are EDUWILLS Book Intelligence AI.\n\nGenerate EXACTLY ${count} factual multiple-choice questions about ONLY this exact book: ${book.title} by ${book.author}.\n\nIDENTITY LOCK: The title and author together identify the book. Never substitute another work, adaptation, mythology source, similarly named book, city, person, or general knowledge.\n\nEVIDENCE LOCK: Every question, every option, the correct answer, and the explanation must be supported by the exact-book evidence below. If the evidence does not establish a fact, do not use it. Never infer gender, age, occupation, family role, setting, chronology, relationship, appearance, nationality, or plot events from a name or stereotype.\n\nQUESTION QUALITY: At least 80% must test concrete book content: characters, relationships, events, actions, decisions, settings, chronology, causes, consequences, chapter details, or distinctive book-specific facts. Avoid generic questions. Do not ask unsupported modern-life or city questions. Do not ask metadata questions unless explicitly requested.\n\nFORMAT: Return ONLY valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"answer":0,"explanation":"...","evidence":"..."}]}. Use exactly four plausible options and one correct answer. answer is zero-based. Do not prefix options with A/B/C/D. Do not include markdown. Do not duplicate previous questions.\n\nDIFFICULTY: ${difficulty}.\nUSER INSTRUCTIONS: ${instructions ? `MANDATORY — follow these instructions in every question after factual accuracy and safety: ${instructions}. Each question must visibly reflect the requested focus; do not replace it with a generic question.` : 'No special instructions were provided. Deliberately vary questions across characters, relationships, events, chronology, settings, causes/consequences, themes, conflicts, language/style, symbols, decisions, chapters, and distinctive book-specific details.'}\nPREVIOUS QUESTIONS TO AVOID: ${previous.slice(-40).join(' | ')}\n\nVERIFIED EXACT-BOOK EVIDENCE:\n${research.slice(0, 65000)}`;
 }
 
 async function generateBatch(book: QuizBook, count: number, difficulty: string, instructions: string, previous: string[], research: string) {
