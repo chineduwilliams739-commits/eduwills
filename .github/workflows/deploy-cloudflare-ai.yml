@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'cloudflare/**'
+      - 'scripts/enable-gemini-search.mjs'
       - '.github/workflows/deploy-cloudflare-ai.yml'
 
 permissions:
@@ -29,6 +30,9 @@ jobs:
 
       - name: Apply Gemini Search client bridge
         run: node scripts/enable-gemini-search.mjs
+
+      - name: Validate Gemini Search client bridge
+        run: git diff --check
 
       - name: Persist Gemini Search client bridge
         env:
