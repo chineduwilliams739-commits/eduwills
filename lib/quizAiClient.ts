@@ -9,7 +9,7 @@ type QuizQuestion = { question: string; options: string[]; answer: number; expla
 type CachedQuestion = QuizQuestion & { bookKey: string };
 type GenerationCache = { version: string; key: string; books: QuizBook[]; requested: number; difficulty: string; instructions: string; questions: CachedQuestion[]; updatedAt: number };
 
-const CACHE_VERSION = 'v32-grounded-instructions-web-research';
+const CACHE_VERSION = 'v33-strict-instruction-adaptive-refill';
 const CACHE_PREFIX = 'eduwills_quiz_generation_cache:';
 const norm = (v: string) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const bookKey = (b: QuizBook) => `${norm(b.title)}|${norm(b.author)}`;
@@ -94,7 +94,33 @@ export async function generateQuiz(...args: Parameters<typeof stable.generateQui
   const cached = readCompleteCache(books || [], requested, difficulty || 'Mixed', effectiveInstructions);
   if (cached) return cached;
   await waitForAuthenticatedUser();
-  return stable.generateQuiz(books, requested, difficulty, effectiveInstructions, recent || [], research || '', onPartial);
+
+  const partial: QuizQuestion[] = [];
+  const partialBooks = new Map<string, QuizBook>();
+  const capture = (question: QuizQuestion, book: QuizBook, completed: number, total: number) => {
+    if (!valid(question)) return;
+    if (!partial.some(existing => norm(existing.question) === norm(question.question))) partial.push(question);
+    partialBooks.set(norm(question.question), book);
+    onPartial?.(question, book, completed, total);
+  };
+
+  try {
+    return await stable.generateQuiz(books, requested, difficulty, effectiveInstructions, recent || [], research || '', capture);
+  } catch (error) {
+    const message = String((error as Error)?.message || error || '');
+    const partialMatch = message.match(/AI generated (\d+) of (\d+)/i);
+    if (!custom || !partialMatch) throw error;
+    const completed = Math.min(requested, partial.length);
+    if (completed >= requested) return partial.slice(0, requested);
+
+    const remaining = requested - completed;
+    const fallbackInstructions = `FALLBACK MODE. The user's requested focus was: ${custom}. Generate exactly ${remaining} additional questions that are NOT already represented in the supplied partial set. Reliable evidence was insufficient to produce all remaining instruction-focused questions, so these remaining questions must be randomly selected from different well-grounded aspects of the selected book(s): characters, relationships, events, chronology, setting, causes, consequences, themes, conflicts, decisions, language/style, symbols, chapters, and distinctive details. Do not invent facts. Do not repeat the partial questions. The fallback is only for the remaining ${remaining} questions; do not try to force the original instruction when the evidence is insufficient.`;
+    const fallbackRecent = [...(recent || []), ...partial.map(q => q.question)];
+    const fallback = await stable.generateQuiz(books, remaining, difficulty, fallbackInstructions, fallbackRecent, research || '', (q, b, c, t) => {
+      capture(q, b, completed + c, requested);
+    });
+    return [...partial, ...fallback].slice(0, requested);
+  }
 }
 
 function stripMarkup(value: string) { return String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
