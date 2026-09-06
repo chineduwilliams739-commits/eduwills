@@ -70,6 +70,35 @@ jobs:
       - name: Apply final quiz generation UX hardening
         run: node scripts/harden-quiz-generation-ux.mjs
 
+      - name: Finalize EducationFeed reference
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/dashboard/page.tsx')
+          source = path.read_text()
+
+          # If a historical repair pass leaves <EducationFeed /> but its inline
+          # declaration is absent, use the existing standalone client component.
+          if '<EducationFeed' in source and 'function EducationFeed(){' not in source:
+              import_line = "import EducationFeed from '@/components/EducationFeed';"
+              if import_line not in source:
+                  lines = source.splitlines()
+                  insert_at = 0
+                  while insert_at < len(lines) and (lines[insert_at].startswith("'use client'") or not lines[insert_at].strip()):
+                      insert_at += 1
+                  lines.insert(insert_at, import_line)
+                  source = '\n'.join(lines) + ('\n' if source.endswith('\n') else '')
+              print('EducationFeed fallback import installed.')
+          elif 'function EducationFeed(){' in source:
+              print('Inline EducationFeed implementation present.')
+          else:
+              print('No EducationFeed JSX reference found; no change needed.')
+
+          path.write_text(source)
+          PY
+
       - name: Verify repaired source
         run: |
           set -euo pipefail
@@ -80,6 +109,7 @@ jobs:
           client = Path('lib/quizAiClientStable.ts').read_text()
           page = Path('app/dashboard/quiz/page.tsx').read_text()
           ux = Path('scripts/harden-quiz-generation-ux.mjs').read_text()
+          dashboard = Path('app/dashboard/page.tsx').read_text()
 
           checks = {
               'gateway timeout helper': 'async function fetchWithTimeout' in client,
@@ -94,15 +124,16 @@ jobs:
               'timer starts after generation': 'const actualStartMs = Date.now();' in page,
               'safe explanation parser': 'readableExplanation' in client and "value === '{}'" in client,
               'explanation UX guard': 'JSON.parse(readable)' in page or 'JSON.parse(readable)' in ux,
+              'EducationFeed reference is defined': 'function EducationFeed(){' in dashboard or "import EducationFeed from '@/components/EducationFeed';" in dashboard,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
           if missing:
-              print('Quiz generation hardening verification failed:')
+              print('Quiz/dashboard hardening verification failed:')
               for item in missing:
                   print(' -', item)
               raise SystemExit(1)
-          print(f'Quiz generation hardening verified ({len(checks)} checks).')
+          print(f'Quiz/dashboard hardening verified ({len(checks)} checks).')
           PY
 
       - name: Typecheck
