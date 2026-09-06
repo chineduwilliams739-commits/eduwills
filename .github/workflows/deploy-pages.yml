@@ -79,8 +79,6 @@ jobs:
           path = Path('app/dashboard/page.tsx')
           source = path.read_text()
 
-          # If a historical repair pass leaves <EducationFeed /> but its inline
-          # declaration is absent, use the existing standalone client component.
           if '<EducationFeed' in source and 'function EducationFeed(){' not in source:
               import_line = "import EducationFeed from '@/components/EducationFeed';"
               if import_line not in source:
@@ -115,13 +113,14 @@ jobs:
               'gateway timeout helper': 'async function fetchWithTimeout' in client,
               'research fetch timeout': "fetchWithTimeout(url, { cache: 'no-store' }, 7000)" in client,
               'gateway config timeout': "fetchWithTimeout(`${BASE}/ai-gateway.json?v=30`, { cache: 'no-store' }, 5000)" in client,
-              'batch concurrency': 'const QUIZ_BATCH_CONCURRENCY = 4;' in client,
-              'batch size': 'const QUIZ_BATCH_SIZE = 8;' in client,
-              'provider timeout': 'const QUIZ_PROVIDER_TIMEOUT = 12000;' in client,
+              'batch concurrency': 'const QUIZ_BATCH_CONCURRENCY = 10;' in client,
+              'batch size': 'const QUIZ_BATCH_SIZE = 10;' in client,
+              'provider timeout': 'const QUIZ_PROVIDER_TIMEOUT = 15000;' in client,
+              'adaptive grounded refill': 'generationTarget = Math.min(100' in client and 'refillRounds < 8' in client,
               'gateway-only generation': 'geminiText(' not in client and 'getGenerativeModel(' not in client and 'GoogleAIBackend' not in client,
               'no browser Gemini implementation': not re.search(r'\bgetAI\s*\(|\bGoogleAIBackend\b|\bgemini\.generateContent\s*\(|\bgeminiText\s*\(', client),
-              'quota hardening version': "v31-quiz-runtime-hardening" in client,
-              'timer starts after generation': 'const actualStartMs = Date.now();' in page,
+              'quota hardening version': "v32-quiz-throughput-grounded-retry" in client,
+              'timer starts after generation': 'const actualStartMs = Date.now();' in page or 'const readyAtMs = Date.now();' in page,
               'safe explanation parser': 'readableExplanation' in client and "value === '{}'" in client,
               'explanation UX guard': 'JSON.parse(readable)' in page or 'JSON.parse(readable)' in ux,
               'EducationFeed reference is defined': 'function EducationFeed(){' in dashboard or "import EducationFeed from '@/components/EducationFeed';" in dashboard,
