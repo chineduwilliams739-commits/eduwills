@@ -112,7 +112,7 @@ jobs:
 
           checks = {
               'gateway timeout helper': 'async function fetchWithTimeout' in client,
-              'research fetch timeout': "fetchWithTimeout(url, { cache: 'no-store' }, 7000)" in client,
+              'research fetch timeout': "fetchWithTimeout(url, { cache: 'no-store' }, 5000)" in client,
               'gateway config timeout': "fetchWithTimeout(`${BASE}/ai-gateway.json?v=30`, { cache: 'no-store' }, 5000)" in client,
               'batch concurrency': 'const QUIZ_BATCH_CONCURRENCY = 10;' in client,
               'batch size': 'const QUIZ_BATCH_SIZE = 10;' in client,
