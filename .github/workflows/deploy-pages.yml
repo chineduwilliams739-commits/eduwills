@@ -29,19 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Verify dashboard navigation
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          dashboard = Path('app/dashboard/page.tsx').read_text()
-          required = ('QUIZ', 'HISTORY', 'ACTIVATION', 'EDUWILLS AI', 'PERSONAL')
-          missing = [x for x in required if x not in dashboard]
-          if missing:
-              raise SystemExit('Missing dashboard navigation labels: ' + ', '.join(missing))
-          print('Dashboard navigation verified.')
-          PY
-
       - name: Apply dashboard Personal and news repair
         run: node scripts/repair-activation-news.mjs
       - name: Apply activation success and WilliToken UI repair
@@ -113,6 +100,7 @@ jobs:
           dashboard = Path('app/dashboard/page.tsx').read_text()
 
           checks = {
+              'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
               'gateway timeout helper': 'async function fetchWithTimeout' in client,
               'research fetch timeout': "fetchWithTimeout(url, { cache: 'no-store' }, 5000)" in client,
               'gateway config timeout': "fetchWithTimeout(`${BASE}/ai-gateway.json?v=30`, { cache: 'no-store' }, 5000)" in client,
