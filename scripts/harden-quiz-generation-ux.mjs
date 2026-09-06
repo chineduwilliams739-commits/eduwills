@@ -88,27 +88,52 @@ fs.writeFileSync(clientPath, client);
 const pagePath = 'app/dashboard/quiz/page.tsx';
 let page = fs.readFileSync(pagePath, 'utf8');
 
-// Keep generation failures inside the generation flow and make them retryable.
+// Generation failures are explicit and retryable.
 if (!page.includes('const [quizGenerationFailed, setQuizGenerationFailed]')) {
+  const stateMarker = "  const [quizError, setQuizError] = useState('');";
+  if (!page.includes(stateMarker)) throw new Error('Quiz error state marker not found.');
   page = page.replace(
-    "  const [quizError, setQuizError] = useState('');",
-    "  const [quizError, setQuizError] = useState('');\n  const [quizGenerationFailed, setQuizGenerationFailed] = useState(false);\n  const [quizRetrying, setQuizRetrying] = useState(false);",
+    stateMarker,
+    `${stateMarker}\n  const [quizGenerationFailed, setQuizGenerationFailed] = useState(false);\n  const [quizRetrying, setQuizRetrying] = useState(false);`,
   );
 }
 
-// The timer must begin only after questions exist.
+// The timer must begin only after generation succeeds.
+page = page.replace('      const startedAtMs = Date.now();', '      const startedAtMs = 0;');
 page = page.replace(
-  /      const startedAtMs = Date\.now\(\);\n\n      const minutes =/,
-  '      const startedAtMs = 0;\n\n      const minutes =',
-);
-page = page.replace(
-  /        endAtMs: minutes\n          \? startedAtMs \+ minutes \* 60000\n          : null,/,
+  /        endAtMs: minutes\s*\? startedAtMs \+ minutes \* 60000\s*:\s*null,/,
   '        endAtMs: null,',
 );
+page = page.replace(
+  '    setStarting(true);\n    setMessage(\'\');',
+  '    setStarting(true);\n    setQuizGenerationFailed(false);\n    setMessage(\'\');',
+);
 
-// Mark a successful generation as ready and start the timer at that exact point.
-const oldReady = `      setQs(\n        generated.slice(\n          0,\n          current.questions\n        )\n      );\n\n      setQuizError('');`;
-const newReady = `      if (!Array.isArray(generated) || generated.length < current.questions) {
+// Replace the entire generation function by stable function boundaries instead of fragile formatting.
+const generateStart = page.indexOf('  async function generate(current: Setup)');
+const submitStart = page.indexOf('  async function submitQuiz', generateStart);
+if (generateStart < 0 || submitStart < 0 || submitStart <= generateStart) {
+  throw new Error('Quiz generation function boundaries not found.');
+}
+
+const generateFn = `  async function generate(current: Setup): Promise<boolean> {
+    try {
+      const research = await researchBooks(current.books);
+
+      const recent = Array.isArray(qs)
+        ? qs.map((q) => q.question)
+        : [];
+
+      const generated = await generateQuiz(
+        current.books,
+        current.questions,
+        current.difficulty,
+        current.instructions,
+        recent,
+        research
+      );
+
+      if (!Array.isArray(generated) || generated.length < current.questions) {
         throw new Error(
           \`EDUWILLS AI returned only \${Array.isArray(generated) ? generated.length : 0} of \${current.questions} requested questions.\`,
         );
@@ -136,34 +161,64 @@ const newReady = `      if (!Array.isArray(generated) || generated.length < curr
           endAtMs: readySetup.endAtMs,
           status: 'started',
         });
-      } catch {}`;
-if (page.includes(oldReady)) page = page.replace(oldReady, newReady);
+      } catch {}
 
-// Do not consume a free quiz when generation fails.
+      return true;
+    } catch (e: any) {
+      console.warn(e);
+
+      const rawError = e instanceof Error ? e.message : String(e?.message || e || 'Unknown error');
+      setQuizError(
+        rawError === 'AI_QUOTA_EXHAUSTED'
+          ? 'EDUWILLS AI has reached today’s generation limit for this account. Please try again later.'
+          : rawError === 'AUTHENTICATION_REQUIRED'
+            ? 'Your EDUWILLS login session is not ready. Please sign in again and retry.'
+            : rawError || 'EDUWILLS AI could not finish the requested questions. Please retry.'
+      );
+
+      setQuizGenerationFailed(true);
+      setQs([]);
+
+      try {
+        if (current.id) {
+          await updateDoc(doc(db, 'quizHistory', current.id), {
+            status: 'failed',
+            failedAt: serverTimestamp(),
+          });
+        }
+      } catch {}
+
+      return false;
+    } finally {
+      setQuizLoading(false);
+    }
+  }
+
+`;
+page = page.slice(0, generateStart) + generateFn + page.slice(submitStart);
+
+// Gate the free-quiz charge on successful generation.
 page = page.replace(
-  `      await generate(next);\n\n      if (!active) {`,
-  `      const generatedSuccessfully = await generate(next);\n\n      if (!generatedSuccessfully) {\n        return;\n      }\n\n      if (!active) {`,
+  '      await generate(next);\n\n      if (!active) {',
+  '      const generatedSuccessfully = await generate(next);\n\n      if (!generatedSuccessfully) {\n        return;\n      }\n\n      if (!active) {',
 );
 
+// Failed generation records do not count against the free daily allowance.
 page = page.replace(
-  '  async function generate(current: Setup) {',
-  '  async function generate(current: Setup): Promise<boolean> {',
+  /history\.docs\.filter\(\s*\(x\) => String\(x\.data\(\)\?\.freeDay \|\| ''\) === day\s*\)/m,
+  "history.docs.filter((x) => {\n                const data = x.data() || {};\n                return String(data.freeDay || '') === day && data.status !== 'failed';\n              })",
+);
+page = page.replace(
+  /snap\.docs\.filter\(\s*\(d\) => String\(d\.data\(\)\?\.freeDay \|\| ''\) === day\s*\)/m,
+  "snap.docs.filter((d) => {\n        const data = d.data() || {};\n        return String(data.freeDay || '') === day && data.status !== 'failed';\n      })",
 );
 
-page = page.replace(
-  `      setQuizError('');\n    } catch (e: any) {`,
-  `      setQuizError('');\n      return true;\n    } catch (e: any) {`,
-);
-
-page = page.replace(
-  `      setQs([]);\n    } finally {\n      setQuizLoading(false);\n    }\n  }`,
-  `      setQuizGenerationFailed(true);\n      setQs([]);\n      return false;\n    } finally {\n      setQuizLoading(false);\n    }\n  }`,
-);
-
-// If the page has a generation error after the loading screen, show a retry screen instead of Studio.
+// Retry screen keeps the user in the quiz flow instead of silently returning to Studio.
 if (!page.includes('Quiz generation failed — please retry')) {
-  const marker = `  /* ------------------------------------------------------------------------ */\n  /* Results                                                                   */\n  /* ------------------------------------------------------------------------ */`;
-  const failureUi = `  if (quizGenerationFailed && setup && !quizLoading && !qs.length) {
+  const marker = '  /* ------------------------------------------------------------------------ */\n  /* Results                                                                   */\n  /* ------------------------------------------------------------------------ */';
+  if (!page.includes(marker)) throw new Error('Quiz results marker not found.');
+
+  const ui = `  if (quizGenerationFailed && setup && !quizLoading && !qs.length) {
     return (
       <main className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-white to-red-50 p-5">
         <div className="w-full max-w-md rounded-[2rem] border border-red-100 bg-white p-7 shadow-2xl">
@@ -172,7 +227,7 @@ if (!page.includes('Quiz generation failed — please retry')) {
           </div>
           <h1 className="mt-5 text-2xl font-black text-slate-900">Quiz generation failed — please retry</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">Your quiz setup is still saved. This failed attempt has not consumed your free quiz.</p>
-          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-700">{quizError || 'EDUWILLS AI could not finish generating the requested questions.'}</div>
+          <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-700">{quizError || 'EDUWILLS AI could not finish the requested questions.'}</div>
           <button
             type="button"
             disabled={quizRetrying}
@@ -209,8 +264,7 @@ if (!page.includes('Quiz generation failed — please retry')) {
   }
 
 `;
-  if (!page.includes(marker)) throw new Error('Quiz results marker not found.');
-  page = page.replace(marker, failureUi + marker);
+  page = page.replace(marker, ui + marker);
 }
 
 fs.writeFileSync(pagePath, page);
