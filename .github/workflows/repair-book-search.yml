@@ -1,0 +1,93 @@
+name: Repair Book Search
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair book search and author lookup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          page = Path('app/dashboard/quiz/page.tsx')
+          p = page.read_text()
+          if '  searchBookAuthors,\n' not in p:
+              p = p.replace('  researchBooks,\n', '  researchBooks,\n  searchBookAuthors,\n', 1)
+              page.write_text(p)
+
+          stable = Path('lib/quizAiClientStable.ts')
+          s = stable.read_text()
+          pattern = re.compile(r"export async function searchBookAuthors\(kind: 'title' \| 'author', value: string\): Promise<BookSearchResult\[]> \{[\\s\\S]*?\n\}\n\nexport async function researchBooks", re.M)
+          replacement = '''export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
+            const query = value.trim();
+            if (!query) return [];
+            const encoded = encodeURIComponent(query);
+            const urls = kind === 'title'
+              ? [
+                  `https://openlibrary.org/search.json?title=${encoded}&limit=50&fields=title,author_name,key`,
+                  `https://www.googleapis.com/books/v1/volumes?q=intitle:${encoded}&maxResults=40`,
+                  `https://archive.org/advancedsearch.php?q=title:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
+                ]
+              : [
+                  `https://openlibrary.org/search.json?author=${encoded}&limit=50&fields=title,author_name,key`,
+                  `https://www.googleapis.com/books/v1/volumes?q=inauthor:${encoded}&maxResults=40`,
+                  `https://archive.org/advancedsearch.php?q=creator:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
+                ];
+            const output: BookSearchResult[] = [];
+            const seen = new Set<string>();
+            await Promise.allSettled(urls.map(async (url) => {
+              try {
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) return;
+                const data: any = await response.json();
+                const rows = [
+                  ...(data.docs || []),
+                  ...(data.items || []).map((item: any) => ({ title: item.volumeInfo?.title, author_name: item.volumeInfo?.authors })),
+                  ...(data.response?.docs || []),
+                ];
+                for (const row of rows) {
+                  const title = clean(row?.title);
+                  const rawAuthors = row?.author_name ?? row?.authors ?? row?.creator ?? row?.author;
+                  const authors = Array.isArray(rawAuthors)
+                    ? rawAuthors.map((x: unknown) => clean(x)).filter(Boolean)
+                    : typeof rawAuthors === 'string'
+                      ? rawAuthors.split(/;|,|\\|/).map(clean).filter(Boolean)
+                      : [];
+                  if (!title || !authors.length) continue;
+                  const key = `${norm(title)}|${authors.map(norm).join('|')}`;
+                  if (seen.has(key)) continue;
+                  seen.add(key);
+                  output.push({ title, authors, source: url.includes('openlibrary') ? 'Open Library' : url.includes('googleapis') ? 'Google Books' : 'Internet Archive' });
+                }
+              } catch {}
+            }));
+            return output.slice(0, 160);
+          }
+
+          export async function researchBooks'''
+          s, n = pattern.subn(replacement, s, count=1)
+          if n != 1:
+              raise SystemExit('Could not locate searchBookAuthors block')
+          stable.write_text(s)
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/quiz/page.tsx lib/quizAiClientStable.ts
+          if git diff --cached --quiet; then
+            echo 'No repair changes needed.'
+            exit 0
+          fi
+          git commit -m 'fix: restore reliable book and author search [skip ci]'
+          git push
