@@ -58,7 +58,6 @@ p=p.slice(0,findStart)+`  async function findBook() {
 `+p.slice(saveStart);
 fs.writeFileSync(quizPage,p,'utf8');
 
-// Broaden exact-book research and make the instruction contract explicit.
 let s=fs.readFileSync(stable,'utf8');
 const searchStart=s.indexOf("export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {");
 const researchStart=s.indexOf('\n\nexport async function researchBooks',searchStart);
@@ -96,10 +95,11 @@ s=s.slice(0,searchStart)+`export async function searchBookAuthors(kind: 'title' 
   return output.slice(0,160);
 }
 `+s.slice(researchStart);
-const researchNeedle='      `https://openlibrary.org/search.json?title=\${title}&author=\${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,\n    ];';
-const researchReplacement='      `https://openlibrary.org/search.json?title=\${title}&author=\${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,\n      `https://archive.org/advancedsearch.php?q=title:(\${title})%20AND%20creator:(\${author})&fl[]=title&fl[]=creator&fl[]=description&fl[]=subject&rows=20&page=1&output=json`,\n    ];';
-if(s.includes(researchNeedle)&&!s.includes('archive.org/advancedsearch.php?q=title:(\${title})%20AND%20creator:(\${author})'))s=s.replace(researchNeedle,researchReplacement);
+const needle='      `https://openlibrary.org/search.json?title=\${title}&author=\${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,\n    ];';
+const replacement='      `https://openlibrary.org/search.json?title=\${title}&author=\${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,\n      `https://archive.org/advancedsearch.php?q=title:(\${title})%20AND%20creator:(\${author})&fl[]=title&fl[]=creator&fl[]=description&fl[]=subject&rows=20&page=1&output=json`,\n    ];';
+if(s.includes(needle)&&!s.includes('archive.org/advancedsearch.php?q=title:(\${title})%20AND%20creator:(\${author})'))s=s.replace(needle,replacement,1);
 s=s.replace("USER INSTRUCTIONS: \${instructions || 'Create a diverse quiz from the actual book content.'}","USER INSTRUCTIONS: \${instructions ? `MANDATORY — follow these instructions in every question after factual accuracy and safety: \${instructions}. Each question must visibly reflect the requested focus; do not replace it with a generic question.` : 'No special instructions were provided. Deliberately vary questions across characters, relationships, events, chronology, settings, causes/consequences, themes, conflicts, language/style, symbols, decisions, chapters, and distinctive book-specific details.'}");
 fs.writeFileSync(stable,s,'utf8');
 
+// Safe trigger marker: this file is intentionally kept non-workflow so the repair runner can execute on push.
 console.log('Repaired dashboard session, activation support, quiz search, Lekki Headmaster author data, broader book lookup, and instruction grounding.');
