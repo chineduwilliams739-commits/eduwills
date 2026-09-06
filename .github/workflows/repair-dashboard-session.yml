@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Apply session and activation support repair
+      - name: Apply session, activation, and quiz search repair
         run: |
           set -euxo pipefail
           node --check scripts/repair-dashboard-session.mjs
@@ -34,6 +34,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/dashboard/page.tsx app/dashboard/activation/page.tsx
-          git commit -m 'Repair dashboard session after payment redirect'
+          git add app/dashboard/page.tsx app/dashboard/activation/page.tsx app/dashboard/quiz/page.tsx lib/quizAiClientStable.ts scripts/repair-dashboard-session.mjs
+          git commit -m 'Repair dashboard and quiz search support'
           git push
