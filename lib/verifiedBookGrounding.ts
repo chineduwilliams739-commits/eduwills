@@ -18,6 +18,7 @@ export const VERIFIED_BOOK_RESEARCH: Record<string, string> = {
     'BOOK FACT: Sànyà is the daughter of Ajoke and Aganju. A prophecy says their next child will be a warrior; the child is a girl.',
     'BOOK FACT: Sànyà protects her elder brother Dada. Dada is physically weak/sickly, highly intelligent, and has the gift of seeing into the future.',
     'BOOK FACT: The story includes Ajoke, Aganju, Dada, Aunt Abike, prophecy, dangerous love, extraordinary powers, family conflict, Yoruba cosmology and a war that threatens the family.',
+    'BOOK FACT: Ropo and Oko are lovers, and their relationship is described as a dangerous love. When a quiz asks about their bond, the answer must reflect their romantic relationship rather than treating them as rivals for village leadership.',
     'BOOK FACT: Sànyà grew up in a village. The verified evidence does not establish a modern Nigerian city as her primary childhood setting.',
     'BOOK FACT: Ajoke and Aganju meet at a village square during the New Yam festival. Their first child is Dada, and Dada’s illness becomes a major hardship for the family.',
     'GROUNDING RULE: Never describe Sànyà as a boy or male protagonist.',
@@ -46,7 +47,7 @@ const BOOK_ANCHORS: Record<string, string[]> = {
   'sanya|oyin olugbile': [
     'sanya', 'dada', 'ajoke', 'aganju', 'abike', 'prophecy', 'warrior', 'yoruba',
     'sango', 'orisa', 'new yam', 'village', 'brother', 'family', 'powers',
-    'mythology', 'mythological', 'dangerous love', 'cosmology', 'war'
+    'mythology', 'mythological', 'dangerous love', 'cosmology', 'war', 'ropo', 'oko', 'lovers',
   ],
   'scars|irabor': [
     'scars', 'boko haram', 'lucky irabor', 'leo irabor', 'insecurity', 'under development',
