@@ -12,87 +12,187 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Repair book search, author lookup, and quiz grounding
+      - name: Repair quiz book search and instruction grounding
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import re
 
+          # Patch the page without replacing the file. This is deliberately string-based
+          # so a future page change cannot accidentally truncate the component.
           page = Path('app/dashboard/quiz/page.tsx')
           p = page.read_text()
           if '  searchBookAuthors,\n' not in p:
-              p = p.replace('  researchBooks,\n', '  researchBooks,\n  searchBookAuthors,\n', 1)
+              needle = '  researchBooks,\n'
+              if needle not in p:
+                  raise SystemExit('quiz page import block not found')
+              p = p.replace(needle, needle + '  searchBookAuthors,\n', 1)
+
           if "title: 'The Lekki Headmaster'" not in p:
               marker = "const CURATED_BOOKS: CuratedBook[] = [\n"
               entry = "  {\n    title: 'The Lekki Headmaster',\n    aliases: ['lekki headmaster', 'the lekki headmaster', 'lekki headmaster kabir alabi garba'],\n    authors: ['Kabir Alabi Garba'],\n  },\n"
+              if marker not in p:
+                  raise SystemExit('curated books marker not found')
               p = p.replace(marker, marker + entry, 1)
+
+          start = p.find('  async function findBook() {')
+          end = p.find('  async function saveBook() {', start)
+          if start < 0 or end < 0:
+              raise SystemExit('quiz book search functions not found')
+
+          replacement = r'''  async function findBook() {
+    const raw = title.trim();
+    if (!raw) return;
+
+    setSearching(true);
+    setMessage('');
+    setAuthors([]);
+    setAuthor('');
+    setAuthorQuery('');
+
+    try {
+      const results = await searchBookAuthors('title', raw);
+      const normalizedQuery = normalize(raw);
+      const curated = CURATED_BOOKS
+        .filter((book) => [book.title, ...book.aliases].some((alias) => {
+          const n = normalize(alias);
+          return n.includes(normalizedQuery) || normalizedQuery.includes(n);
+        }))
+        .flatMap((book) => book.authors);
+
+      const names = Array.from(new Set([
+        ...curated,
+        ...results.flatMap((result) => result.authors),
+      ].filter(Boolean))).slice(0, 80);
+
+      setAuthors(names);
+      setMessage(
+        names.length
+          ? 'Select a verified author from the search results. Authors cannot be entered manually.'
+          : 'No verified author was found. Try the full title or search for the author by name.'
+      );
+    } catch (error) {
+      console.error('Book search failed', error);
+      setMessage('Book search is temporarily unavailable. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function searchAuthor() {
+    const q = authorQuery.trim();
+    if (!q) return;
+
+    setSearching(true);
+    setMessage('');
+    try {
+      const results = await searchBookAuthors('author', q);
+      const names = Array.from(new Set(
+        results.flatMap((result) => result.authors).filter(Boolean)
+      )).slice(0, 80);
+      setAuthors(names);
+      setMessage(
+        names.length
+          ? 'Select a verified author from the search results.'
+          : 'No verified author match was found. Try another spelling.'
+      );
+    } catch (error) {
+      console.error('Author search failed', error);
+      setMessage('Author search is temporarily unavailable. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+'''
+          p = p[:start] + replacement + p[end:]
           page.write_text(p)
 
+          # Patch the stable search helper safely.
           stable = Path('lib/quizAiClientStable.ts')
           s = stable.read_text()
-          pattern = re.compile(r"export async function searchBookAuthors\(kind: 'title' \| 'author', value: string\): Promise<BookSearchResult\[]> \{[\\s\\S]*?\n\}\n\nexport async function researchBooks", re.M)
-          replacement = '''export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
-            const query = value.trim();
-            if (!query) return [];
-            const encoded = encodeURIComponent(query);
-            const urls = kind === 'title'
-              ? [
-                  `https://openlibrary.org/search.json?title=${encoded}&limit=50&fields=title,author_name,key`,
-                  `https://www.googleapis.com/books/v1/volumes?q=intitle:${encoded}&maxResults=40`,
-                  `https://archive.org/advancedsearch.php?q=title:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
-                ]
-              : [
-                  `https://openlibrary.org/search.json?author=${encoded}&limit=50&fields=title,author_name,key`,
-                  `https://www.googleapis.com/books/v1/volumes?q=inauthor:${encoded}&maxResults=40`,
-                  `https://archive.org/advancedsearch.php?q=creator:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
-                ];
-            const output: BookSearchResult[] = [];
-            const seen = new Set<string>();
-            await Promise.allSettled(urls.map(async (url) => {
-              try {
-                const response = await fetch(url, { cache: 'no-store' });
-                if (!response.ok) return;
-                const data: any = await response.json();
-                const rows = [
-                  ...(data.docs || []),
-                  ...(data.items || []).map((item: any) => ({ title: item.volumeInfo?.title, author_name: item.volumeInfo?.authors })),
-                  ...(data.response?.docs || []),
-                ];
-                for (const row of rows) {
-                  const title = clean(row?.title);
-                  const rawAuthors = row?.author_name ?? row?.authors ?? row?.creator ?? row?.author;
-                  const authors = Array.isArray(rawAuthors)
-                    ? rawAuthors.map((x: unknown) => clean(x)).filter(Boolean)
-                    : typeof rawAuthors === 'string'
-                      ? rawAuthors.split(/;|,|\\|/).map(clean).filter(Boolean)
-                      : [];
-                  if (!title || !authors.length) continue;
-                  const key = `${norm(title)}|${authors.map(norm).join('|')}`;
-                  if (seen.has(key)) continue;
-                  seen.add(key);
-                  output.push({ title, authors, source: url.includes('openlibrary') ? 'Open Library' : url.includes('googleapis') ? 'Google Books' : 'Internet Archive' });
-                }
-              } catch {}
-            }));
-            return output.slice(0, 160);
-          }
+          start = s.find("export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {")
+          end = s.find('\n\nexport async function researchBooks', start)
+          if start < 0 or end < 0:
+              raise SystemExit('stable searchBookAuthors function not found')
 
-          export async function researchBooks'''
-          s, n = pattern.subn(replacement, s, count=1)
-          if n != 1:
-              raise SystemExit('Could not locate searchBookAuthors block')
+          helper = r'''export async function searchBookAuthors(kind: 'title' | 'author', value: string): Promise<BookSearchResult[]> {
+  const query = value.trim();
+  if (!query) return [];
+  const encoded = encodeURIComponent(query);
+  const urls = kind === 'title'
+    ? [
+        `https://openlibrary.org/search.json?title=${encoded}&limit=50&fields=title,author_name,key`,
+        `https://www.googleapis.com/books/v1/volumes?q=intitle:${encoded}&maxResults=40`,
+        `https://archive.org/advancedsearch.php?q=title:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
+      ]
+    : [
+        `https://openlibrary.org/search.json?author=${encoded}&limit=50&fields=title,author_name,key`,
+        `https://www.googleapis.com/books/v1/volumes?q=inauthor:${encoded}&maxResults=40`,
+        `https://archive.org/advancedsearch.php?q=creator:(${encoded})&fl[]=title&fl[]=creator&rows=40&page=1&output=json`,
+      ];
 
-          # Broaden research sources without using copyrighted full text.
-          s = s.replace(
-              "const urls = [\n    `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=20`,\n    `https://openlibrary.org/search.json?q=${encoded}&limit=20`,\n  ];",
-              "const urls = [\n    `https://www.googleapis.com/books/v1/volumes?q=${encoded}&maxResults=20`,\n    `https://openlibrary.org/search.json?q=${encoded}&limit=20`,\n    `https://archive.org/advancedsearch.php?q=title:(${encoded})&fl[]=title&fl[]=creator&fl[]=description&rows=20&page=1&output=json`,\n  ];"
-          )
+  const output: BookSearchResult[] = [];
+  const seen = new Set<string>();
 
-          # Make explicit user instructions mandatory and require broad coverage when none are supplied.
-          instruction_block = '''User quiz instructions are mandatory when provided. Treat them as a high-priority constraint after factual accuracy and safety. Every generated question must visibly follow the requested focus, topic, chapter, character, event, theme, format, or other instruction; do not silently substitute a generic question. If no user instructions are provided, deliberately vary questions across characters, relationships, events, chronology, settings, causes/consequences, themes, conflicts, language/style, symbols, decisions, and distinctive book details. Never mix facts from another book with a similar title.''' 
-          s = re.sub(r"User instructions:[\\s\\S]*?\\n\\s*\\n", instruction_block + "\\n\\n", s, count=1)
+  await Promise.allSettled(urls.map(async (url) => {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) return;
+      const data: any = await response.json();
+      const rows = [
+        ...(data.docs || []),
+        ...(data.items || []).map((item: any) => ({
+          title: item.volumeInfo?.title,
+          author_name: item.volumeInfo?.authors,
+        })),
+        ...(data.response?.docs || []),
+      ];
+
+      for (const row of rows) {
+        const title = clean(row?.title);
+        const rawAuthors = row?.author_name ?? row?.authors ?? row?.creator ?? row?.author;
+        const authors = Array.isArray(rawAuthors)
+          ? rawAuthors.map((x: unknown) => clean(x)).filter(Boolean)
+          : typeof rawAuthors === 'string'
+            ? rawAuthors.split(/;|,|\|/).map(clean).filter(Boolean)
+            : [];
+        if (!title || !authors.length) continue;
+        const key = `${norm(title)}|${authors.map(norm).join('|')}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        output.push({
+          title,
+          authors,
+          source: url.includes('openlibrary')
+            ? 'Open Library'
+            : url.includes('googleapis')
+              ? 'Google Books'
+              : 'Internet Archive',
+        });
+      }
+    } catch {}
+  }));
+
+  return output.slice(0, 160);
+}
+'''
+          s = s[:start] + helper + s[end:]
+
+          # Add Internet Archive to exact-book research while retaining the existing
+          # verified-book layer as authoritative.
+          old = """      `https://openlibrary.org/search.json?title=${title}&author=${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,\n    ];"""
+          new = """      `https://openlibrary.org/search.json?title=${title}&author=${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,\n      `https://archive.org/advancedsearch.php?q=title:(${title})%20AND%20creator:(${author})&fl[]=title&fl[]=creator&fl[]=description&fl[]=subject&rows=20&page=1&output=json`,\n    ];"""
+          if old in s and 'archive.org/advancedsearch.php?q=title:(${title})' not in s:
+              s = s.replace(old, new, 1)
+
+          # Make user instructions explicit and mandatory; empty instructions trigger
+          # broad book-content coverage instead of a narrow repeated question type.
+          old_prompt = "USER INSTRUCTIONS: ${instructions || 'Create a diverse quiz from the actual book content.'}"
+          new_prompt = "USER INSTRUCTIONS: ${instructions ? `MANDATORY — follow these instructions in every question after factual accuracy and safety: ${instructions}. Each question must visibly reflect the requested focus; do not replace it with a generic question.` : 'No special instructions were provided. Deliberately vary questions across characters, relationships, events, chronology, settings, causes/consequences, themes, conflicts, language/style, symbols, decisions, chapters, and distinctive book-specific details.'}"
+          if old_prompt in s:
+              s = s.replace(old_prompt, new_prompt, 1)
           stable.write_text(s)
           PY
 
