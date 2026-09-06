@@ -69,6 +69,8 @@ jobs:
         run: node scripts/harden-quiz-quota-provider.mjs
       - name: Apply final quiz generation UX hardening
         run: node scripts/harden-quiz-generation-ux.mjs
+      - name: Apply book quiz review and answer-key quality control
+        run: node scripts/enhance-book-quiz-quality-and-review.mjs
       - name: Apply dedicated quiz generation failure repair
         run: node scripts/fix-quiz-generation-failure-ui.mjs
 
