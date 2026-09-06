@@ -11,6 +11,7 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
+      # Keep this workflow as the single push-to-Pages deployment bridge.
       - name: Dispatch Pages deployment
         env:
           GH_TOKEN: ${{ github.token }}
