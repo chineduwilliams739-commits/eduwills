@@ -27,7 +27,7 @@ type QuizGenerationCache = {
 };
 
 const BASE = '/eduwills';
-const CACHE_VERSION = 'v30-explanation-timer-gateway-first';
+const CACHE_VERSION = 'v36-gemini-google-search-live';
 const CACHE_PREFIX = 'eduwills_quiz_generation_cache:';
 
 const ai = getAI(app, { backend: new GoogleAIBackend() });
@@ -148,6 +148,28 @@ async function gateway(prompt: string, timeout = 60000) {
   } finally { window.clearTimeout(timer); }
 }
 
+async function gatewayResearch(prompt: string, timeout = 60000) {
+  const url = await gatewayUrl();
+  const user = auth.currentUser;
+  if (!url || !user) throw new Error('AI_RESEARCH_GATEWAY_UNAVAILABLE');
+  const token = await user.getIdToken();
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'research', prompt }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`AI_RESEARCH_GATEWAY_${response.status}`);
+    const sources = Array.isArray(data?.sources) ? data.sources : [];
+    const sourceText = sources.map((source:any) => `${source?.title || 'Source'} | ${source?.url || ''}`).filter(Boolean).join('\n');
+    return [String(data?.text || '').trim(), sourceText ? `SOURCES:\n${sourceText}` : ''].filter(Boolean).join('\n\n');
+  } finally { window.clearTimeout(timer); }
+}
+
 async function geminiText(prompt: string, timeout = 60000) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -212,7 +234,7 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
       for(const row of rows){
         const title=clean(row?.title);
         const rawAuthors=row?.author_name??row?.authors??row?.creator??row?.author;
-        const authors=Array.isArray(rawAuthors)?rawAuthors.map((x:unknown)=>clean(x)).filter(Boolean):typeof rawAuthors==='string'?rawAuthors.split(/;|,|\|/).map(clean).filter(Boolean):[];
+        const authors=Array.isArray(rawAuthors)?rawAuthors.map((x:unknown)=>clean(x)).filter(Boolean):typeof rawAuthors==='string'?rawAuthors.split(/;|,||/).map(clean).filter(Boolean):[];
         if(!title||!authors.length)continue;
         const key=`${norm(title)}|${authors.map(norm).join('|')}`;if(seen.has(key))continue;seen.add(key);
         output.push({title,authors,source:url.includes('openlibrary')?'Open Library':url.includes('googleapis')?'Google Books':'Internet Archive'});
@@ -223,13 +245,18 @@ export async function searchBookAuthors(kind: 'title' | 'author', value: string)
 }
 
 
-export async function researchBooks(books: QuizBook[]): Promise<string> {
+export async function researchBooks(books: QuizBook[], focus = ''): Promise<string> {
   if (!books.length) return '';
   const curated = curatedFor(books);
   const chunks: string[] = curated ? [curated] : [];
   await Promise.all(books.map(async (book) => {
     const title = encodeURIComponent(book.title);
     const author = encodeURIComponent(book.author);
+    let geminiBookResearch = '';
+    try {
+      geminiBookResearch = await gatewayResearch(`Research the exact book "${book.title}" by ${book.author}.${focus.trim() ? ` Focus on: ${focus.trim()}` : ''} Find reliable public facts about characters, relationships, events, chronology, setting, themes, conflicts, decisions, chapters, and distinctive details. Prefer authoritative, educational, publisher, library, government, or reputable sources. Do not invent facts or reproduce long copyrighted passages.`, 60000);
+    } catch {}
+    if (geminiBookResearch) chunks.push(`GEMINI GOOGLE SEARCH RESEARCH for ${book.title} by ${book.author}:\n${geminiBookResearch}`);
     const urls = [
       `https://www.googleapis.com/books/v1/volumes?q=intitle:${title}+inauthor:${author}&maxResults=20`,
       `https://openlibrary.org/search.json?title=${title}&author=${author}&limit=30&fields=title,author_name,first_sentence,subject,description,first_publish_year,publisher`,
@@ -284,7 +311,7 @@ export async function generateQuiz(books: QuizBook[], count: number, difficulty:
   const cacheKey = generationCacheKey(books, requested, difficulty, instructions);
   const cached = readGenerationCache(cacheKey);
   const cachedQuestions = cached?.questions || [];
-  const evidenceByBook = await Promise.all(books.map(async (book) => researchBooks([book])));
+  const evidenceByBook = await Promise.all(books.map(async (book) => researchBooks([book], instructions)));
   const output: QuizQuestion[] = [];
   const seen = new Set(recent.map(fingerprint).filter(Boolean));
 
@@ -348,10 +375,17 @@ export async function generateQuiz(books: QuizBook[], count: number, difficulty:
 
 export async function askEduwills(prompt: string, history: string[] = []) {
   const conversation = [...history.slice(-8), `Learner: ${prompt}`].join('\n');
-  const instruction = `You are EDUWILLS AI, a study assistant. Answer directly and accurately. If the learner asks about a specific book and the evidence is insufficient, say so instead of inventing details. Plain readable text only. Conversation:\n${conversation}`;
-  try { return clean(await gateway(instruction, 30000)); }
+  const liveWebResearch = await gatewayResearch(prompt, 60000).catch(() => '');
+  const instruction = `You are EDUWILLS AI, a general educational and knowledge assistant. Answer the learner's actual question directly. Use the live Google Search research below whenever relevant. Treat it as evidence, cross-check conflicts, never invent facts or sources, and clearly state when reliable evidence is incomplete. Plain readable text only.
+
+LIVE GOOGLE SEARCH RESEARCH:
+${liveWebResearch || 'No live web research was available.'}
+
+Conversation:
+${conversation}`;
+  try { return clean(await gateway(instruction, 60000)); }
   catch {
-    try { return clean(await geminiText(instruction, 30000)); }
+    try { return clean(await geminiText(instruction, 60000)); }
     catch { return 'EDUWILLS AI is temporarily busy. Please try again in a moment.'; }
   }
 }

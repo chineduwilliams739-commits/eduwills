@@ -123,7 +123,7 @@ if (!s.includes('async function gatewayResearch(')) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(\`AI_RESEARCH_GATEWAY_\${response.status}\`);
     const sources = Array.isArray(data?.sources) ? data.sources : [];
-    const sourceText = sources.map((source:any) => \`${source?.title || 'Source'} | ${source?.url || ''}\`).filter(Boolean).join('\\n');
+    const sourceText = sources.map((source:any) => \`\${source?.title || \'Source\'} | \${source?.url || \'\'}\`).filter(Boolean).join('\\n');
     return [String(data?.text || '').trim(), sourceText ? \`SOURCES:\\n\${sourceText}\` : ''].filter(Boolean).join('\\n\\n');
   } finally { window.clearTimeout(timer); }
 }
