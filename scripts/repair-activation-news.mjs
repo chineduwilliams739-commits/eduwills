@@ -8,4 +8,5 @@ fs.writeFileSync(activationPath,activation);
 await import('./harden-community-groups.mjs');
 await import('./fix-category-persistence-and-personal.mjs');
 await import('./harden-group-workspace-syntax.mjs');
-console.log('Legacy activation cleanup, community hardening, category persistence, and group workspace hardening applied safely.');
+await import('./harden-category-chat-activation.mjs');
+console.log('Legacy activation cleanup, community hardening, category persistence, chat typing, and group workspace hardening applied safely.');
