@@ -6,8 +6,12 @@ const old=/async function createGroup\(\)\{.*?\n async function join\(g:any\)/s;
 const replacement=`async function createGroup(){guard(async()=>{if(!user||!groupName.trim())return;setCreating(true);try{const ref=await addDoc(collection(db,'communityGroups'),{name:groupName.trim(),description:groupDescription.trim(),ownerId:user.uid,adminIds:[user.uid],memberIds:[user.uid],visibility:'public',type:'study',creatorRulesAccepted:false,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});setGroupName('');setGroupDescription('');setGroupOpen(false);location.assign(\`${'${BASE}'}/dashboard/community/group/?id=\${ref.id}\`);}catch(e:any){setNotice(e?.message||'Could not create the group. Please try again.')}finally{setCreating(false)}})}\n async function join(g:any)`;
 if(!old.test(source))throw new Error('Community createGroup function pattern not found.');
 source=source.replace(old,replacement);
+
+// Do not create Firestore listeners while the user is logged out or unactivated.
+source=source.replace("useEffect(()=>{if(!user||!activated)return onSnapshot(query(collection(db,'communityGroups'),where('visibility','==','public'),limit(50)),s=>setGroups(s.docs.map(d=>({id:d.id,...d.data()}))),()=>setGroups([]))},[user,activated]);", "useEffect(()=>{if(!user||!activated){setGroups([]);return;}return onSnapshot(query(collection(db,'communityGroups'),where('visibility','==','public'),limit(50)),s=>setGroups(s.docs.map(d=>({id:d.id,...d.data()}))),()=>setGroups([]))},[user,activated]);");
+source=source.replace("useEffect(()=>{if(!user||!activated)return onSnapshot(query(collection(db,'communityGroups'),where('memberIds','array-contains',user.uid),limit(50)),s=>setMyGroups(s.docs.map(d=>({id:d.id,...d.data()}))),()=>setMyGroups([]))},[user,activated]);", "useEffect(()=>{if(!user||!activated){setMyGroups([]);return;}return onSnapshot(query(collection(db,'communityGroups'),where('memberIds','array-contains',user.uid),limit(50)),s=>setMyGroups(s.docs.map(d=>({id:d.id,...d.data()}))),()=>setMyGroups([]))},[user,activated]);");
 fs.writeFileSync(path,source);
-console.log('Community group creation hardening applied.');
+console.log('Community group creation and listener hardening applied.');
 
 const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
@@ -15,4 +19,15 @@ g=g.replace("const d={id:s.id,...s.data()};", "const d={id:s.id,...(s.data() as 
 g=g.replace("async function promote(uid:string){if(!isOwner||uid===user.uid)return;", "async function promote(uid:string){if(!isAdmin||uid===user.uid)return;");
 g=g.replace("{isOwner&&uid!==user.uid&&uid!==group.ownerId&&!(group.adminIds||[]).includes(uid)&&<button onClick={()=>promote(uid)}", "{isAdmin&&uid!==user.uid&&uid!==group.ownerId&&!(group.adminIds||[]).includes(uid)&&<button onClick={()=>promote(uid)}");
 fs.writeFileSync(group,g);
-console.log('Community admins can promote additional admins and group snapshot data is explicitly typed.');
+console.log('Community admin controls and snapshot typing hardened.');
+
+const dashboard='app/dashboard/page.tsx';
+let d=fs.readFileSync(dashboard,'utf8');
+if(!d.includes("const [pathname,setPathname]=useState('');")){
+  d=d.replace("const [name,setName]=useState('Learner'),[category,setCategory]=useState('Book Learner'),[activated,setActivated]=useState(false),[loading,setLoading]=useState(true),[more,setMore]=useState(false),[menu,setMenu]=useState(false),[locked,setLocked]=useState('');", "const [name,setName]=useState('Learner'),[category,setCategory]=useState('Book Learner'),[activated,setActivated]=useState(false),[loading,setLoading]=useState(true),[more,setMore]=useState(false),[menu,setMenu]=useState(false),[locked,setLocked]=useState(''),[pathname,setPathname]=useState('');");
+  d=d.replace("useEffect(()=>onAuthStateChanged(auth,async u=>{", "useEffect(()=>{setPathname(window.location.pathname);},[]);\n useEffect(()=>onAuthStateChanged(auth,async u=>{");
+}
+d=d.replace("<a key={n} href={h} className=\"flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[9px] font-black text-slate-500 transition hover:bg-slate-100\">", "<a key={n} href={h} className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[9px] font-black transition hover:bg-slate-100 ${pathname===h.replace(BASE,'')||pathname===h?'bg-ink text-white':'text-slate-500'}`}>" );
+d=d.replace("<button onClick={()=>setMore(v=>!v)} className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[9px] font-black transition ${more?'bg-ink text-white':'text-slate-500'}`}", "<button onClick={()=>setMore(v=>!v)} className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-[9px] font-black transition ${more||pathname.includes('/category-records')||pathname.includes('/activation')||pathname.includes('/ai')||pathname.includes('/personal')?'bg-ink text-white':'text-slate-500'}`}");
+fs.writeFileSync(dashboard,d);
+console.log('Dashboard active navigation highlighting applied.');
