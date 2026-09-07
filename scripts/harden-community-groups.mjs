@@ -6,3 +6,10 @@ const replacement=`async function createGroup(){guard(async()=>{if(!user||!group
  async function join(g:any)`;
 if(!old.test(source))throw new Error('Community createGroup function pattern not found.');
 source=source.replace(old,replacement);fs.writeFileSync(path,source);console.log('Community group creation hardening applied.');
+
+const group='app/dashboard/community/group/page.tsx';
+let g=fs.readFileSync(group,'utf8');
+g=g.replace("async function promote(uid:string){if(!isOwner||uid===user.uid)return;", "async function promote(uid:string){if(!isAdmin||uid===user.uid)return;");
+g=g.replace("{isOwner&&uid!==user.uid&&uid!==group.ownerId&&!(group.adminIds||[]).includes(uid)&&<button onClick={()=>promote(uid)}", "{isAdmin&&uid!==user.uid&&uid!==group.ownerId&&!(group.adminIds||[]).includes(uid)&&<button onClick={()=>promote(uid)}");
+fs.writeFileSync(group,g);
+console.log('Community admins can promote additional admins.');
