@@ -9,4 +9,5 @@ fs.writeFileSync(activationPath,activation);
 // activation cleanup, but never fail a deployment because an obsolete marker
 // is no longer present.
 await import('./harden-community-groups.mjs');
-console.log('Legacy activation cleanup and community hardening applied safely.');
+await import('./fix-category-persistence-and-personal.mjs');
+console.log('Legacy activation cleanup, community hardening, and category persistence applied safely.');
