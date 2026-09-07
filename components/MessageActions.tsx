@@ -1,0 +1,30 @@
+'use client';
+import {useState} from 'react';
+import {Copy,Forward,Heart,MessageSquareReply,MoreHorizontal,Pencil,Send,Trash2,X} from 'lucide-react';
+import {addDoc,collection,doc,serverTimestamp,updateDoc} from 'firebase/firestore';
+import {db} from '@/lib/firebase';
+
+type Props={message:any;currentUid:string;isAdmin?:boolean;collectionPath:string;onReply?:(message:any)=>void;onNotice?:(message:string)=>void};
+export default function MessageActions({message,currentUid,isAdmin=false,collectionPath,onReply,onNotice}:Props){
+ const[open,setOpen]=useState(false),[edit,setEdit]=useState(false),[text,setText]=useState(message?.text||''),[forward,setForward]=useState(false),[target,setTarget]=useState(''),[busy,setBusy]=useState(false);
+ const owner=message?.senderId===currentUid;
+ async function saveEdit(){if(!owner||!text.trim())return;setBusy(true);try{await updateDoc(doc(db,collectionPath,message.id),{text:text.trim(),edited:true,editedAt:serverTimestamp()});setEdit(false);setOpen(false);onNotice?.('Message edited.')}catch(e:any){onNotice?.(e?.message||'Could not edit message.')}finally{setBusy(false)}}
+ async function remove(){if(!owner&&!isAdmin)return;setBusy(true);try{await updateDoc(doc(db,collectionPath,message.id),{deleted:true,deletedAt:serverTimestamp(),deletedBy:currentUid,deletedByName:'Admin',text:'',imageUrl:''});setOpen(false);onNotice?.(owner?'Message deleted.':'Message deleted by admin.')}catch(e:any){onNotice?.(e?.message||'Could not delete message.')}finally{setBusy(false)}}
+ async function react(){try{await addDoc(collection(db,collectionPath,message.id,'reactions'),{uid:currentUid,type:'like',createdAt:serverTimestamp()});setOpen(false)}catch(e:any){onNotice?.(e?.message||'Could not react to message.')}}
+ async function forwardMessage(){const p=target.trim().replace(/^\/+|\/+$/g,'');if(!p)return;setBusy(true);try{await addDoc(collection(db,p),{senderId:currentUid,text:message.text||'',imageUrl:message.imageUrl||'',forwarded:true,forwardedFrom:message.id,createdAt:serverTimestamp()});setForward(false);setOpen(false);setTarget('');onNotice?.('Message forwarded.')}catch(e:any){onNotice?.('Forward failed. Choose an accessible destination message collection.')}finally{setBusy(false)}}
+ async function copy(){try{await navigator.clipboard?.writeText(message.text||'');onNotice?.('Message copied.')}catch{onNotice?.('Copy is not available on this device.')}setOpen(false)}
+ if(message?.deleted)return <div className="px-3 py-2 text-xs italic text-slate-400">Message deleted by {message.deletedBy===currentUid?'you':(message.deletedByName||'an admin')}</div>;
+ return <div className="relative shrink-0">
+  <button aria-label="Message actions" title="Message actions" onClick={()=>setOpen(v=>!v)} className="grid h-8 w-8 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-ink"><MoreHorizontal size={17}/></button>
+  {open&&<div className="absolute right-0 top-9 z-50 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl">
+   {owner&&<button onClick={()=>{setEdit(true);setOpen(false)}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-slate-50"><Pencil size={15}/> Edit message</button>}
+   {(owner||isAdmin)&&<button disabled={busy} onClick={remove} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 size={15}/> Delete message</button>}
+   <button onClick={()=>{setForward(true);setOpen(false)}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-slate-50"><Forward size={15}/> Forward</button>
+   <button onClick={()=>{onReply?.(message);setOpen(false)}} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-slate-50"><MessageSquareReply size={15}/> Reply</button>
+   <button onClick={react} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-slate-50"><Heart size={15}/> React</button>
+   {!!message.text&&<button onClick={copy} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-slate-50"><Copy size={15}/> Copy text</button>}
+  </div>}
+  {edit&&<div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-4" onClick={()=>setEdit(false)}><div onClick={e=>e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-lg font-black">Edit message</h3><button onClick={()=>setEdit(false)}><X size={18}/></button></div><textarea value={text} onChange={e=>setText(e.target.value)} className="mt-4 min-h-28 w-full rounded-2xl border bg-slate-50 p-3 text-sm outline-none"/><button disabled={busy||!text.trim()} onClick={saveEdit} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-black text-white disabled:opacity-40"><Pencil size={15}/>Save edit</button></div></div>}
+  {forward&&<div className="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-4" onClick={()=>setForward(false)}><div onClick={e=>e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-lg font-black">Forward message</h3><button onClick={()=>setForward(false)}><X size={18}/></button></div><p className="mt-2 text-xs leading-5 text-slate-500">Choose an accessible chat, group or school message collection.</p><input value={target} onChange={e=>setTarget(e.target.value)} placeholder="Destination message path" className="mt-4 w-full rounded-xl border bg-slate-50 px-3 py-3 text-xs font-bold"/><button disabled={busy||!target.trim()} onClick={forwardMessage} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 text-sm font-black text-white disabled:opacity-40"><Send size={15}/>Forward</button></div></div>}
+ </div>;
+}
