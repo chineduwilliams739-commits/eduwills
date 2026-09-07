@@ -28,4 +28,5 @@ jobs:
           git add app/dashboard/community/page.tsx app/dashboard/community/group/page.tsx app/dashboard/personal/page.tsx app/dashboard/category/page.tsx
           if git diff --cached --quiet; then echo 'No source changes.'; exit 0; fi
           git commit -m 'Upgrade community workspace and profile UX'
+          git pull --rebase origin main
           git push
