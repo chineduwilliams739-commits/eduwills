@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
 const firebaseConfig = {
@@ -14,18 +15,14 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
-// Keep the most recently used Firestore data available locally so core account
-// screens can continue to render during a temporary network outage. Writes are
-// queued by Firestore and synchronized when connectivity returns.
 let firestore: ReturnType<typeof getFirestore>;
 try {
   firestore = initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   });
 } catch {
-  // initializeFirestore can throw when another module has already initialized
-  // Firestore during a client-side module reload.
   firestore = getFirestore(app);
 }
 export const db = firestore;
@@ -38,9 +35,7 @@ if (typeof window !== 'undefined' && appCheckSiteKey) {
       provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
       isTokenAutoRefreshEnabled: true,
     });
-  } catch {
-    // App Check may already be initialized during client-side module reloads.
-  }
+  } catch {}
 }
 
 export default app;
