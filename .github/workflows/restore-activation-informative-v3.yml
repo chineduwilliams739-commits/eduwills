@@ -1,0 +1,44 @@
+name: Restore Activation Informative V3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/restore-activation-informative-v3.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Restore activation page
+        run: node scripts/restore-activation-informative-v3.mjs
+      - name: Verify activation flow
+        run: |
+          grep -q 'redeemThroughBackend' app/dashboard/activation/page.tsx
+          grep -q "fetch(\`${backend}/redeem\`" app/dashboard/activation/page.tsx
+          grep -q 'Congratulations!' app/dashboard/activation/page.tsx
+          grep -q 'Copy WilliToken' app/dashboard/activation/page.tsx
+          ! grep -q "updateDoc(tokenRef" app/dashboard/activation/page.tsx
+      - name: Commit restored activation page
+        run: |
+          if git diff --quiet -- app/dashboard/activation/page.tsx; then
+            echo 'Activation page already restored.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/activation/page.tsx
+          git commit -m 'Restore informative activation UI and secure token redemption'
+          git push origin HEAD:main
