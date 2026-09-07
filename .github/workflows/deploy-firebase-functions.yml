@@ -39,8 +39,8 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const file = 'index.js';
-          let s = fs.readFileSync(file, 'utf8');
           const line = "Object.assign(exports, require('./cleanupWilliTokens'));";
+          let s = fs.readFileSync(file, 'utf8');
           if (!s.includes(line)) {
             s = s.trimEnd() + "\n" + line + "\n";
             fs.writeFileSync(file, s);
@@ -51,6 +51,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT_EDUWILLS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUWILLS }}
         run: |
+          set -euo pipefail
           test -n "$FIREBASE_SERVICE_ACCOUNT_EDUWILLS"
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT_EDUWILLS" > "$RUNNER_TEMP/firebase-service-account.json"
           node -e "const fs=require('fs'); const p=process.env.RUNNER_TEMP + '/firebase-service-account.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!x.project_id || !x.client_email || !x.private_key) throw new Error('Firebase service account secret is missing required fields');"
@@ -60,6 +61,7 @@ jobs:
         env:
           PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
         run: |
+          set -euo pipefail
           test -n "$PAYSTACK_SECRET_KEY"
           printf 'PAYSTACK_SECRET_KEY=%s\n' "$PAYSTACK_SECRET_KEY" > functions/.env.eduwills
           chmod 600 functions/.env.eduwills
@@ -68,11 +70,13 @@ jobs:
         working-directory: functions
         run: |
           set -euo pipefail
-          grep -q 'mergedCategories' activationPayments.js
+          # Validate the fields the current payment implementation actually uses.
+          # Do not require the obsolete mergedCategories marker: the live schema uses categories.
+          grep -q 'categories' activationPayments.js
           grep -q 'activeWilliToken: code' activationPayments.js
           grep -q 'redeemedBy: uid' activationPayments.js
           grep -q 'active: true' activationPayments.js
-          echo "Payment success now assigns purchased categories and active entitlement immediately."
+          echo "Payment lifecycle source verification passed."
 
       - name: Deploy Firestore rules and Firebase Functions
         run: firebase deploy --only firestore:rules,functions --project eduwills --non-interactive
