@@ -7,6 +7,7 @@ on:
       - 'functions/**'
       - 'scripts/repair-payment-category-and-revocation-v2.mjs'
       - 'firebase.json'
+      - 'firestore.rules'
       - '.github/workflows/deploy-firebase-functions.yml'
   workflow_dispatch:
 
@@ -73,5 +74,5 @@ jobs:
           grep -q 'active: true' activationPayments.js
           echo "Payment success now assigns purchased categories and active entitlement immediately."
 
-      - name: Deploy Firebase Functions
-        run: firebase deploy --only functions --project eduwills --non-interactive
+      - name: Deploy Firestore rules and Firebase Functions
+        run: firebase deploy --only firestore:rules,functions --project eduwills --non-interactive
