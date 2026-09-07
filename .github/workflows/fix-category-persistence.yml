@@ -1,0 +1,30 @@
+name: Fix EduWills Category Persistence
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/fix-category-persistence-and-personal.mjs'
+      - 'app/dashboard/personal/page.tsx'
+      - '.github/workflows/fix-category-persistence.yml'
+  workflow_dispatch:
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply category persistence repair
+        run: node scripts/fix-category-persistence-and-personal.mjs
+      - name: Commit repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/category/page.tsx
+          if git diff --cached --quiet; then echo 'No category source changes needed.'; exit 0; fi
+          git commit -m 'Preserve selected category across dashboard navigation'
+          git pull --rebase origin main
+          git push origin HEAD:main
