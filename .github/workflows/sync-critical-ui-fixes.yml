@@ -1,0 +1,45 @@
+name: Sync critical category and community UI fixes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/harden-category-home-pages.mjs'
+      - 'scripts/fix-community-runtime.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Apply category source fix
+        run: node scripts/harden-category-home-pages.mjs
+
+      - name: Apply community source fix
+        run: node scripts/fix-community-runtime.mjs
+
+      - name: Commit generated source changes
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/category/page.tsx app/dashboard/community/page.tsx
+          if git diff --cached --quiet; then
+            echo 'No source changes were required.'
+            exit 0
+          fi
+          git commit -m 'Apply category and community UI fixes to source'
+          git push
