@@ -1,3 +1,6 @@
+const { onObjectFinalized } = require('firebase-functions/v2/storage');
+const vision = require('@google-cloud/vision');
+const visionClient = new vision.ImageAnnotatorClient();
 const { onRequest, onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineString } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
@@ -162,4 +165,18 @@ exports.paystackInitializeCallable = onCall({ region: 'us-central1', timeoutSeco
     console.error('[paystackInitializeCallable] unexpected initialization error', { name: e?.name, message: e?.message, code: e?.code, stack: e?.stack });
     throw new HttpsError('failed-precondition', `Payment initialization failed: ${String(e?.message || 'unknown server error').slice(0, 180)}`);
   }
+});
+
+exports.moderateUploadedImage = onObjectFinalized({ region: 'us-central1', memory: '512MiB' }, async (event) => {
+  const object = event.data || {};
+  if (!String(object.contentType || '').startsWith('image/')) return;
+  const bucketName = object.bucket; const name = object.name;
+  if (!bucketName || !name) return;
+  try {
+    const [result] = await visionClient.safeSearchDetection('gs://' + bucketName + '/' + name);
+    const safe = result?.safeSearchAnnotation || {};
+    const blocked = ['adult','racy'].some(k => ['LIKELY','VERY_LIKELY'].includes(String(safe[k] || '').toUpperCase()));
+    if (blocked) { const { getStorage } = require('firebase-admin/storage'); await getStorage().bucket(bucketName).file(name).delete().catch(() => {}); return; }
+    if (name.startsWith('users/')) { const parts=name.split('/'); const uid=parts[1]; if(uid){ const { getFirestore } = require('firebase-admin/firestore'); await getFirestore().doc('users/'+uid).set({photoModerationStatus:'approved',photoModeratedAt:new Date()},{merge:true}); } }
+  } catch (e) { console.error('Image moderation failed', e); }
 });
