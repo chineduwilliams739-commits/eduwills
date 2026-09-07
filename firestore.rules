@@ -19,7 +19,23 @@ service cloud.firestore {
     match /phoneIndex/{phone} { allow read: if true; allow create: if signedIn() && request.resource.data.uid == request.auth.uid; allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin()); allow delete: if isAdmin(); }
     match /emailIndex/{email} { allow read: if true; allow create: if signedIn() && request.resource.data.uid == request.auth.uid; allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin()); allow delete: if isAdmin(); }
     match /publicUserIndex/{publicId} { allow read: if true; allow create: if signedIn() && request.resource.data.uid == request.auth.uid; allow update: if signedIn() && (request.auth.uid == request.resource.data.uid || isAdmin()); allow delete: if isAdmin(); }
-    match /williTokens/{tokenId} { allow create: if isAdmin(); allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.username == currentUsername()); allow update: if isAdmin() || (signedIn() && (!('used' in resource.data) || resource.data.used == false) && resource.data.redeemed != true && resource.data.revoked != true && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && request.resource.data.token == resource.data.token && request.resource.data.used == true && request.resource.data.redeemed == true && request.resource.data.redeemedBy == request.auth.uid); allow delete: if isAdmin(); }
+    match /williTokens/{tokenId} {
+      allow create: if isAdmin();
+      allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid || resource.data.uid == request.auth.uid || resource.data.username == currentUsername());
+      allow update: if isAdmin() || (
+        signedIn()
+        && (!('used' in resource.data) || resource.data.used == false)
+        && resource.data.redeemed != true
+        && resource.data.revoked != true
+        && ((resource.data.userId == request.auth.uid) || (resource.data.uid == request.auth.uid))
+        && ((request.resource.data.userId == resource.data.userId) || (request.resource.data.uid == resource.data.uid))
+        && request.resource.data.used == true
+        && request.resource.data.redeemed == true
+        && request.resource.data.redeemedBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used','redeemed','redeemedBy','redeemedAt','active'])
+      );
+      allow delete: if isAdmin();
+    }
     match /settings/{settingId} { allow read, write: if isAdmin(); }
     match /quizHistory/{historyId} { allow create: if signedIn() && request.resource.data.userId == request.auth.uid; allow read: if signedIn() && (isAdmin() || resource.data.userId == request.auth.uid); allow update: if signedIn() && (isAdmin() || request.auth.uid == resource.data.userId) && request.resource.data.userId == resource.data.userId; allow delete: if isAdmin() || (signedIn() && request.auth.uid == resource.data.userId); }
     match /books/{bookId} { allow read: if signedIn(); allow write: if isAdmin(); }
@@ -34,27 +50,14 @@ service cloud.firestore {
     match /communityGroups/{groupId} {
       allow read: if signedIn() && (isGroupMember(groupId) || resource.data.visibility == 'public');
       allow create: if isActivated() && request.resource.data.ownerId == request.auth.uid && request.resource.data.adminIds is list && request.resource.data.memberIds is list && request.auth.uid in request.resource.data.adminIds && request.auth.uid in request.resource.data.memberIds;
-      allow update: if isGroupAdmin(groupId)
-        && request.resource.data.adminIds is list
-        && request.resource.data.memberIds is list
-        && request.resource.data.ownerId == resource.data.ownerId
-        && request.resource.data.ownerId in request.resource.data.memberIds
-        && request.resource.data.ownerId in request.resource.data.adminIds
-        && request.auth.uid in request.resource.data.memberIds
-        && request.auth.uid in request.resource.data.adminIds;
+      allow update: if isGroupAdmin(groupId) && request.resource.data.adminIds is list && request.resource.data.memberIds is list && request.resource.data.ownerId == resource.data.ownerId && request.resource.data.ownerId in request.resource.data.memberIds && request.resource.data.ownerId in request.resource.data.adminIds && request.auth.uid in request.resource.data.memberIds && request.auth.uid in request.resource.data.adminIds;
       allow delete: if isAdmin() || (isGroupAdmin(groupId) && resource.data.ownerId == request.auth.uid);
     }
-
-    // Safe, minimal member profile documents. These contain only information needed by group members.
-    // Expected path: communityGroups/{groupId}/members/{uid}
     match /communityGroups/{groupId}/members/{uid} {
       allow read: if isGroupMember(groupId);
-      allow create, update: if isGroupAdmin(groupId)
-        && request.resource.data.uid == uid
-        && request.resource.data.keys().hasOnly(['uid','username','fullName','photoURL','avatarUrl','updatedAt']);
+      allow create, update: if isGroupAdmin(groupId) && request.resource.data.uid == uid && request.resource.data.keys().hasOnly(['uid','username','fullName','photoURL','avatarUrl','updatedAt']);
       allow delete: if isGroupAdmin(groupId) && uid != get(/databases/$(database)/documents/communityGroups/$(groupId)).data.ownerId;
     }
-
     match /communityGroups/{groupId}/messages/{messageId} { allow read: if isGroupMember(groupId); allow create: if isActivated() && isGroupMember(groupId) && request.resource.data.senderId == request.auth.uid; allow update: if isGroupMember(groupId) && resource.data.senderId == request.auth.uid; allow delete: if isGroupMember(groupId) && (resource.data.senderId == request.auth.uid || isGroupAdmin(groupId) || isAdmin()); }
     match /communityGroups/{groupId}/messages/{messageId}/reactions/{reactionId} { allow read: if isGroupMember(groupId); allow create, update, delete: if isGroupMember(groupId) && request.resource.data.uid == request.auth.uid; }
     match /communityGroups/{groupId}/readState/{uid} { allow read, create, update: if isGroupMember(groupId) && request.auth.uid == uid; allow delete: if request.auth.uid == uid || isGroupAdmin(groupId) || isAdmin(); }
