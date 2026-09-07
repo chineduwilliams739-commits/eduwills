@@ -4,7 +4,7 @@ const path = 'app/dashboard/activation/page.tsx';
 let source = fs.readFileSync(path, 'utf8');
 
 if (!source.includes('activationSuccess')) {
-  const statePattern = /(\[paymentSuccess\s*,\s*setPaymentSuccess\]\s*=\s*useState<[^;]*?\|\s*null\s*>\s*\(\s*null\s*\)\s*;)/;
+  const statePattern = /(\[paymentSuccess\s*,\s*setPaymentSuccess\]\s*=\s*useState<[\s\S]*?\|\s*null\s*>\s*\(\s*null\s*\)\s*;)/;
   const stateMatch = source.match(statePattern);
   if (!stateMatch) throw new Error('Payment success state marker not found.');
   source = source.replace(
