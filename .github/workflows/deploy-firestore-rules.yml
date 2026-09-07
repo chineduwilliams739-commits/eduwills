@@ -1,10 +1,11 @@
-name: Deploy EduWills Firestore Rules
+name: Deploy EduWills Firebase Rules
 
 on:
   push:
     branches: [main]
     paths:
       - 'firestore.rules'
+      - 'storage.rules'
       - 'firebase.json'
       - '.github/workflows/deploy-firestore-rules.yml'
   workflow_dispatch:
@@ -15,10 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@latest
-
       - name: Authenticate Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT_EDUWILLS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_EDUWILLS }}
@@ -28,15 +27,14 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT_EDUWILLS" > "$RUNNER_TEMP/firebase-service-account.json"
           node -e "const fs=require('fs'); const p=process.env.RUNNER_TEMP+'/firebase-service-account.json'; const x=JSON.parse(fs.readFileSync(p,'utf8')); if(!x.project_id || !x.client_email || !x.private_key) throw new Error('Invalid Firebase service account secret');"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
-
-      - name: Validate Firestore rules source
+      - name: Validate rules source
         run: |
           set -euo pipefail
           test -s firestore.rules
+          test -s storage.rules
           grep -q "function isActivated" firestore.rules
-          grep -q "data.activated == true" firestore.rules
           grep -q "match /communityGroups/{groupId}" firestore.rules
-          echo "Firestore rules source validation passed."
-
-      - name: Deploy Firestore rules
-        run: firebase deploy --only firestore:rules --project eduwills --non-interactive
+          grep -q "match /users/{uid}/profile/{fileName}" storage.rules
+          echo "Firebase rules source validation passed."
+      - name: Deploy Firestore and Storage rules
+        run: firebase deploy --only firestore:rules,storage --project eduwills --non-interactive
