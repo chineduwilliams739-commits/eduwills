@@ -31,6 +31,8 @@ jobs:
 
       - name: Apply dashboard Personal and news repair
         run: node scripts/repair-activation-news.mjs
+      - name: Apply Primary JSS and SSS category home hardening
+        run: node scripts/harden-category-home-pages.mjs
       - name: Apply activation success and WilliToken UI repair
         run: node scripts/repair-activation-success-ui.mjs
       - name: Apply dashboard and Admin token status repair
@@ -71,9 +73,12 @@ jobs:
           client = Path('lib/quizAiClientStable.ts').read_text()
           page = Path('app/dashboard/quiz/page.tsx').read_text()
           dashboard = Path('app/dashboard/page.tsx').read_text()
+          category = Path('app/dashboard/category/page.tsx').read_text()
 
           checks = {
               'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
+              'category navigation': all(x in category for x in ('HOME', 'COMMUNITY', 'const homeActive =', 'const quizActive =')),
+              'category education feed': '<EducationFeed />' in category,
               'gateway timeout helper': 'async function fetchWithTimeout' in client,
               'research fetch timeout': "fetchWithTimeout(url, { cache: 'no-store' }, 5000)" in client,
               'gateway config timeout': "fetchWithTimeout(`${BASE}/ai-gateway.json?v=30`, { cache: 'no-store' }, 5000)" in client,
@@ -93,11 +98,11 @@ jobs:
 
           missing = [name for name, ok in checks.items() if not ok]
           if missing:
-              print('Quiz/dashboard hardening verification failed:')
+              print('Quiz/dashboard/category hardening verification failed:')
               for item in missing:
                   print(' -', item)
               raise SystemExit(1)
-          print(f'Quiz/dashboard hardening verified ({len(checks)} checks).')
+          print(f'Quiz/dashboard/category hardening verified ({len(checks)} checks).')
           PY
 
       - name: Typecheck
