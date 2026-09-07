@@ -33,6 +33,7 @@ jobs:
           test -s firestore.rules
           test -s storage.rules
           grep -q "function isActivated" firestore.rules
+          grep -q "match /williTokens/{tokenId}" firestore.rules
           grep -q "match /communityGroups/{groupId}" firestore.rules
           grep -q "match /users/{uid}/profile/{fileName}" storage.rules
           echo "Firebase rules source validation passed."
