@@ -61,33 +61,6 @@ jobs:
       - name: Apply dedicated quiz generation failure repair
         run: node scripts/fix-quiz-generation-failure-ui.mjs
 
-      - name: Finalize EducationFeed reference
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('app/dashboard/page.tsx')
-          source = path.read_text()
-
-          if '<EducationFeed' in source and 'function EducationFeed(){' not in source:
-              import_line = "import EducationFeed from '@/components/EducationFeed';"
-              if import_line not in source:
-                  lines = source.splitlines()
-                  insert_at = 0
-                  while insert_at < len(lines) and (lines[insert_at].startswith("'use client'") or not lines[insert_at].strip()):
-                      insert_at += 1
-                  lines.insert(insert_at, import_line)
-                  source = '\n'.join(lines) + ('\n' if source.endswith('\n') else '')
-              print('EducationFeed fallback import installed.')
-          elif 'function EducationFeed(){' in source:
-              print('Inline EducationFeed implementation present.')
-          else:
-              print('No EducationFeed JSX reference found; no change needed.')
-
-          path.write_text(source)
-          PY
-
       - name: Verify repaired source
         run: |
           set -euo pipefail
@@ -116,7 +89,6 @@ jobs:
               'generation retry state': 'quizGenerationFailed' in page and 'Retry Generation' in page,
               'generation returns success': 'Promise<boolean>' in page and 'generatedSuccessfully' in page,
               'failed attempts excluded from free count': "data.status !== 'failed'" in page,
-              'EducationFeed reference is defined': 'function EducationFeed(){' in dashboard or "import EducationFeed from '@/components/EducationFeed';" in dashboard,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
