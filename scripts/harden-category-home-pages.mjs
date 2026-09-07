@@ -2,20 +2,24 @@ import fs from 'node:fs';
 
 const path='app/dashboard/category/page.tsx';
 let s=fs.readFileSync(path,'utf8');
+const BASE = '/eduwills';
 
 if(!s.includes("import EducationFeed from '@/components/EducationFeed';")) {
   s=s.replace("import { auth, db } from '@/lib/firebase';", "import { auth, db } from '@/lib/firebase';\nimport EducationFeed from '@/components/EducationFeed';");
 }
 
 if(!s.includes('const currentPath = window.location.pathname;')) {
-  s=s.replace('  const config = CATEGORIES[category];', `  const config = CATEGORIES[category];
+  const marker='  const config = CATEGORIES[category];';
+  const insertion=`  const config = CATEGORIES[category];
   const currentPath = window.location.pathname;
-  const homeActive = currentPath === \`${BASE}/dashboard/\` || currentPath === \`${BASE}/dashboard\` || currentPath === \`${BASE}/dashboard/category/\`;
+  const homeActive = currentPath === '${BASE}/dashboard/' || currentPath === '${BASE}/dashboard' || currentPath === '${BASE}/dashboard/category/';
   const examActive = currentPath.includes('/dashboard/exam');
   const quizActive = currentPath.includes('/dashboard/category-quiz') || currentPath.includes('/dashboard/quiz');
   const communityActive = currentPath.includes('/dashboard/community');
   const recordsActive = currentPath.includes('/dashboard/history') || currentPath.includes('/dashboard/category-records');
-  const personalActive = currentPath.includes('/dashboard/personal');`);
+  const personalActive = currentPath.includes('/dashboard/personal');`;
+  if(!s.includes(marker)) throw new Error('Category config marker not found; refusing a silent no-op.');
+  s=s.replace(marker,insertion);
 }
 
 s=s.replace("navItem(`${BASE}/dashboard/`,'HOME',GraduationCap)", "navItem(`${BASE}/dashboard/`,'HOME',GraduationCap,homeActive)");
