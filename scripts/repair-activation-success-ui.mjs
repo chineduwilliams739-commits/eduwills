@@ -4,23 +4,23 @@ const path = 'app/dashboard/activation/page.tsx';
 let source = fs.readFileSync(path, 'utf8');
 
 if (!source.includes('activationSuccess')) {
-  const stateMatch = source.match(/const\[paymentSuccess,setPaymentSuccess\]=useState<[^;]+\|null>\(null\);/);
+  const statePattern = /(\[paymentSuccess\s*,\s*setPaymentSuccess\]\s*=\s*useState<[^;]*?\|\s*null\s*>\s*\(\s*null\s*\)\s*;)/;
+  const stateMatch = source.match(statePattern);
   if (!stateMatch) throw new Error('Payment success state marker not found.');
-  const state = stateMatch[0];
   source = source.replace(
-    state,
-    `${state}const [activationSuccess, setActivationSuccess] = useState<{ token: string; categories: string[]; expiresAt: Date } | null>(null);`,
+    stateMatch[0],
+    `${stateMatch[0]}const [activationSuccess, setActivationSuccess] = useState<{ token: string; categories: string[]; expiresAt: Date } | null>(null);`,
   );
 }
 
 if (!source.includes('from \'lucide-react\'') && !source.includes('from "lucide-react"')) {
   throw new Error('Lucide import marker not found.');
 }
-if (!source.includes('X,') && !source.includes('{ X,')) {
-  source = source.replace(
-    /import \{ CheckCircle2, ([^}]+) \} from ['"]lucide-react['"];?/,
-    "import { CheckCircle2, X, $1 } from 'lucide-react';",
-  );
+if (!/import\s*\{[^}]*\bX\b[^}]*\}\s*from\s*['"]lucide-react['"]/.test(source)) {
+  const importMatch = source.match(/import\s*\{([^}]+)\}\s*from\s*(['"])lucide-react\2\s*;/);
+  if (!importMatch) throw new Error('Lucide icon import marker not found.');
+  const icons = importMatch[1].trim();
+  source = source.replace(importMatch[0], `import { X, ${icons} } from 'lucide-react';`);
 }
 
 const paymentLabel = 'className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Activation code</p>';
@@ -29,10 +29,11 @@ if (source.includes(paymentLabel)) {
 }
 
 if (!source.includes('setActivationSuccess({ token: clean')) {
-  const redeemMatch = source.match(/setCode\('\'\);setMessage\('\'Activation successful\.'\);/);
-  if (!redeemMatch) throw new Error('Activation success handler marker not found.');
+  const successPattern = /setCode\(\s*['"]['"]\s*\)\s*;\s*setMessage\(\s*['"]Activation successful\.['"]\s*\)\s*;?/;
+  const successMatch = source.match(successPattern);
+  if (!successMatch) throw new Error('Activation success handler marker not found.');
   source = source.replace(
-    redeemMatch[0],
+    successMatch[0],
     "setCode('');setMessage('');setActivationSuccess({ token: clean, categories, expiresAt: activationExpiry });",
   );
 }
