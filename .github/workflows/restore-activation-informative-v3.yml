@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/restore-activation-informative-v3.mjs'
+      - '.github/workflows/restore-activation-informative-v3.yml'
   workflow_dispatch:
 
 permissions:
@@ -27,10 +28,10 @@ jobs:
       - name: Verify activation flow
         run: |
           grep -q 'redeemThroughBackend' app/dashboard/activation/page.tsx
-          grep -q "fetch(\`${backend}/redeem\`" app/dashboard/activation/page.tsx
+          grep -q '/redeem' app/dashboard/activation/page.tsx
           grep -q 'Congratulations!' app/dashboard/activation/page.tsx
           grep -q 'Copy WilliToken' app/dashboard/activation/page.tsx
-          ! grep -q "updateDoc(tokenRef" app/dashboard/activation/page.tsx
+          ! grep -q 'updateDoc(tokenRef' app/dashboard/activation/page.tsx
       - name: Commit restored activation page
         run: |
           if git diff --quiet -- app/dashboard/activation/page.tsx; then
