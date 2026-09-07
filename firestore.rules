@@ -1,3 +1,4 @@
+// Community authorization is deployed independently so group creation does not depend on payment-source checks.
 rules_version = '2';
 
 service cloud.firestore {
