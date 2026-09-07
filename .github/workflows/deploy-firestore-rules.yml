@@ -39,3 +39,5 @@ jobs:
           echo "Firebase rules source validation passed."
       - name: Deploy Firestore and Storage rules
         run: firebase deploy --only firestore:rules,storage --project eduwills --non-interactive
+
+# Keep this workflow path-triggered so Firebase rules changes are deployed with the application.
