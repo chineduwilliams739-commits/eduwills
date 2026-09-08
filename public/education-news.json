@@ -1,11 +1,27 @@
 {
-  "generatedAt": "2026-09-07T10:20:17.858Z",
+  "generatedAt": "2026-09-08T09:42:48.484Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
     "total": 20
   },
   "items": [
+    {
+      "title": "Public Finance for Basic Education in Nigeria. - UNICEF",
+      "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOdFF6d01xQndWSGMtOU9RQmQzQjdOSVBueXRkbjhSbzVGVG5YcTU3M1d6NS1MdEVOYXl0SFJiejNOY2l2dzBKZzdjWmdPTUNJRjlSVHp5VlZHTENIY3NpcHBLeFY0VjlqTEUyVGl4ZndPSkRTcnczSE4wcTVMN21LaGtySQ?oc=5",
+      "source": "UNICEF",
+      "publishedAt": "Mon, 07 Sep 2026 12:00:00 GMT",
+      "description": "Public Finance for Basic Education in Nigeria. &nbsp;&nbsp; UNICEF",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Is College in Boston Still Worth It? - Boston Magazine",
+      "link": "https://news.google.com/rss/articles/CBMifkFVX3lxTE5zRDZUWlVuMndmMHVwU1JPS1BsdWpJSXhiMkVtZ0ZMTXNNWUp2Mk1wQzV2Uzk3TmN4X3lSVmFzbDNsQ0JSR1hkQXpBeEpzNzhBUWZHcHkwRkE3ME9UWTBXZGt4bzlPZkhYZkhXZ29FMGNNUHg2UEs5ZFBtQUdyUQ?oc=5",
+      "source": "Boston Magazine",
+      "publishedAt": "Tue, 01 Sep 2026 11:07:30 GMT",
+      "description": "Is College in Boston Still Worth It? &nbsp;&nbsp; Boston Magazine",
+      "region": "International"
+    },
     {
       "title": "FG Warns Parents, Teachers, Proprietors, Students Against Examination Malpractice - Channels Television",
       "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxPeXZSTjdkam8zMld5SGZtQW1QR1Jha2tqMUFQRzZMVEYwd1B2QzNrXzF6ODNrUmN1bU5McmpReVlCbEw5MmgzVHo2RHRCUV9aSGdnb2s1VVgxOEg5RElOUkNUSFJvQXotVTJKRmw2UmxGbFJVM2R2N1RqM2I3RUhoUmladmdpRS15cU5SS3VYME8xRVV5TG1zcFFQU0ZCbE4wSTRrSjA2cmlVWHhIdllfTWZYalJiZzI5?oc=5",
@@ -15,51 +31,51 @@
       "region": "Nigeria"
     },
     {
-      "title": "The Great College Reckoning: Is Higher Education Still Worth It? - Boston Magazine",
-      "link": "https://news.google.com/rss/articles/CBMifkFVX3lxTE5zRDZUWlVuMndmMHVwU1JPS1BsdWpJSXhiMkVtZ0ZMTXNNWUp2Mk1wQzV2Uzk3TmN4X3lSVmFzbDNsQ0JSR1hkQXpBeEpzNzhBUWZHcHkwRkE3ME9UWTBXZGt4bzlPZkhYZkhXZ29FMGNNUHg2UEs5ZFBtQUdyUQ?oc=5",
-      "source": "Boston Magazine",
-      "publishedAt": "Tue, 01 Sep 2026 11:07:30 GMT",
-      "description": "The Great College Reckoning: Is Higher Education Still Worth It? &nbsp;&nbsp; Boston Magazine",
+      "title": "2026 College Rankings: Montclair Ranked No.1 Public School in New Jersey in New Washington Monthly Rankings - Montclair State University",
+      "link": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxOM0NQQXNRcmt1LTdibE9EMVV2U1J0aERWaEJtTmRETXJ1RTFoczlQSEpTNlFnN3dZWkVuUUZRQjh3cWNtUWNFY0t4NF9oX2t0RmotWG50aldFa3MwUnBpRWRiLTk3LWFYRmRtSF9YWUdfQnVEczZ0SEdzWkNEa29yQm1tM3ZLbWFHU1VPRHZYdC0xbS1fY2RaWjBwQU4wRjZSVVhtM0x1UFZDWURCWDltVXZ3Z0FsOFlFYlFLR3FWdmQyaTNHVVJKOE03dzJkNjdJc3lMbS1DM0JycnJxU0F0aFhzOA?oc=5",
+      "source": "Montclair State University",
+      "publishedAt": "Thu, 03 Sep 2026 18:52:04 GMT",
+      "description": "2026 College Rankings: Montclair Ranked No.1 Public School in New Jersey in New Washington Monthly Rankings &nbsp;&nbsp; Montclair State University",
       "region": "International"
     },
     {
-      "title": "European Union Humanitarian Aid and Plan International Nigeria Launch New Initiative to Expand Safe and Inclusive Education for Crisis-Affected Children in Borno State - reliefweb.int",
+      "title": "European Union Humanitarian Aid and Plan International Nigeria Launch New Initiative to Expand Safe and Inclusive Education for Crisis-Affected Children in Borno State - ReliefWeb",
       "link": "https://news.google.com/rss/articles/CBMinwJBVV95cUxQb1BBaFdnOWo0NzdGU2M0RHNZZmhxV29ad0cwUEhndGJZaE1nUTJ3ZlZBR1UyZVcwR1lYczkyenl2c3U2LTJzTEc4azZYUzFDYnh1T0E5dWhENGtXTVg4dWhpVUl2SjhnWVNQM2JDVzRIbkxodm1yTF93MmtGSEhXOGl1X0ViTEk2ZXMzWmF3eHFTMmlYUjhhQlN1OXIzd2NRa3ctTUZ0aHRaMExKdnNKUDlmU0JURWprekVWOHdKOUdreXg4ek1vQ3NJS21ybmEwVDhtMHBPNW82aGwtalVWZ1YtMlpDbjVESnppSVhObWhGaDNkVFhITkJPTlpyeGxRU3lPa3EtSGhMNVdkUVNPeEw0SzBRYV9Uc3R2Y0hjWQ?oc=5",
-      "source": "reliefweb.int",
+      "source": "ReliefWeb",
       "publishedAt": "Thu, 03 Sep 2026 08:06:13 GMT",
-      "description": "European Union Humanitarian Aid and Plan International Nigeria Launch New Initiative to Expand Safe and Inclusive Education for Crisis-Affected Children in Borno State &nbsp;&nbsp; reliefweb.int",
+      "description": "European Union Humanitarian Aid and Plan International Nigeria Launch New Initiative to Expand Safe and Inclusive Education for Crisis-Affected Children in Borno State &nbsp;&nbsp; ReliefWeb",
       "region": "Nigeria"
     },
     {
-      "title": "America built thousands of colleges for more students. Now there are about to be 500,000 fewer of them - fortune.com",
-      "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNZGFVLXR6YXcyODY2eUVWa2xLVXFFX01Fclh1Uzgyc29UbUpLcUNpN1V3b25xUVQwanFCaWhDblk2UW11SmhXNm5QelhEZ2NZVnFCLTViUGhtOG1taUdvNmxPdG8xVFlTLVlUSkh1LVZIYXlIWUs2Y0dEMV8yTl8zRk16ZXZHQmRGY04zUGZ0Zlpjc0U?oc=5",
-      "source": "fortune.com",
-      "publishedAt": "Mon, 31 Aug 2026 20:35:00 GMT",
-      "description": "America built thousands of colleges for more students. Now there are about to be 500,000 fewer of them &nbsp;&nbsp; fortune.com",
+      "title": "Illinois announces partnerships with 21 high schools in the state for the university’s dual-credit initiative - news.illinois.edu",
+      "link": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQb3BMaGlWOVNKUVVGQzJvUFd0RWpVQUo5Q19fX3IwdEZYVjd5Q052S25OcFd2UDdFcjR4MVBVSlJyRGhPek9BUEVLR1Qzeks5QklLSWVmUzYxV2Rpc2MtLUtZUG1tYU9aLUVyM0hyQXV1N25FSE9raDhzaGdTWmZZY2NHbTlJMmdNd1VLdEd4ekVNNXhCRlVLUTdVN2pGX2F2QXRsSmNCSmoxd3F6TzA2c0ZLWDExcm4zc2w5b253eGdraHdpaFRfa2ppdVhsbUpY?oc=5",
+      "source": "news.illinois.edu",
+      "publishedAt": "Thu, 03 Sep 2026 15:42:41 GMT",
+      "description": "Illinois announces partnerships with 21 high schools in the state for the university’s dual-credit initiative &nbsp;&nbsp; news.illinois.edu",
       "region": "International"
     },
     {
       "title": "Catholic Archbishop in Nigeria Condemns “totalitarian” Education Directives in Imo State - ACI Africa",
-      "link": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxOY1RJN0JXcjJKSDgzc1ZVM1FSdFdTNnNKX2VVdzFlXzNZZXRNMFlNamhHZ0thcks2cVpRbnR4bjBQT3JYVWFOSTN1czMtOFcyeVBZb3F5NXBaaGxmSlByZ2k0RUlRV29JN2FoTVNfQkJPMDZsLVRidWxkaFQ5S3JmdklPOXd2M1kyT1YwaGg5MTM5ODNIeHhtTTJFUXlFU0p5RElzMHYyZTY3WFNxWnJwVU5PMkxieVprdDJ3MFlaemc?oc=5",
+      "link": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxOY1RJN0JXcjJKSDgzc1ZVM1FSdFdTNnNKX2VVdzFlXzNZZXRNMFlNamhHZ0thcks2cVpRbnR4bjBQT3JYVWFOSTN1czMtOFcyeVBZb3F5NXBaaGxmSlByZ2k0RUlRV29JN2FoTVNfQkJPMDZsLVRidWxkaFQ5S3JmdklPOXd2M1kyT1YwaGg5MTM5ODNIeHhtTTJFUXlFU0p5RElzMHYyZTY3WFNxWnJwVU5PMkxieVprdDJ3MFlaemfSAcYBQVVfeXFMTTJoVURBVWZlb01xLXpVRHVXblp3ZENIRXdJbFQ5Y2xnUW9HbV94Mkl1YkVZc2pLWjlHRXlNeVVwbmQtMDFzbmVpSHc3OHFOdFBhc3hWdWN3Z2h2WlMzUGs5MldMWUx2NWFITEw2c09TU1YyajZNLThOeV9xT1huVXB3a1pQNW9fT09KZE5KbEtMZkZsS0ZIb3FDaUY1bmhYSkJHZms0YUJMSElPYmtrb2tCMWtET3ZkNU5fSDlGZ3VtaU94REl3?oc=5",
       "source": "ACI Africa",
       "publishedAt": "Mon, 07 Sep 2026 07:30:01 GMT",
       "description": "Catholic Archbishop in Nigeria Condemns “totalitarian” Education Directives in Imo State &nbsp;&nbsp; ACI Africa",
       "region": "Nigeria"
     },
     {
-      "title": "Illinois announces partnerships with 21 high schools in the state for the university’s dual-credit initiative - Illinois News Bureau",
-      "link": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQb3BMaGlWOVNKUVVGQzJvUFd0RWpVQUo5Q19fX3IwdEZYVjd5Q052S25OcFd2UDdFcjR4MVBVSlJyRGhPek9BUEVLR1Qzeks5QklLSWVmUzYxV2Rpc2MtLUtZUG1tYU9aLUVyM0hyQXV1N25FSE9raDhzaGdTWmZZY2NHbTlJMmdNd1VLdEd4ekVNNXhCRlVLUTdVN2pGX2F2QXRsSmNCSmoxd3F6TzA2c0ZLWDExcm4zc2w5b253eGdraHdpaFRfa2ppdVhsbUpY?oc=5",
-      "source": "Illinois News Bureau",
-      "publishedAt": "Thu, 03 Sep 2026 15:42:41 GMT",
-      "description": "Illinois announces partnerships with 21 high schools in the state for the university’s dual-credit initiative &nbsp;&nbsp; Illinois News Bureau",
+      "title": "See the best public universities for 2027, according to Niche - The Hill",
+      "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOdTZwbmJIMFVidkNtazg4YXdTc3pkaVF0aDJYSXhjdzNfbUpQYmxSaElWYVdlMVByYWgyRHJ3ZC01WndieGxKV0d3bGMxU3JUM1hOVjhBUXo3aXpYVlQ1Wkp4N2xKbFFxWVlhTms3dHlsUUhocnlFYl9OZHM2bjVwS09HUW5Gd01KQk5Lb0NuX1hCcm8yOTZoZ2pyVmRycTTSAaQBQVVfeXFMTmFkc21GQUxkeC1iVVdmaFNiUDJFd2VtX09wNTdJU0tpaFJCNnhDRC04cTJxalBCblB5YTFkSFJkbHdvME5rck05NF9LVTEtRW9MRG9ITW1ZUGlsWHo4Zk1nT1plNDZXVGNEeW9jVHdSZFBuSmpFN0hBV0RfMEIxRl9nX2NQOS1TamhtTGFxUDg0aDh1WUEtNmFMYkhBMGpodEJTeFE?oc=5",
+      "source": "The Hill",
+      "publishedAt": "Sat, 05 Sep 2026 13:30:00 GMT",
+      "description": "See the best public universities for 2027, according to Niche &nbsp;&nbsp; The Hill",
       "region": "International"
     },
     {
-      "title": "The Future of Education in a Title-Driven Country: Nigeria in perspective - Vanguard News",
-      "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxQaS01LW13LVhvQTRFYWF0akNSaXVQQjVnREhtVUdRMi0zODJmQ3l4aVZiRkFTZl9ENzlCZEM3QkFKbmNGTWR0M2tZME5jU2FraHJJZm9qSFpTM3hDUy1RNFlvTUVvd19HRVhBa1JVV0FYRXJXdDR6bXVmUlplRmh4WFMyXzMxdmhuaUFraVFJcTRmbmNsVEFxdElzZEhmM01EdnIya2E4bmRQVnhscWfSAbMBQVVfeXFMUEU1RWhsTzZIR29haUZmbFJwakJqeUJhMm14aFpOQ0dQYXJoVzBldXowTmxNei00UXBaR1V2eHpVQ0VId2pjVk56ajlCY3dyYVdBVXJMdnNhdFY1RlpEeVEzS2REZzdPbFBJYV8tZlE2aHVXckpnMHlfQkUyamxmWjRBVnFpRUFnakEyai0xUTNMR1B1VnFUMzVxTnBOcXZKTDVqTXRSWXl2bFpGazc4YXhrejA?oc=5",
-      "source": "Vanguard News",
-      "publishedAt": "Wed, 02 Sep 2026 07:29:41 GMT",
-      "description": "The Future of Education in a Title-Driven Country: Nigeria in perspective &nbsp;&nbsp; Vanguard News",
+      "title": "The Nigerian child and the right to education: Rhetoric or reality? - Business News Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxOTmpGTVdUdktBZVZad2dRNTJ5SmhlOHlkekpnc3ZWME9OTE9uZ0QzNHdDcVJiRnZKaWVDRGNhTERCdG12N0RGY24wMkVkMGRlakE2N2I4RHZVTGVncDVaeXBYZkIyeDVFVFZFNjR5dTJqTEx6Q2FPNlhYZG9qRHhrN0xHanFlUEtMeG1mMGEwRXZaU2t4MVlGd3E2Zi1OTTZ2QkxQTUY4QVE?oc=5",
+      "source": "Business News Nigeria",
+      "publishedAt": "Mon, 07 Sep 2026 15:23:17 GMT",
+      "description": "The Nigerian child and the right to education: Rhetoric or reality? &nbsp;&nbsp; Business News Nigeria",
       "region": "Nigeria"
     },
     {
@@ -71,27 +87,11 @@
       "region": "International"
     },
     {
-      "title": "Federal Govt Orders Compulsory Ranking Of All Tertiary Institutions - LEADERSHIP Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPQU1Yd0ZvUjBCY2xMWEtybGtKNEk1RDBNMF9hMTRCcEcxR3NDdU9rNXV3dGpDSkdkOFdDTzBhQkZrUl9ZdEV0bmFNbTh1UEF0LUxMWGhpbEExM0xpWDdyX2xvUDQ0YVhKLWRJeGdZemk2UkJOS2FzOHJ5a1lVaG4xWmV3bGVLcEhmMEtzb0ZjMHpyZ1Y3?oc=5",
-      "source": "LEADERSHIP Newspapers",
-      "publishedAt": "Wed, 02 Sep 2026 03:36:36 GMT",
-      "description": "Federal Govt Orders Compulsory Ranking Of All Tertiary Institutions &nbsp;&nbsp; LEADERSHIP Newspapers",
-      "region": "Nigeria"
-    },
-    {
-      "title": "New IRS proposal threatens universities' tax-exempt status over diversity programs - politico.com",
-      "link": "https://news.google.com/rss/articles/CBMijAFBVV95cUxNaGROTXVXNWx0Z1k1Ml9IM0l0RTJNTzljRDAxVE4tRDUwcEMzZFhlNEpBVW9oMUlFQXVHSFVhcDBXeDNxUVoxeUt6S255UnU3UXk4Z3ZtSU1qNXlzYTNWYmg1U1d1ZHh4bUlrNTUyazltVS1VUGFPRlZsdkRqbGNtVU16NlhkRmMxSjJwcQ?oc=5",
-      "source": "politico.com",
-      "publishedAt": "Thu, 03 Sep 2026 16:41:00 GMT",
-      "description": "New IRS proposal threatens universities' tax-exempt status over diversity programs &nbsp;&nbsp; politico.com",
-      "region": "International"
-    },
-    {
-      "title": "Experts call for practical STEM reform, virtual labs in Nigerian schools - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPLTI3ODBXOERkRzcwRUhGVUNjbWxNWGt2X0c0di1VdGE0OG9VWW1pZXhsN19hbHBpVnpCUDdSaUtPLU90a1UxaGJqUTZkVU5EWXBlb0UzUDRWck1OcElKQW05NVk5LW1fOEJqV093eU5DcDdiQzNGVVdjcU1sWk9ORUN3ZDNKWU9jSkNSM2JEUzlDWGh5UlZRNzYtaEt5WVRqUnJkOA?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Thu, 03 Sep 2026 19:00:00 GMT",
-      "description": "Experts call for practical STEM reform, virtual labs in Nigerian schools &nbsp;&nbsp; The Guardian Nigeria News",
+      "title": "The Future of Education in a Title-Driven Country: Nigeria in perspective - Vanguard News",
+      "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxQaS01LW13LVhvQTRFYWF0akNSaXVQQjVnREhtVUdRMi0zODJmQ3l4aVZiRkFTZl9ENzlCZEM3QkFKbmNGTWR0M2tZME5jU2FraHJJZm9qSFpTM3hDUy1RNFlvTUVvd19HRVhBa1JVV0FYRXJXdDR6bXVmUlplRmh4WFMyXzMxdmhuaUFraVFJcTRmbmNsVEFxdElzZEhmM01EdnIya2E4bmRQVnhscWfSAbMBQVVfeXFMUEU1RWhsTzZIR29haUZmbFJwakJqeUJhMm14aFpOQ0dQYXJoVzBldXowTmxNei00UXBaR1V2eHpVQ0VId2pjVk56ajlCY3dyYVdBVXJMdnNhdFY1RlpEeVEzS2REZzdPbFBJYV8tZlE2aHVXckpnMHlfQkUyamxmWjRBVnFpRUFnakEyai0xUTNMR1B1VnFUMzVxTnBOcXZKTDVqTXRSWXl2bFpGazc4YXhrejA?oc=5",
+      "source": "Vanguard News",
+      "publishedAt": "Wed, 02 Sep 2026 07:29:41 GMT",
+      "description": "The Future of Education in a Title-Driven Country: Nigeria in perspective &nbsp;&nbsp; Vanguard News",
       "region": "Nigeria"
     },
     {
@@ -103,27 +103,35 @@
       "region": "International"
     },
     {
+      "title": "AFRICA/NIGERIA — Archbishop Ugorji denounces ‘absolute control’ over missionary and private schools - Agenzia Fides",
+      "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxORWRTVmxKd2hTSkZwLUpaSUIwd3VPTVlRbEJIaTE0bUNKektibVpyaVZDeFhSdmFNLWN3Z2liM09qbEtxbDE4dFhFd0xjVERwT2Z0YVNkTTB0bk5TalRlS1VtMmNmVkRZaW1Qa0cwVURpUjgzdVpBaUtNNXNJM2p1aGNUa2V2VVRpTU9SSzM4MTM5Wkd3dWh2YkJ5NDZQVDZLUkIwbUFyTzlOX0tSOWpZQ1ZkNVFBYldSQ0U5TlRHcnowWTZhWHpNbmxYWQ?oc=5",
+      "source": "Agenzia Fides",
+      "publishedAt": "Mon, 07 Sep 2026 12:07:45 GMT",
+      "description": "AFRICA/NIGERIA — Archbishop Ugorji denounces ‘absolute control’ over missionary and private schools &nbsp;&nbsp; Agenzia Fides",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Oyo Partners UBEC, US NGO to Strengthen Foundational Education - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNZnRmbjY1cm05eXNkNDBkeHZrbE43NW05QmVWMnA4eGxXNFFzdkFyOXdqaUFYWnlTZzgzODBSQVhrcHVSanEzTG1nM2hZWmRnSEJ2azhDTmRVdTBLOXdZT0syZ1RWem5MS3JEMkZJbEo2V1ljOThyZFBjcGRaOWNpVnl4Y2RCMjMw?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Sat, 05 Sep 2026 16:59:49 GMT",
+      "description": "Oyo Partners UBEC, US NGO to Strengthen Foundational Education &nbsp;&nbsp; Voice of Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Experts call for practical STEM reform, virtual labs in Nigerian schools - The Guardian Nigeria News",
+      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPLTI3ODBXOERkRzcwRUhGVUNjbWxNWGt2X0c0di1VdGE0OG9VWW1pZXhsN19hbHBpVnpCUDdSaUtPLU90a1UxaGJqUTZkVU5EWXBlb0UzUDRWck1OcElKQW05NVk5LW1fOEJqV093eU5DcDdiQzNGVVdjcU1sWk9ORUN3ZDNKWU9jSkNSM2JEUzlDWGh5UlZRNzYtaEt5WVRqUnJkOA?oc=5",
+      "source": "The Guardian Nigeria News",
+      "publishedAt": "Thu, 03 Sep 2026 19:00:00 GMT",
+      "description": "Experts call for practical STEM reform, virtual labs in Nigerian schools &nbsp;&nbsp; The Guardian Nigeria News",
+      "region": "Nigeria"
+    },
+    {
       "title": "Official Lagos State Website | The best place to find government services and information - Lagos State Government",
       "link": "https://news.google.com/rss/articles/CBMidkFVX3lxTE9NZmlZY0VVN21kcHZSejMxVmllQW9OWlpxS1FwUGFVNENLMEw4UDFiS1A2Yms5M3VKUnJYX0l3b05ieHNDM0JyU0c4NEw0Z1ZXNlUzTmdlZEtTLU5NSHJwbnp6MGNnNmxQbWpOa3FHRUh3a3hUREE?oc=5",
       "source": "Lagos State Government",
       "publishedAt": "Thu, 03 Sep 2026 07:00:00 GMT",
       "description": "Official Lagos State Website | The best place to find government services and information &nbsp;&nbsp; Lagos State Government",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Ashoka Africa equips 200 educators to transform Nigeria’s education system - Business News Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMi5gFBVV95cUxPM1hwTXZ1b2w3dUhaM2FDVzlCYWpyby1GRTNvbWQwSVhjQUVGUU5xWVo5bWdyV0JfNXN3Z2ZadEhVQ1phdUo3UWM0dnBUMGM0M0pYS3VFZjdzSWFqdllteVJZb3ZuZG80NWRUaUZtcXNsTjloSlVLSWZCVENxa0xZZ0hlX052SnVTV3JWN0taVGIxdWpfSnBLRzZmamtxRmdEOHZBZ25aREd3MG5iX2FXQmFrT2QzQmFwTkFZSzlEdFRqS0txU1pneXotMU1VV3RvVHJBVGM3NW1LUm1tcE5KVlRXS0RaQQ?oc=5",
-      "source": "Business News Nigeria",
-      "publishedAt": "Mon, 07 Sep 2026 07:12:16 GMT",
-      "description": "Ashoka Africa equips 200 educators to transform Nigeria’s education system &nbsp;&nbsp; Business News Nigeria",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Nigeria Education Sector: Minister Warns Parents, Teachers On Malpractices - AIT LIVE",
-      "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNc0VnamNicHRBN3FMSkNRYTFSSXFtQXNYT3JtTC1EODlVbUwtdTMwdzlqeUllZWtDRnhPSllSYzFBdTFDcXhSQlgzNmg3SkNEU0hBRlZBaFBRYVYtdzFLbDZZX2pTWUh4NGVDZURNWWFfMjZXS2pfdFItUGdBbC1WMWpGLXhERkR6Z19uSDI1ZXBySWxj?oc=5",
-      "source": "AIT LIVE",
-      "publishedAt": "Fri, 04 Sep 2026 15:38:32 GMT",
-      "description": "Nigeria Education Sector: Minister Warns Parents, Teachers On Malpractices &nbsp;&nbsp; AIT LIVE",
       "region": "Nigeria"
     },
     {
@@ -135,35 +143,27 @@
       "region": "Nigeria"
     },
     {
-      "title": "Dreamland Outreach Nigeria announces ‘Bright Beginnings’ Back-to-School Outreach 2026 - BellaNaija",
-      "link": "https://news.google.com/rss/articles/CBMiZEFVX3lxTE1sWHRpOWthVzhVb294SmdDYWFIZ3FVNkVhWFEzekNZSkVhRDRqc1JZNWMtdmxYNkpwdVo1WkJDYi03d0JocmFBb3lnMW43ZEN4Z0JvQ0llSlVpbG13dHhHWGw5Q1M?oc=5",
-      "source": "BellaNaija",
-      "publishedAt": "Thu, 03 Sep 2026 17:22:26 GMT",
-      "description": "Dreamland Outreach Nigeria announces ‘Bright Beginnings’ Back-to-School Outreach 2026 &nbsp;&nbsp; BellaNaija",
+      "title": "Nigeria’s Education Ministry opens ₦50M equity-free grant to student founders - Tech In Africa",
+      "link": "https://news.google.com/rss/articles/CBMitAFBVV95cUxNVS1iNmEyZWxuS2VVVGJMLTBQeVdkVThIZGVRYzVYQkZXNy1OSi1OTUVBeHJXRFVUc2txaEdfOVV0Y3dFYzNMMU83M1pOUVA5SnpWWlQ2TVFESEdDS0c4MThGOVN1RWhBbTZ4cEpEbHdqODVBVi0tclg3WUc5VDBQc3NRSzdxMnZoam5XVHZGSS1wQURKcV9TSE11Qm5pV0pOQWxBUXA1Q0tKS1hZUTlnQkw5Zm8?oc=5",
+      "source": "Tech In Africa",
+      "publishedAt": "Fri, 04 Sep 2026 14:33:55 GMT",
+      "description": "Nigeria’s Education Ministry opens ₦50M equity-free grant to student founders &nbsp;&nbsp; Tech In Africa",
       "region": "Nigeria"
     },
     {
-      "title": "Zenith Bank: Equipping Nigeria’s Students for Digital Age - THISDAYLIVE",
-      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxNUllNNG5yWlRKNEUwbnV5OUJkTHB3NW5kNUxtX2hkQ21ZRWlVZmtHTmJPdFM5U3I2QWdwRWxGV25ndXRzMlQwVzIxNGRSendlM05hRzFHa09QUkUyaWxvWDVjeUdyNnlPNENUOG9VYVRmNVNmYkpjYVpWTlpIeTBwU1RSeWs5M0Vja3JDb0hrdkxxam1zOXNCUDlCZw?oc=5",
-      "source": "THISDAYLIVE",
-      "publishedAt": "Sat, 05 Sep 2026 19:49:57 GMT",
-      "description": "Zenith Bank: Equipping Nigeria’s Students for Digital Age &nbsp;&nbsp; THISDAYLIVE",
+      "title": "Nigeria Education Sector: Minister Warns Parents, Teachers On Malpractices - AIT LIVE",
+      "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNc0VnamNicHRBN3FMSkNRYTFSSXFtQXNYT3JtTC1EODlVbUwtdTMwdzlqeUllZWtDRnhPSllSYzFBdTFDcXhSQlgzNmg3SkNEU0hBRlZBaFBRYVYtdzFLbDZZX2pTWUh4NGVDZURNWWFfMjZXS2pfdFItUGdBbC1WMWpGLXhERkR6Z19uSDI1ZXBySWxj?oc=5",
+      "source": "AIT LIVE",
+      "publishedAt": "Fri, 04 Sep 2026 15:38:32 GMT",
+      "description": "Nigeria Education Sector: Minister Warns Parents, Teachers On Malpractices &nbsp;&nbsp; AIT LIVE",
       "region": "Nigeria"
     },
     {
-      "title": "Association hails FG’s expansion of medical education, urges full implementation of framework - nannews.ng",
-      "link": "https://news.google.com/rss/articles/CBMisAFBVV95cUxNbV8yVk52bzNaZHNfOTJJWVFTUUc5TlljNnZMeUJMYUVnOFpkUlg1cmlLdkUxOTd2RFoxZGt0RFV6RHpVblAzMW8xQ2JiNVFHSWN0YWtpWDlZN1BZbkdTZFE2RWY0VXhFazlQTlhLczNRUzRfQ3NGN084aVJUUlpNVG40M3dFV1dySVZ3Q1Z1WTNoTmF3aUN0c2lvZTVBVmd5cFFEMVN2UGJ4R2hZMHpibw?oc=5",
-      "source": "nannews.ng",
-      "publishedAt": "Fri, 04 Sep 2026 08:47:37 GMT",
-      "description": "Association hails FG’s expansion of medical education, urges full implementation of framework &nbsp;&nbsp; nannews.ng",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Albert Alos, the Spaniard who helped build Nigeria’s business education legacy - Business News Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMiugFBVV95cUxPZlZlVTFsMHh3TE1KalR3TlFrVDhQV0ZMN3lhTTVwdDFzZ1lzYVVLdmQtX2N1WU5fWDBLYXh6NVZONVg4ZFBFM0Q3aV95bVZJVDFxRkJsLW10WkFOcENxb0FUT0ptQ3ZBa2dGODU0b3ZKcjNsazlROExoSHEteU05REVhcGg3WkhlNXZxRHc1NXJad0twcjU3Ny1PWDN2SWJxaDczZk9HTnVYVmJpUDk3RGZnRWxsSFNESEE?oc=5",
-      "source": "Business News Nigeria",
-      "publishedAt": "Mon, 07 Sep 2026 04:28:26 GMT",
-      "description": "Albert Alos, the Spaniard who helped build Nigeria’s business education legacy &nbsp;&nbsp; Business News Nigeria",
+      "title": "ULS trains 261,000 teachers, 7,000 education officials - The Guardian Nigeria News",
+      "link": "https://news.google.com/rss/articles/CBMiigFBVV95cUxPOF82Y2t2Y1lYazN4NF84aDZFYWhGTkw5TFlkY1JxbEJlWk5NN09wdzAtMWxaYUVxVmF5Z0VYdlpFRzlBU0h0V1lHeWdXM0F5SDJtcFVTYUhXYnFpRmlmUHZoTjEzTDl2WE02RWppaWhpN05YWWRnYzh0bEZQbEIzajA2OTQwQWYxR1E?oc=5",
+      "source": "The Guardian Nigeria News",
+      "publishedAt": "Wed, 02 Sep 2026 20:58:00 GMT",
+      "description": "ULS trains 261,000 teachers, 7,000 education officials &nbsp;&nbsp; The Guardian Nigeria News",
       "region": "Nigeria"
     }
   ]
