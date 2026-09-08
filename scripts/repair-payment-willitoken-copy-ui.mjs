@@ -3,6 +3,12 @@ import fs from 'node:fs';
 const path = 'app/dashboard/activation/page.tsx';
 let source = fs.readFileSync(path, 'utf8');
 
+const modernActivationReady = source.includes('redeemThroughBackend') && source.includes('paymentSuccess') && source.includes('copyCode');
+if (modernActivationReady) {
+  console.log('Modern WilliToken payment/copy UI already present; skipping legacy copy-UI rewrite.');
+  process.exit(0);
+}
+
 if (!source.includes('const [copiedPaymentToken, setCopiedPaymentToken]')) {
   const functionMarker = 'export default function ActivationPage(){';
   if (!source.includes(functionMarker)) throw new Error('Activation page component marker not found.');
@@ -21,8 +27,6 @@ const newPaymentBlock = `{paymentSuccess&&<div className="mt-5 rounded-2xl borde
 if (paymentBlock.test(source)) source = source.replace(paymentBlock, newPaymentBlock);
 else if (!source.includes('Your WilliToken')) throw new Error('Payment success UI marker not found.');
 
-// Match the redemption guard regardless of whitespace or whether earlier repairs
-// compacted the activation handler onto one line.
 const oldUsedCheck = /if\s*\(\s*token\.used\s*===\s*true\s*\|\|\s*token\.redeemed\s*===\s*true\s*\)\s*throw new Error\(['"]This WilliToken has already been redeemed\.['"]\);/;
 const newUsedCheck = `if(token.used===true||token.redeemed===true){
  if(token.source==='paystack'&&token.active===true){
