@@ -1,0 +1,34 @@
+name: Implement community controls
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/implement-community-controls.mjs'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply source repairs
+        run: node scripts/implement-community-controls.mjs
+      - name: Typecheck
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit --pretty false
+      - name: Build
+        run: npm run build
+      - name: Commit source repairs
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/community/group/page.tsx app/dashboard/community/chat/page.tsx app/dashboard/personal/page.tsx components/DeviceImageUpload.tsx firestore.rules
+          if git diff --cached --quiet; then echo 'No changes'; else git commit -m 'Implement community membership search upload and message controls'; git push origin HEAD:main; fi
