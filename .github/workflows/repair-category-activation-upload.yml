@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'scripts/repair-category-activation-upload.mjs'
+      - 'components/DeviceImageUpload.tsx'
+      - 'workers/payments/src/index.js'
+      - 'app/dashboard/activation/page.tsx'
+      - '.github/workflows/repair-category-activation-upload.yml'
   workflow_dispatch:
 
 permissions:
