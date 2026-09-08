@@ -1,0 +1,47 @@
+name: Repair category activation and image upload
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/repair-category-activation-upload.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply repairs
+        run: node scripts/repair-category-activation-upload.mjs
+      - name: Verify category storage and upload implementation
+        run: |
+          grep -q "arrayValue" workers/payments/src/index.js
+          grep -q "activeCategoryId:categories\[0\]" workers/payments/src/index.js
+          grep -q "uploadBytes" components/DeviceImageUpload.tsx
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit --pretty false
+      - name: Build application
+        run: npm run build
+      - name: Commit repaired source
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/payments/src/index.js components/DeviceImageUpload.tsx app/dashboard/activation/page.tsx scripts/repair-category-activation-upload.mjs
+          if git diff --cached --quiet; then
+            echo 'No changes needed.'
+          else
+            git commit -m 'Fix category activation and mobile image uploads'
+            git push origin HEAD:main
+          fi
