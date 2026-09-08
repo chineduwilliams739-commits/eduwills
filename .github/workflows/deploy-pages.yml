@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,6 +47,20 @@ jobs:
         run: node scripts/repair-paid-token-redeem-gate.mjs
       - name: Apply Admin WilliToken data hardening
         run: node scripts/harden-admin-willitoken-data.mjs
+      - name: Apply category activation and image upload repair
+        run: node scripts/repair-category-activation-upload.mjs
+      - name: Persist category activation and upload repair
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/payments/src/index.js components/DeviceImageUpload.tsx app/dashboard/activation/page.tsx scripts/repair-category-activation-upload.mjs
+          if git diff --cached --quiet; then
+            echo 'Category activation/upload repair already persisted.'
+          else
+            git commit -m 'Fix category activation and mobile image uploads'
+            git push origin HEAD:main
+          fi
 
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
@@ -72,6 +88,9 @@ jobs:
           page = Path('app/dashboard/quiz/page.tsx').read_text()
           dashboard = Path('app/dashboard/page.tsx').read_text()
           category = Path('app/dashboard/category/page.tsx').read_text()
+          backend = Path('workers/payments/src/index.js').read_text()
+          upload = Path('components/DeviceImageUpload.tsx').read_text()
+          activation = Path('app/dashboard/activation/page.tsx').read_text()
 
           checks = {
               'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
@@ -92,15 +111,21 @@ jobs:
               'generation retry state': 'quizGenerationFailed' in page and 'Retry Generation' in page,
               'generation returns success': 'Promise<boolean>' in page and 'generatedSuccessfully' in page,
               'failed attempts excluded from free count': "data.status !== 'failed'" in page,
+              'Firestore array category storage': 'arrayValue' in backend,
+              'redeemed active category fields': 'activeCategoryId:categories[0]' in backend,
+              'redeem supports array categories': 'f.categories?.arrayValue?.values' in backend,
+              'non-resumable image upload': 'uploadBytes' in upload and 'uploadBytesResumable' not in upload,
+              'image upload retry': 'attempt<=3' in upload,
+              'redeem category UI fallback': 'eduwills_active_category' in activation,
           }
 
           missing = [name for name, ok in checks.items() if not ok]
           if missing:
-              print('Quiz/dashboard/category hardening verification failed:')
+              print('Repair verification failed:')
               for item in missing:
                   print(' -', item)
               raise SystemExit(1)
-          print(f'Quiz/dashboard/category hardening verified ({len(checks)} checks).')
+          print(f'All repair and quiz/dashboard checks passed ({len(checks)} checks).')
           PY
 
       - name: Typecheck
@@ -144,4 +169,4 @@ jobs:
 
 # quiz reliability retriggered after retry-state hardening
 # activation modal JSX repair retriggered after typecheck failure
-# final activation-page build rewrite removed: source is now the source of truth
+# category activation and mobile upload repair integrated into deployment
