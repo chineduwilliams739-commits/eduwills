@@ -3,6 +3,14 @@ import fs from 'node:fs';
 const path = 'app/dashboard/activation/page.tsx';
 let source = fs.readFileSync(path, 'utf8');
 
+// The activation page has already been migrated to the secure backend redemption flow.
+// Do not let this legacy matcher fail the production build when it encounters the newer UI.
+const modernActivationReady = source.includes('redeemThroughBackend') && source.includes('paymentSuccess') && source.includes('Copy WilliToken');
+if (modernActivationReady) {
+  console.log('Modern secure activation UI already present; skipping legacy success-UI rewrite.');
+  process.exit(0);
+}
+
 if (!source.includes('activationSuccess')) {
   const statePattern = /(\[paymentSuccess\s*,\s*setPaymentSuccess\]\s*=\s*useState<[\s\S]*?\|\s*null\s*>\s*\(\s*null\s*\)\s*;)/;
   const stateMatch = source.match(statePattern);
