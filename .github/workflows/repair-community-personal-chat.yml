@@ -10,6 +10,7 @@ on:
       - app/dashboard/community/group/page.tsx
       - app/dashboard/community/chat/page.tsx
       - components/DeviceImageUpload.tsx
+      - firestore.rules
       - .github/workflows/repair-community-personal-chat.yml
 permissions:
   contents: write
@@ -23,6 +24,33 @@ jobs:
         with: {node-version: 20}
       - name: Apply deterministic repairs
         run: node scripts/repair-community-personal-chat.mjs
+      - name: Harden community access and name search
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const group='app/dashboard/community/group/page.tsx';
+          let g=fs.readFileSync(group,'utf8');
+          const memberState="const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[understood,setUnderstood]=useState(false),";
+          if(!g.includes('[isMember,setIsMember]')) g=g.replace(memberState,memberState+"[joining,setJoining]=useState(false),[isMember,setIsMember]=useState(false),");
+          if(!g.includes('setIsMember(d.ownerId')) g=g.replace("setG(d);setName(d.name||'');", "setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');");
+          if(!g.includes('async function joinGroup')) g=g.replace('async function acknowledge(){',"async function joinGroup(){if(!user||!g||joining)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function acknowledge(){");
+          if(!g.includes("if(!isMember)return <main")) g=g.replace("if(!g)return <main", "if(!g)return <main").replace("if(!understood)return <main", "if(!isMember)return <main className=\"min-h-screen bg-paper p-5 text-ink\"><div className=\"mx-auto max-w-xl\"><a href={BASE+'/dashboard/community/'} className=\"inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black\"><ArrowLeft size={17}/> Community</a><section className=\"mt-5 rounded-[2rem] bg-white p-8 text-center shadow-sm\"><Users className=\"mx-auto text-cyan-600\" size={42}/><h1 className=\"mt-4 text-2xl font-black\">Join {g.name}</h1><p className=\"mt-2 text-sm leading-6 text-slate-500\">You must join this group before you can view or send messages.</p><button onClick={joinGroup} disabled={joining} className=\"mt-5 rounded-xl bg-ink px-6 py-3 text-sm font-black text-white disabled:opacity-50\">{joining?'Joining…':'JOIN GROUP'}</button></section></div></main>;\n if(!understood)return <main");
+          g=g.replace("if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')", "if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')");
+          g=g.replace("if(!g||!user||!understood)return;return onSnapshot(doc(db,'communityGroups',id,'readState'", "if(!g||!user||!understood||!isMember)return;return onSnapshot(doc(db,'communityGroups',id,'readState'");
+          fs.writeFileSync(group,g);
+
+          const chat='app/dashboard/community/chat/page.tsx';
+          let c=fs.readFileSync(chat,'utf8');
+          c=c.replace("const snap=await getDocs(query(collection(db,'users'),limit(300)));", "const snap=await getDocs(query(collection(db,'usernameIndex'),limit(500)));\n          for(const x of snap.docs){const d=x.data();const uid=String(d.uid||x.id),un=String(d.username||d.usernameLower||'').toLowerCase(),name=String(d.fullName||d.displayName||d.name||'').toLowerCase();if(uid!==user?.uid&&!seen.has(uid)&&(un.includes(term)||name.includes(term))){out.push(display({...d,uid,username:d.username||d.usernameLower||''}));seen.add(uid)}if(out.length>=20)break}\n          const publicSnap=await getDocs(query(collection(db,'publicUserIndex'),limit(500)));\n          for(const x of publicSnap.docs){const d=x.data();const uid=String(d.uid||'');const un=String(d.username||d.usernameLower||'').toLowerCase(),name=String(d.fullName||d.displayName||d.name||'').toLowerCase();if(uid&&uid!==user?.uid&&!seen.has(uid)&&(un.includes(term)||name.includes(term))){out.push(display({...d,uid,username:d.username||d.usernameLower||''}));seen.add(uid)}if(out.length>=20)break}");
+          fs.writeFileSync(chat,c);
+
+          const rules='firestore.rules';
+          let r=fs.readFileSync(rules,'utf8');
+          const old="allow update: if isGroupAdmin(groupId) && request.resource.data.adminIds is list && request.resource.data.memberIds is list && request.resource.data.ownerId == resource.data.ownerId && request.resource.data.ownerId in request.resource.data.memberIds && request.resource.data.ownerId in request.resource.data.adminIds && request.auth.uid in request.resource.data.memberIds && request.auth.uid in request.resource.data.adminIds;";
+          const next=old+"\n      allow update: if signedIn() && !isGroupMember(groupId) && request.auth.uid in request.resource.data.memberIds && !(request.auth.uid in resource.data.memberIds) && request.resource.data.memberIds is list && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds','updatedAt']);";
+          if(r.includes(old)&&!r.includes("!isGroupMember(groupId) && request.auth.uid in request.resource.data.memberIds")) r=r.replace(old,next);
+          fs.writeFileSync(rules,r);
+          NODE
       - name: Verify required changes
         run: |
           set -euxo pipefail
@@ -33,7 +61,9 @@ jobs:
           grep -q "isMember" app/dashboard/community/group/page.tsx
           grep -q "findUsers" app/dashboard/community/chat/page.tsx
           grep -q "Search" app/dashboard/community/chat/page.tsx
-          grep -q "collection(db,'users')" app/dashboard/community/chat/page.tsx
+          grep -q "collection(db,'usernameIndex')" app/dashboard/community/chat/page.tsx
+          grep -q "collection(db,'publicUserIndex')" app/dashboard/community/chat/page.tsx
+          grep -q "!isGroupMember(groupId)" firestore.rules
           grep -q "createImageBitmap" components/DeviceImageUpload.tsx
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -46,11 +76,11 @@ jobs:
           set -euxo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/dashboard/personal/page.tsx app/dashboard/community/group/page.tsx app/dashboard/community/chat/page.tsx components/DeviceImageUpload.tsx scripts/repair-community-personal-chat.mjs
+          git add app/dashboard/personal/page.tsx app/dashboard/community/group/page.tsx app/dashboard/community/chat/page.tsx components/DeviceImageUpload.tsx firestore.rules scripts/repair-community-personal-chat.mjs
           if git diff --cached --quiet; then
             echo "No source changes required."
           else
-            git commit -m "Repair paid category cards group membership chat search and uploads"
+            git commit -m "Repair paid category cards group access chat search and uploads"
             git fetch origin main
             git rebase origin/main
             git push origin HEAD:main
