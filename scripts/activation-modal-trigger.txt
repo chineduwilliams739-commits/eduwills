@@ -1,1 +1,2 @@
 Run activation modal repair now.
+Retrigger Pages after repairing the broken JSX.
