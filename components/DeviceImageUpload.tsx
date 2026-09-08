@@ -21,7 +21,7 @@ function uploadFile(storageRef:ReturnType<typeof ref>,file:File,onProgress:(valu
  return new Promise<void>((resolve,reject)=>{
   const task=uploadBytesResumable(storageRef,file,{contentType:file.type,customMetadata:{source:'device'}});
   const unsubscribe=task.on('state_changed',snapshot=>{
-   const value=snapshot.totalBytes?Math.min(99,Math.round(snapshot.bytesTransferred/snapshot.totalBytes*100)):0;
+   const value=snapshot.totalBytes?Math.max(5,Math.min(99,Math.round(snapshot.bytesTransferred/snapshot.totalBytes*100))):5;
    onProgress(value);
   },error=>{unsubscribe();reject(error)},()=>{unsubscribe();onProgress(100);resolve()});
  });
@@ -37,7 +37,7 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
   if(!current||current.uid!==uid){setMessage('Your session is no longer active. Please sign in again.');return}
   try{await current.reload()}catch{}
   if(!auth.currentUser){setMessage('Your session expired. Please sign in again.');return}
-  setBusy(true);setProgress(2);
+  setBusy(true);setProgress(5);
   try{
    setMessage('Preparing image…');const optimized=await compressImage(file);setProgress(10);
    if(optimized.size>7*1024*1024)throw new Error('This image is still too large. Please choose a smaller image.');
