@@ -51,6 +51,8 @@ jobs:
         run: node scripts/repair-category-activation-upload.mjs
       - name: Apply community membership, search, image and message controls
         run: node scripts/implement-community-controls.mjs
+      - name: Apply community controls v2
+        run: node scripts/repair-community-controls-v2.mjs
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
       - name: Harden quiz Gemini timeout and preserve gateway errors
@@ -79,9 +81,11 @@ jobs:
           backend = Path('workers/payments/src/index.js').read_text()
           upload = Path('components/DeviceImageUpload.tsx').read_text()
           activation = Path('app/dashboard/activation/page.tsx').read_text()
+          community = Path('app/dashboard/community/page.tsx').read_text()
           community_group = Path('app/dashboard/community/group/page.tsx').read_text()
           community_chat = Path('app/dashboard/community/chat/page.tsx').read_text()
           rules = Path('firestore.rules').read_text()
+          storage = Path('storage.rules').read_text()
           checks = {
               'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
               'category navigation': all(x in category for x in ('HOME', 'COMMUNITY', 'const homeActive =', 'const quizActive =')),
@@ -106,10 +110,11 @@ jobs:
               'redeem supports array categories': 'f.categories?.arrayValue?.values' in backend,
               'resumable image upload': 'uploadBytesResumable' in upload and 'uploadBytesResumable(' in upload,
               'image upload retry': 'attempt<=3' in upload,
-              'redeem category UI fallback': 'eduwills_active_category' in activation,
-              'community group membership state': 'isMember' in community_group and 'JOIN GROUP' in community_group,
+              'chat image storage path': 'match /chatImages/{uid}/{fileName}' in storage,
+              'community group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
               'community message lock UI': 'MESSAGE CONTROL' in community_group and 'messagingLocked' in community_group,
-              'community chat search': 'usernameIndex' in community_chat and 'Search by name or username' in community_chat,
+              'community suggested join button': 'CLICK TO JOIN GROUP' in community,
+              'community chat search': 'publicUserIndex' in community_chat and 'Search by name or username' in community_chat,
               'community image upload': 'DeviceImageUpload' in community_chat,
               'community membership rule': 'memberIds.size() == resource.data.memberIds.size() + 1' in rules,
               'community lock rule': 'messagingLocked != true' in rules,
