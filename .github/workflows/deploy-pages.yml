@@ -145,3 +145,4 @@ jobs:
         uses: actions/deploy-pages@v4
 
 # quiz reliability retriggered after retry-state hardening
+# activation modal JSX repair retriggered after typecheck failure
