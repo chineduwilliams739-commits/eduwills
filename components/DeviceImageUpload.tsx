@@ -36,7 +36,7 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
   if(!current||current.uid!==uid){setMessage('Your session is no longer active. Please sign in again.');return}
   try{await current.reload()}catch{}
   if(!auth.currentUser){setMessage('Your session expired. Please sign in again.');return}
-  setBusy(true);setProgress(5);setMessage('Preparing secure upload…');setMessage('Preparing secure upload…');setMessage('Preparing secure upload…');
+  setBusy(true);setProgress(5);setMessage('Preparing secure upload…');setMessage('Preparing secure upload…');setMessage('Preparing secure upload…');setMessage('Preparing secure upload…');
   try{
    setMessage('Preparing image…');const optimized=await compressImage(file);setProgress(10);
    if(optimized.size>7*1024*1024)throw new Error('This image is still too large. Please choose a smaller image.');
