@@ -2,8 +2,7 @@ import fs from 'node:fs';
 
 const replace=(file,from,to)=>{let s=fs.readFileSync(file,'utf8');if(!s.includes(to)){const next=s.replace(from,to);if(next!==s)s=next;}fs.writeFileSync(file,s)};
 
-// Group page: public groups can be joined by the signed-in activated learner without
-// granting permission to edit arbitrary group fields.
+// Group page: membership state, message access, lock state, and exact join CTA.
 const group='app/dashboard/community/group/page.tsx';
 replace(group,
   "[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);",
@@ -19,7 +18,7 @@ replace(group,
 );
 replace(group,
   "const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;",
-  "const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;\n async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function toggleLock(){if(!isAdmin)return;try{await updateDoc(doc(db,'communityGroups',id),{messagingLocked:!isLocked,updatedAt:serverTimestamp()});setIsLocked(!isLocked);setNotice(!isLocked?'Sending is now locked for members.':'Sending is now unlocked.')}catch(e:any){setNotice(e?.message||'Could not change message control.')}}"
+  "const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;\n useEffect(()=>{if(!g||!user||!isMember)return;setDoc(doc(db,'communityGroups',id,'readState',user.uid),{unread:0,lastReadAt:serverTimestamp()},{merge:true}).catch(()=>{})},[g?.id,user?.uid,isMember]);\n async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function toggleLock(){if(!isAdmin)return;try{await updateDoc(doc(db,'communityGroups',id),{messagingLocked:!isLocked,updatedAt:serverTimestamp()});setIsLocked(!isLocked);setNotice(!isLocked?'Sending is now locked for members.':'Sending is now unlocked.')}catch(e:any){setNotice(e?.message||'Could not change message control.')}}"
 );
 replace(group,
   "async function send(){if((!draft.trim()&&!image)||!user)return;",
@@ -34,7 +33,8 @@ replace(group,
   "{isAdmin&&<section className=\"mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0\"><div className=\"flex items-center justify-between gap-3\"><div><p className=\"text-[10px] font-black uppercase tracking-[.18em] text-cyan-700\">MESSAGE CONTROL</p><p className=\"mt-1 text-xs font-bold text-slate-500\">{isLocked?'Members cannot send messages.':'Members can send messages.'}</p></div><button onClick={toggleLock} className=\"rounded-xl bg-ink px-4 py-2.5 text-[10px] font-black text-white\">{isLocked?'UNLOCK SENDING':'LOCK SENDING'}</button></div></section>}\n {isLocked&&<div className=\"mx-3 mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black text-amber-900 sm:mx-0\">Sending is locked by a group admin. You can still read the conversation.</div>}\n <section className=\"mx-3 mb-3 rounded-2xl border border-slate-200 bg-white shadow-sm sm:mx-0\">"
 );
 
-// Suggested-group cards use a real button with the exact requested inscription.
+// Community page: keep joined groups in the group section rather than Recent Chats.
+// Suggested cards retain the exact join CTA and joined cards use OPEN GROUP.
 const community='app/dashboard/community/page.tsx';
 let c=fs.readFileSync(community,'utf8');
 const cardStart=c.indexOf('function GroupCard(');
@@ -43,18 +43,16 @@ if(cardStart>=0){
  fs.writeFileSync(community,c);
 }
 
-// Search by username/name through both indexes. publicUserIndex is intentionally readable;
-// users/{uid} is private, so never attempt a client-side scan of /users.
+// Chat page: Recent Chats contains direct chats only. Unread badges are derived from
+// each chat's readState plus its messages, so they work even when no counter field was
+// maintained by an earlier version of the app.
 const chat='app/dashboard/community/chat/page.tsx';
 let h=fs.readFileSync(chat,'utf8');
-h=h.replace("limit,onSnapshot,orderBy,query,serverTimestamp,setDoc,where} from 'firebase/firestore';","limit,onSnapshot,orderBy,query,serverTimestamp,setDoc,where} from 'firebase/firestore';");
-h=h.replace("[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null);","[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null),[searched,setSearched]=useState(false);");
-const oldSearchStart=h.indexOf("useEffect(()=>{let cancelled=false;async function find(){");
-const oldSearchEnd=h.indexOf(" const chatRows=",oldSearchStart);
-if(oldSearchStart>=0&&oldSearchEnd>oldSearchStart){
- const effect=`useEffect(()=>{let cancelled=false;async function find(){const term=search.trim().toLowerCase();setSearched(Boolean(term));if(!term){setResults([]);return}try{const out:any[]=[];const exact=await getDoc(doc(db,'usernameIndex',term));if(exact.exists()){const d=exact.data();if(d.uid!==user?.uid)out.push(display({...d,username:d.username||term}))}const snap=await getDocs(query(collection(db,'publicUserIndex'),limit(500)));for(const x of snap.docs){const d=x.data();const un=String(d.username||d.usernameLower||x.id).toLowerCase();const name=String(d.fullName||d.name||'').toLowerCase();if(d.uid!==user?.uid&&(un===term||un.includes(term)||name.includes(term)))out.push(display({...d,uid:d.uid,username:d.username||d.usernameLower||x.id}));if(out.length>=20)break}const unique=Array.from(new Map(out.filter(x=>x.uid).map(x=>[x.uid,x])).values());if(!cancelled)setResults(unique)}catch(e:any){if(!cancelled)setNotice(e?.message||'User search failed.')}}find();return()=>{cancelled=true}},[search,user?.uid]);
-`;
- h=h.slice(0,oldSearchStart)+effect+h.slice(oldSearchEnd);
-}
-h=h.replace("{results.length>0&&<div className=\"border-b p-2\">","{searched&&!results.length&&<div className=\"px-4 pb-3 text-xs font-bold text-slate-400\">Nothing found for “{search}”. Check the spelling or username.</div>}{results.length>0&&<div className=\"border-b p-2\">");
+h=h.replace("[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null);","[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null),[unreadMap,setUnreadMap]=useState<Record<string,number>>({});");
+const oldRows=" const chatRows=useMemo(()=>chats.map((c:any)=>{const ids=Array.isArray(c.participantIds)?c.participantIds:[];const other=ids.find((x:string)=>x!==user?.uid);return {...c,otherId:other,person:display(c.participantProfiles?.[other]||{uid:other,username:c.otherUsername,fullName:c.otherName,photoURL:c.otherPhotoURL})}}),[chats,user?.uid]);";
+const newRows=` useEffect(()=>{if(!user||!chats.length){setUnreadMap({});return}const cleanups=chats.slice(0,100).map((c:any)=>{let lastRead=0;let messageRows:any[]=[];const apply=()=>{const count=messageRows.filter((m:any)=>m.senderId!==user.uid&&(m.createdAt?.toMillis?.()||0)>lastRead).length;setUnreadMap(prev=>({...prev,[c.id]:count}))};const u1=onSnapshot(doc(db,'communityChats',c.id,'readState',user.uid),s=>{const d=s.data()||{};lastRead=d.lastReadAt?.toMillis?.()||0;apply()});const u2=onSnapshot(query(collection(db,'communityChats',c.id,'messages'),orderBy('createdAt','desc'),limit(100)),s=>{messageRows=s.docs.map(x=>({id:x.id,...x.data()}));apply()});return()=>{u1();u2()}});return()=>cleanups.forEach((fn:any)=>fn())},[user?.uid,chats]);\n const chatRows=useMemo(()=>chats.map((c:any)=>{const ids=Array.isArray(c.participantIds)?c.participantIds:[];const other=ids.find((x:string)=>x!==user?.uid);return {...c,otherId:other,person:display(c.participantProfiles?.[other]||{uid:other,username:c.otherUsername,fullName:c.otherName,photoURL:c.otherPhotoURL}),unreadCount:unreadMap[c.id]||0}}),[chats,user?.uid,unreadMap]);`;
+if(h.includes(oldRows)) h=h.replace(oldRows,newRows);
+// Never place groups or schools into the direct-chat list. The source of Recent Chats is
+// communityChats only; group/school collections remain on their own sections.
 fs.writeFileSync(chat,h);
+console.log('Community controls v3 applied: member reads, admin deletes, direct-chat recents and unread badges hardened.');
