@@ -30,3 +30,5 @@ edit('components/DeviceImageUpload.tsx',[
  ['short timeout',s=>s.replace("},45000);","},30000);")],
  ['initial progress',s=>s.replace("setBusy(true);setProgress(5);setMessage('Preparing secure upload…');","setBusy(true);setProgress(2);setMessage('Preparing image…');")]
 ]);
+
+// Triggered with the hardened workflow so rules and community search are verified together.
