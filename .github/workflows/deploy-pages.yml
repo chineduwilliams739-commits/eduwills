@@ -55,6 +55,8 @@ jobs:
         run: node scripts/repair-community-controls-v2.mjs
       - name: Apply group unread/read-state hardening
         run: node scripts/harden-group-unread-state.mjs
+      - name: Fix community chat verification and direct-chat recents
+        run: node scripts/fix-community-chat-verification.mjs
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
       - name: Harden quiz Gemini timeout and preserve gateway errors
@@ -117,9 +119,9 @@ jobs:
               'community group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
               'community message lock UI': 'MESSAGE CONTROL' in community_group and 'messagingLocked' in community_group,
               'community suggested join button': 'CLICK TO JOIN GROUP' in community,
-              'community chat search': 'publicUserIndex' in community_chat and 'Search by name or username' in community_chat,
+              'community chat search': 'usernameIndex' in community_chat and 'Search by name or username' in community_chat and 'name.includes(term)' in community_chat and 'un.includes(term)' in community_chat,
               'community image upload': 'DeviceImageUpload' in community_chat,
-              'recent chats include groups': "collection(db,'communityGroups')" in community_chat and 'groupRows' in community_chat,
+              'recent chats are direct only': 'const recentRows=useMemo(()=>[...chatRows]' in community_chat and 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in community_chat,
               'recent chat unread tracking': 'lastReadAt' in community_chat and 'setUnread' in community_chat,
               'recent chat sender filtering': 'm.senderId!==user.uid' in community_chat,
               'group read state on open': 'setDoc(doc(db,\'communityGroups\',id,\'readState\',user.uid),{unread:0,lastReadAt:serverTimestamp()' in community_group,
