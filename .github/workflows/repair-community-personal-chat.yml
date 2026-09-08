@@ -1,0 +1,55 @@
+name: Repair community personal chat upload
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/repair-community-personal-chat.mjs
+      - app/dashboard/personal/page.tsx
+      - app/dashboard/community/page.tsx
+      - app/dashboard/community/group/page.tsx
+      - app/dashboard/community/chat/page.tsx
+      - components/DeviceImageUpload.tsx
+      - .github/workflows/repair-community-personal-chat.yml
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - name: Apply deterministic repairs
+        run: node scripts/repair-community-personal-chat.mjs
+      - name: Verify required changes
+        run: |
+          set -euxo pipefail
+          grep -q "toValues" app/dashboard/personal/page.tsx
+          grep -q "paidCategories" app/dashboard/personal/page.tsx
+          grep -q "joinGroup" app/dashboard/community/group/page.tsx
+          grep -q "JOIN GROUP" app/dashboard/community/group/page.tsx
+          grep -q "isMember" app/dashboard/community/group/page.tsx
+          grep -q "findUsers" app/dashboard/community/chat/page.tsx
+          grep -q "Search" app/dashboard/community/chat/page.tsx
+          grep -q "collection(db,'users')" app/dashboard/community/chat/page.tsx
+          grep -q "createImageBitmap" components/DeviceImageUpload.tsx
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit --pretty false
+      - name: Production build
+        run: npm run build
+      - name: Commit repaired source
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/dashboard/personal/page.tsx app/dashboard/community/group/page.tsx app/dashboard/community/chat/page.tsx components/DeviceImageUpload.tsx scripts/repair-community-personal-chat.mjs
+          if git diff --cached --quiet; then
+            echo "No source changes required."
+          else
+            git commit -m "Repair paid category cards group membership chat search and uploads"
+            git push
+          fi
