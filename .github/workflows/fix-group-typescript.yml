@@ -1,0 +1,67 @@
+name: Fix group TypeScript
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-group-typescript.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Repair group source
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/dashboard/community/group/page.tsx')
+          s=p.read_text()
+          start=s.index(" useEffect(()=>{if(!id||!user)return;return onSnapshot(doc(db,'communityGroups',id),")
+          end=s.index("\n useEffect(()=>{if(!g||!user||!understood)return;", start)
+          old=s[start:end]
+          body=old
+          body=body.replace(" useEffect(()=>{if(!id||!user)return;return onSnapshot(doc(db,'communityGroups',id),s=>{", " useEffect(()=>{if(!id||!user)return;return onSnapshot(doc(db,'communityGroups',id),s=>{")
+          body=body.replace("const d={id:s.id,...s.data()};", "const d:any={id:s.id,...s.data()};")
+          if not body.rstrip().endswith("});},[id,user?.uid]);"):
+              body=body.rstrip()
+              if body.endswith("},[id,user?.uid]);"):
+                  body=body[:-len("},[id,user?.uid]);")]+"});},[id,user?.uid]);"
+              elif body.endswith("},[id,user?.uid]);"):
+                  pass
+          s=s[:start]+body+s[end:]
+          # Ensure membership state exists and is derived from the group document.
+          marker="const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[understood,setUnderstood]=useState(false),"
+          if '[isMember,setIsMember]' not in s:
+              s=s.replace(marker,marker+"[joining,setJoining]=useState(false),[isMember,setIsMember]=useState(false),")
+          s=s.replace("setG(d);setName(d.name||'');", "setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');")
+          p.write_text(s)
+          PY
+      - name: Typecheck
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc --noEmit --pretty false
+      - name: Build
+        run: npm run build
+      - name: Commit repaired source
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/community/group/page.tsx
+          if git diff --cached --quiet; then
+            echo 'No source changes.'
+          else
+            git commit -m 'Fix community group TypeScript listener'
+            git push origin HEAD:main
+          fi
