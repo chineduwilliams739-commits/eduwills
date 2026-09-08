@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/.activation-modal-trigger'
+      - 'scripts/activation-modal-trigger.txt'
   workflow_dispatch:
 
 permissions:
