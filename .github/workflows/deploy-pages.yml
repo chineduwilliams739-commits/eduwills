@@ -49,18 +49,6 @@ jobs:
         run: node scripts/harden-admin-willitoken-data.mjs
       - name: Apply category activation and image upload repair
         run: node scripts/repair-category-activation-upload.mjs
-      - name: Persist category activation and upload repair
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add workers/payments/src/index.js components/DeviceImageUpload.tsx app/dashboard/activation/page.tsx scripts/repair-category-activation-upload.mjs
-          if git diff --cached --quiet; then
-            echo 'Category activation/upload repair already persisted.'
-          else
-            git commit -m 'Fix category activation and mobile image uploads'
-            git push origin HEAD:main
-          fi
 
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
@@ -167,6 +155,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# quiz reliability retriggered after retry-state hardening
-# activation modal JSX repair retriggered after typecheck failure
-# category activation and mobile upload repair integrated into deployment
+# Repair scripts intentionally run in the build workspace; they no longer push from the Pages build job.
