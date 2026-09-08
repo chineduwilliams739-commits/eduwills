@@ -1,83 +1,32 @@
 import fs from 'fs';
+function edit(path, transforms){let s=fs.readFileSync(path,'utf8');const before=s;for(const[name,fn]of transforms){const next=fn(s);if(next!==s){console.log(`APPLIED ${path}: ${name}`);s=next}else console.log(`NO-OP ${path}: ${name}`)}if(s!==before)fs.writeFileSync(path,s)}
 
-function edit(path, transforms) {
-  let s = fs.readFileSync(path, 'utf8');
-  const before = s;
-  for (const [name, fn] of transforms) {
-    const next = fn(s);
-    if (next === s) console.log(`NO-OP ${path}: ${name}`);
-    else { console.log(`APPLIED ${path}: ${name}`); s = next; }
-  }
-  if (s !== before) fs.writeFileSync(path, s);
-}
-
-// Personal: paid/activated categories must all become navigation cards, including legacy JSON-string fields.
-edit('app/dashboard/personal/page.tsx', [
-  ['category parser', s => s.replace(
-    "const normalize=(v:any)=>{const x=String(v||'').toLowerCase().trim();if(x==='primary'||x==='pupil'||x==='pupils')return'primary';if(x==='junior'||x==='jss'||x==='junior-secondary'||x==='junior secondary')return'junior';if(x==='senior'||x==='sss'||x==='senior-secondary'||x==='senior secondary')return'senior';return'book'};",
-    "const toValues=(v:any)=>{if(Array.isArray(v))return v;if(typeof v==='string'){try{const p=JSON.parse(v);if(Array.isArray(p))return p}catch{}return v.split(',').map(x=>x.trim()).filter(Boolean)}return v?[v]:[]};\nconst normalize=(v:any)=>{const x=String(v||'').toLowerCase().trim();if(x==='primary'||x==='pupil'||x==='pupils')return'primary';if(x==='junior'||x==='jss'||x==='junior-secondary'||x==='junior secondary')return'junior';if(x==='senior'||x==='sss'||x==='senior-secondary'||x==='senior secondary')return'senior';if(x==='book'||x==='books'||x==='book-learner'||x==='book learner')return'book';return''};"
-  )),
-  ['paid category collection', s => s.replace(
-    "const values=[...(Array.isArray(profile.categories)?profile.categories:[]),...(Array.isArray(profile.educationLevels)?profile.educationLevels:[]),...(Array.isArray(profile.schoolLevels)?profile.schoolLevels:[]),profile.category,profile.educationLevel,profile.schoolLevel].map(normalize);",
-    "const raw=[...toValues(profile.categories),...toValues(profile.activeCategories),...toValues(profile.pendingActivationCategories),...toValues(profile.educationLevels),...toValues(profile.schoolLevels),...toValues(profile.paidCategories),profile.category,profile.educationLevel,profile.schoolLevel,profile.activeCategory,profile.activeCategoryId];const values=raw.map(normalize).filter(Boolean);"
-  )),
-  ['empty fallback', s => s.replace("return unique.length?unique:['book']", "return unique.length?unique:['book']")
+edit('app/dashboard/personal/page.tsx',[
+ ['category parser',s=>s.replace("const normalize=(v:any)=>{const x=String(v||'').toLowerCase().trim();if(x==='primary'||x==='pupil'||x==='pupils')return'primary';if(x==='junior'||x==='jss'||x==='junior-secondary'||x==='junior secondary')return'junior';if(x==='senior'||x==='sss'||x==='senior-secondary'||x==='senior secondary')return'senior';return'book'};","const toValues=(v:any)=>{if(Array.isArray(v))return v;if(typeof v==='string'){try{const p=JSON.parse(v);if(Array.isArray(p))return p}catch{}return v.split(',').map(x=>x.trim()).filter(Boolean)}return v?[v]:[]};const normalize=(v:any)=>{const x=String(v||'').toLowerCase().trim();if(x==='primary'||x==='pupil'||x==='pupils')return'primary';if(x==='junior'||x==='jss'||x==='junior-secondary'||x==='junior secondary')return'junior';if(x==='senior'||x==='sss'||x==='senior-secondary'||x==='senior secondary')return'senior';if(x==='book'||x==='books'||x==='book-learner'||x==='book learner')return'book';return''};")],
+ ['paid category collection',s=>s.replace("const values=[...(Array.isArray(profile.categories)?profile.categories:[]),...(Array.isArray(profile.educationLevels)?profile.educationLevels:[]),...(Array.isArray(profile.schoolLevels)?profile.schoolLevels:[]),profile.category,profile.educationLevel,profile.schoolLevel].map(normalize);","const raw=[...toValues(profile.categories),...toValues(profile.activeCategories),...toValues(profile.pendingActivationCategories),...toValues(profile.educationLevels),...toValues(profile.schoolLevels),...toValues(profile.paidCategories),profile.category,profile.educationLevel,profile.schoolLevel,profile.activeCategory,profile.activeCategoryId];const values=raw.map(normalize).filter(Boolean);")]
 ]);
 
-// Group page: a group is visible to everyone, but its workspace/messages are members-only. Add JOIN GROUP and membership guard.
-edit('app/dashboard/community/group/page.tsx', [
-  ['membership state', s => s.replace(
-    "const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),",
-    "const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[joining,setJoining]=useState(false),[isMember,setIsMember]=useState(false),"
-  )),
-  ['membership derive', s => s.replace(
-    "setG(d);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid)",
-    "setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid)"
-  )),
-  ['join function', s => s.replace(
-    "async function acknowledge(){",
-    "async function joinGroup(){if(!user||!g||joining)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.');}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function acknowledge(){"
-  )),
-  ['member gate', s => s.replace(
-    "if(!understood)return <main",
-    "if(!isMember)return <main"
-  )),
-  ['join screen', s => s.replace(
-    "<p className=\"mt-2 text-sm text-slate-500\">{notice}</p></div></main>;\n if(!understood)return",
-    "<p className=\"mt-2 text-sm text-slate-500\">{notice}</p><button onClick={joinGroup} disabled={joining} className=\"mt-5 inline-flex rounded-xl bg-ink px-5 py-3 text-sm font-black text-white disabled:opacity-50\">{joining?'Joining…':'JOIN GROUP'}</button></div></main>;\n if(!understood)return"
-  )),
-  ['owner onboarding condition', s => s.replace(
-    "if(!understood)return <main",
-    "if(!isMember)return <main"
-  )),
-  ['message subscription guard', s => s.replace("if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')", "if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')")),
-  ['read state guard', s => s.replace("if(!g||!user||!understood)return;return onSnapshot(doc(db,'communityGroups',id,'readState'", "if(!g||!user||!understood||!isMember)return;return onSnapshot(doc(db,'communityGroups',id,'readState'")
+edit('app/dashboard/community/group/page.tsx',[
+ ['membership state',s=>s.replace("const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),","const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[joining,setJoining]=useState(false),[isMember,setIsMember]=useState(false),")],
+ ['membership derive',s=>s.replace("setG(d);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid)","setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid)")],
+ ['join function',s=>s.replace("async function acknowledge(){","async function joinGroup(){if(!user||!g||joining)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function acknowledge(){")],
+ ['member gate',s=>s.replace("if(!g)return <main", "if(!g)return <main")],
+ ['join screen',s=>s.replace("<p className=\"mt-2 text-sm text-slate-500\">{notice}</p></div></main>;\n if(!understood)return", "<p className=\"mt-2 text-sm text-slate-500\">{notice}</p><button onClick={joinGroup} disabled={joining} className=\"mt-5 inline-flex rounded-xl bg-ink px-5 py-3 text-sm font-black text-white disabled:opacity-50\">{joining?'Joining…':'JOIN GROUP'}</button></div></main>;\n if(!isMember)return <main className=\"min-h-screen bg-paper p-5 text-ink\"><div className=\"mx-auto max-w-xl\"><a href={BASE+'/dashboard/community/'} className=\"inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black\"><ArrowLeft size={17}/> Community</a><section className=\"mt-5 rounded-[2rem] bg-white p-8 text-center shadow-sm\"><Users className=\"mx-auto text-cyan-600\" size={42}/><h1 className=\"mt-4 text-2xl font-black\">Join {g.name}</h1><p className=\"mt-2 text-sm leading-6 text-slate-500\">You can see this group, but you must join it before you can view members-only messages or send anything.</p><button onClick={joinGroup} disabled={joining} className=\"mt-5 rounded-xl bg-ink px-6 py-3 text-sm font-black text-white disabled:opacity-50\">{joining?'Joining…':'JOIN GROUP'}</button></section></div></main>;\n if(!understood)return")],
+ ['message guard',s=>s.replace("if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')","if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')")],
+ ['read guard',s=>s.replace("if(!g||!user||!understood)return;return onSnapshot(doc(db,'communityGroups',id,'readState'","if(!g||!user||!understood||!isMember)return;return onSnapshot(doc(db,'communityGroups',id,'readState'")]
 ]);
 
-// Chat: replace fragile usernameIndex-only search with an explicit Search button and users collection fallback.
-edit('app/dashboard/community/chat/page.tsx', [
-  ['search state', s => s.replace("[search,setSearch]=useState(''),[results,setResults]=useState<any[]>([]),", "[search,setSearch]=useState(''),[results,setResults]=useState<any[]>([]),[searching,setSearching]=useState(false),")),
-  ['search function', s => {
-    const start = s.indexOf(" useEffect(()=>{let cancelled=false;async function find(){");
-    const end = s.indexOf(" const chatRows=useMemo", start);
-    if (start < 0 || end < 0) return s;
-    const block = ` async function findUsers(){const term=search.trim().toLowerCase();setNotice('');if(!term){setResults([]);return}setSearching(true);try{const out:any[]=[];const seen=new Set<string>();const exact=await getDoc(doc(db,'usernameIndex',term));if(exact.exists()){const d=exact.data();if(d.uid!==user?.uid){const p=display({...d,uid:d.uid,username:d.username||term});out.push(p);seen.add(p.uid)}}const snap=await getDocs(query(collection(db,'users'),limit(300)));for(const x of snap.docs){const d=x.data();const uid=String(d.uid||x.id);const un=String(d.username||'').toLowerCase();const name=String(d.fullName||d.name||'').toLowerCase();if(uid!==user?.uid&&!seen.has(uid)&&(un.includes(term)||name.includes(term))){out.push(display({...d,uid,username:d.username||''}));seen.add(uid)}if(out.length>=20)break}if(!out.length)setNotice('No learner found. Check the name or username and try again.');setResults(out)}catch(e:any){setResults([]);setNotice(e?.message||'User search failed.')}finally{setSearching(false)}}\n`;
-    return s.slice(0,start)+block+s.slice(end);
-  }],
-  ['search button', s => s.replace(
-    "<input value={search} onChange={e=>setSearch(e.target.value)} placeholder=\"Search by name or username…\" className=\"min-w-0 flex-1 bg-transparent text-sm font-bold outline-none\"/>",
-    "<input value={search} onChange={e=>{setSearch(e.target.value);if(!e.target.value.trim())setResults([])}} onKeyDown={e=>{if(e.key==='Enter')findUsers()}} placeholder=\"Search by name or username…\" className=\"min-w-0 flex-1 bg-transparent text-sm font-bold outline-none\"/> <button type=\"button\" onClick={findUsers} disabled={searching||!search.trim()} className=\"shrink-0 rounded-xl bg-ink px-3 py-2 text-[10px] font-black text-white disabled:opacity-40\">{searching?'Searching…':'Search'}</button>"
-  )),
-  ['notice placement', s => s.replace("</header>\n <div className=\"mx-auto grid", "</header>\n {notice&&<div className=\"mx-auto mt-3 max-w-6xl px-3 sm:px-5\"><div className=\"rounded-2xl bg-cyan-50 px-4 py-3 text-xs font-bold text-cyan-950\">{notice}</div></div>}\n <div className=\"mx-auto grid")
+edit('app/dashboard/community/chat/page.tsx',[
+ ['search state',s=>s.replace("[search,setSearch]=useState(''),[results,setResults]=useState<any[]>([]),","[search,setSearch]=useState(''),[results,setResults]=useState<any[]>([]),[searching,setSearching]=useState(false),")],
+ ['search function',s=>{const a=s.indexOf(" useEffect(()=>{let cancelled=false;async function find(){");const b=s.indexOf(" const chatRows=useMemo",a);if(a<0||b<0)return s;const fn=" async function findUsers(){const term=search.trim().toLowerCase();setNotice('');if(!term){setResults([]);return}setSearching(true);try{const out:any[]=[];const seen=new Set<string>();const exact=await getDoc(doc(db,'usernameIndex',term));if(exact.exists()){const d=exact.data();if(d.uid!==user?.uid){const p=display({...d,uid:d.uid,username:d.username||term});out.push(p);seen.add(p.uid)}}const snap=await getDocs(query(collection(db,'users'),limit(300)));for(const x of snap.docs){const d=x.data();const uid=String(d.uid||x.id),un=String(d.username||'').toLowerCase(),name=String(d.fullName||d.name||'').toLowerCase();if(uid!==user?.uid&&!seen.has(uid)&&(un.includes(term)||name.includes(term))){out.push(display({...d,uid,username:d.username||''}));seen.add(uid)}if(out.length>=20)break}if(!out.length)setNotice('No learner found. Check the name or username and try again.');setResults(out)}catch(e:any){setResults([]);setNotice(e?.message||'User search failed.')}finally{setSearching(false)}}\n";return s.slice(0,a)+fn+s.slice(b)}],
+ ['search button',s=>s.replace("<input value={search} onChange={e=>setSearch(e.target.value)} placeholder=\"Search by name or username…\" className=\"min-w-0 flex-1 bg-transparent text-sm font-bold outline-none\"/>","<input value={search} onChange={e=>{setSearch(e.target.value);if(!e.target.value.trim())setResults([])}} onKeyDown={e=>{if(e.key==='Enter')findUsers()}} placeholder=\"Search by name or username…\" className=\"min-w-0 flex-1 bg-transparent text-sm font-bold outline-none\"/><button type=\"button\" onClick={findUsers} disabled={searching||!search.trim()} className=\"shrink-0 rounded-xl bg-ink px-3 py-2 text-[10px] font-black text-white disabled:opacity-40\">{searching?'Searching…':'Search'}</button>")],
+ ['notice',s=>s.replace("</header>\n <div className=\"mx-auto grid","</header>\n {notice&&<div className=\"mx-auto mt-3 max-w-6xl px-3 sm:px-5\"><div className=\"rounded-2xl bg-cyan-50 px-4 py-3 text-xs font-bold text-cyan-950\">{notice}</div></div>}\n <div className=\"mx-auto grid")]
 ]);
 
-// Faster device uploads: avoid forced auth reload and avoid expensive compression for modest images.
-edit('components/DeviceImageUpload.tsx', [
-  ['skip auth reload', s => s.replace("try{await current.reload()}catch{}\n  if(!auth.currentUser)", "if(!auth.currentUser)")),
-  ['smaller fast path', s => s.replace("if(file.size<=512*1024)return file;", "if(file.size<=2*1024*1024)return file;")),
-  ['faster compression', s => s.replace("const bitmap=await createImageBitmap(file);const max=1280;", "const bitmap=await createImageBitmap(file);const max=1024;")),
-  ['short timeout', s => s.replace("setTimeout(()=>{if(!finished)reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))},45000);", "setTimeout(()=>{if(!finished)reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))},30000);")),
-  ['real initial progress', s => s.replace("setBusy(true);setProgress(5);setMessage('Preparing secure upload…');", "setBusy(true);setProgress(2);setMessage('Preparing image…');"))
+edit('components/DeviceImageUpload.tsx',[
+ ['skip auth reload',s=>s.replace("try{await current.reload()}catch{}\n  if(!auth.currentUser)","if(!auth.currentUser)")],
+ ['smaller fast path',s=>s.replace("if(file.size<=512*1024)return file;","if(file.size<=2*1024*1024)return file;")],
+ ['faster compression',s=>s.replace("const bitmap=await createImageBitmap(file);const max=1280;","const bitmap=await createImageBitmap(file);const max=1024;")],
+ ['short timeout',s=>s.replace("},45000);","},30000);")],
+ ['initial progress',s=>s.replace("setBusy(true);setProgress(5);setMessage('Preparing secure upload…');","setBusy(true);setProgress(2);setMessage('Preparing image…');")]
 ]);
-
-console.log('Community/personal/chat repair script complete.');
