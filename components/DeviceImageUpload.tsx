@@ -1,7 +1,7 @@
 'use client';
 import {useRef,useState} from 'react';
 import {ImagePlus,Loader2,RefreshCw} from 'lucide-react';
-import {getDownloadURL,ref,uploadBytesResumable} from 'firebase/storage';
+import {getDownloadURL,ref,uploadBytes} from 'firebase/storage';
 import {auth,storage} from '@/lib/firebase';
 
 async function compressImage(file:File){
@@ -19,11 +19,10 @@ async function compressImage(file:File){
 
 function uploadFile(storageRef:ReturnType<typeof ref>,file:File,onProgress:(value:number)=>void){
  return new Promise<void>((resolve,reject)=>{
-  const task=uploadBytesResumable(storageRef,file,{contentType:file.type,customMetadata:{source:'device'}});
-  const unsubscribe=task.on('state_changed',snapshot=>{
-   const value=snapshot.totalBytes?Math.max(5,Math.min(99,Math.round(snapshot.bytesTransferred/snapshot.totalBytes*100))):5;
-   onProgress(value);
-  },error=>{unsubscribe();reject(error)},()=>{unsubscribe();onProgress(100);resolve()});
+  let finished=false;
+  const timer=setTimeout(()=>{if(!finished)reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))},45000);
+  onProgress(12);
+  uploadBytes(storageRef,file,{contentType:file.type,customMetadata:{source:'device'}}).then(()=>{finished=true;clearTimeout(timer);onProgress(96);resolve()}).catch(error=>{finished=true;clearTimeout(timer);reject(error)});
  });
 }
 
@@ -37,7 +36,7 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
   if(!current||current.uid!==uid){setMessage('Your session is no longer active. Please sign in again.');return}
   try{await current.reload()}catch{}
   if(!auth.currentUser){setMessage('Your session expired. Please sign in again.');return}
-  setBusy(true);setProgress(5);
+  setBusy(true);setProgress(5);setMessage('Preparing secure upload…');
   try{
    setMessage('Preparing image…');const optimized=await compressImage(file);setProgress(10);
    if(optimized.size>7*1024*1024)throw new Error('This image is still too large. Please choose a smaller image.');
@@ -45,8 +44,8 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
    const storagePath=path==='users'?`users/${uid}/profile/${Date.now()}_${safeName}`:`${path}/${uid}/${Date.now()}_${safeName}`;
    const storageRef=ref(storage,storagePath);setMessage('Uploading securely…');
    let uploaded=false,lastError:any=null;
-   for(let attempt=1;attempt<=2&&!uploaded;attempt++){
-    try{await uploadFile(storageRef,optimized,setProgress);uploaded=true}catch(error:any){lastError=error;const code=String(error?.code||'');if(code!=='storage/retry-limit-exceeded'||attempt===2)throw error;setMessage('Connection interrupted. Retrying upload…');await new Promise(r=>setTimeout(r,800));}
+   for(let attempt=1;attempt<=3&&!uploaded;attempt++){
+    try{await uploadFile(storageRef,optimized,setProgress);uploaded=true}catch(error:any){lastError=error;const code=String(error?.code||'');if(code!=='storage/retry-limit-exceeded'||attempt===3)throw error;setMessage('Connection interrupted. Retrying upload…');await new Promise(r=>setTimeout(r,800));}
    }
    if(!uploaded)throw lastError||new Error('Image upload failed.');
    setProgress(96);setMessage('Finalizing image…');const url=await getDownloadURL(storageRef);
