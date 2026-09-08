@@ -1,0 +1,56 @@
+name: Fix deployment 1638 activation JSX
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, 'Fix deployment #1638 activation JSX') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Repair activation JSX
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/dashboard/activation/page.tsx')
+          lines = path.read_text().splitlines()
+          start = next((i for i, line in enumerate(lines) if '{paymentSuccess&&<div className="fixed' in line), None)
+          if start is None:
+              raise SystemExit('Activation success JSX block not found')
+
+          replacement = '''  {paymentSuccess ? (\n   <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">\n    <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-emerald-300/30 bg-slate-950 p-5 shadow-2xl sm:p-7">\n     <div className="flex items-start gap-3">\n      <CheckCircle2 className="mt-1 text-emerald-200" size={25}/>\n      <div className="min-w-0 flex-1">\n       <p className="text-xs font-black uppercase tracking-[.16em] text-emerald-200">{paymentSuccess.kind === 'redeem' ? 'Activation successful' : 'Congratulations!'}</p>\n       <h3 className="mt-1 text-2xl font-black">{paymentSuccess.alreadyActive ? 'Your EduWills access is already active' : 'Your EduWills activation is ready'}</h3>\n       <p className="mt-2 text-sm leading-6 text-emerald-50/80">{paymentSuccess.kind === 'redeem' ? 'Your WilliToken has been redeemed successfully. Your selected learning tools are now available.' : 'Payment confirmed. Your unique WilliToken is shown below.'}</p>\n       {paymentSuccess.categories?.length ? <p className="mt-3 text-xs font-bold text-emerald-100">Active categories: {paymentSuccess.categories.join(' · ')}</p> : null}\n       <div className="mt-5 rounded-2xl border border-emerald-200/20 bg-white/5 p-4">\n        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Your WilliToken</p>\n        {paymentSuccess.code ? <div><p className="mt-2 break-all text-2xl font-black tracking-[.16em] text-white sm:text-3xl"><b>{paymentSuccess.code}</b></p><button type="button" onClick={copyCode} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-black text-slate-950"><Copy size={14}/>{copied ? 'Copied!' : 'Copy WilliToken'}</button></div> : <p className="mt-2 text-sm font-bold text-slate-300">Check your verified email for the token.</p>}\n        <p className="mt-4 text-xs text-slate-400">Activation valid until: <b className="text-white">{formatDate(paymentSuccess.activationExpiresAt)}</b></p>\n        <p className="mt-1 text-xs text-slate-400">Email delivery: <b className="text-white">{paymentSuccess.emailSent ? 'Sent' : 'Check email shortly'}</b></p>\n        {paymentSuccess.emailError ? <p className="mt-3 text-xs font-bold text-amber-200">Email delivery note: {paymentSuccess.emailError}</p> : null}\n       </div>\n       <div className="mt-4 flex flex-wrap gap-2">\n        <button type="button" onClick={() => setPaymentSuccess(null)} className="rounded-xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white">Close</button>\n        <a href={`${BASE}/dashboard/`} className="inline-flex items-center rounded-xl bg-emerald-200 px-5 py-3 text-sm font-black text-slate-950">Go to my dashboard</a>\n       </div>\n      </div>\n     </div>\n    </div>\n   </div>\n  ) : null}'''.splitlines()
+
+          end = start + 1
+          # The broken version occupies exactly one source line in the generated page.
+          while end < len(lines) and not (lines[end].strip() == '</div>' and end + 1 < len(lines) and lines[end + 1].strip() == '</section>'):
+              end += 1
+          lines[start:end] = replacement
+          path.write_text('\n'.join(lines) + '\n')
+          print('Activation success JSX repaired.')
+          PY
+
+      - name: Typecheck
+        run: npx tsc --noEmit --pretty false
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/activation/page.tsx
+          if git diff --cached --quiet; then
+            echo 'No repair changes to commit.'
+          else
+            git commit -m 'Fix deployment #1638 activation JSX'
+            git push
+          fi
