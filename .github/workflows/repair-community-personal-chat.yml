@@ -51,5 +51,7 @@ jobs:
             echo "No source changes required."
           else
             git commit -m "Repair paid category cards group membership chat search and uploads"
-            git push
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
           fi
