@@ -1,0 +1,79 @@
+from pathlib import Path
+
+
+def replace_once(text, old, new, label):
+    if old not in text:
+        raise RuntimeError(f'Missing patch marker: {label}')
+    return text.replace(old, new, 1)
+
+# WilliToken redemption: make same-account redemption idempotent, require a verified email,
+# and safely repair an old UID mismatch when the verified token email matches.
+worker = Path('workers/payments/src/index.js')
+s = worker.read_text()
+a = s.index('async function redeemCode(')
+b = s.index('\nasync function validHmac', a)
+new_redeem = """async function redeemCode(env,idToken,code){
+const u=await authLookup(env,idToken);if(!u?.localId)throw new Error('AUTH_REQUIRED');if(u.emailVerified!==true)throw new Error('EMAIL_NOT_VERIFIED');
+const token=await fsGet(env,`williTokens/${code}`);if(!token)throw new Error('INVALID_ACTIVATION_CODE');const f=token.fields||{};
+const tokenUid=String(f.userId?.stringValue||f.uid?.stringValue||''),tokenEmail=String(f.email?.stringValue||'').trim().toLowerCase(),currentEmail=String(u.email||'').trim().toLowerCase();
+const uidMatches=tokenUid===u.localId,emailMatches=Boolean(tokenEmail&&currentEmail&&tokenEmail===currentEmail),used=f.used?.booleanValue===true||f.redeemed?.booleanValue===true;
+if(!uidMatches){if(!emailMatches||used)throw new Error('CODE_NOT_FOR_USER');await fsWrite(env,`williTokens/${code}`,{userId:u.localId,uid:u.localId,email:currentEmail});}
+if(f.revoked?.booleanValue===true)throw new Error('ACTIVATION_CODE_REVOKED');
+const activationExpiry=f.expiresAt?.stringValue||new Date(Date.now()+365*86400000).toISOString();let categories=[];try{categories=JSON.parse(f.categories?.stringValue||'[]')}catch{}
+if(used){const redeemedBy=String(f.redeemedBy?.stringValue||'');if(redeemedBy===u.localId||uidMatches){await fsWrite(env,`users/${u.localId}`,{activated:true,activationStatus:'active',williTokenActive:true,activationExpiresAt:activationExpiry,categories:JSON.stringify(categories),activeCategories:JSON.stringify(categories),pendingActivationCode:'',pendingActivationCodeExpiresAt:''});return{activationExpiresAt:activationExpiry,categories,alreadyActive:true};}throw new Error('ACTIVATION_CODE_ALREADY_USED');}
+const exp=Date.parse(f.codeExpiresAt?.stringValue||'');if(!exp||exp<=Date.now())throw new Error('ACTIVATION_CODE_EXPIRED');
+await fsWrite(env,`williTokens/${code}`,{used:true,redeemed:true,active:true,redeemedAt:new Date().toISOString(),redeemedBy:u.localId});await fsWrite(env,`users/${u.localId}`,{activated:true,activationStatus:'active',williTokenActive:true,activationExpiresAt:activationExpiry,categories:JSON.stringify(categories),activeCategories:JSON.stringify(categories),pendingActivationCode:'',pendingActivationCodeExpiresAt:''});return{activationExpiresAt:activationExpiry,categories,alreadyActive:false};
+}"""
+s = s[:a] + new_redeem + s[b:]
+s = replace_once(s, "ACTIVATION_CODE_EXPIRED:['This activation code has expired.',410]", "ACTIVATION_CODE_EXPIRED:['This activation code has expired.',410],ACTIVATION_CODE_REVOKED:['This activation code has been revoked. Please contact EduWills support.',410],EMAIL_NOT_VERIFIED:['Verify your email before redeeming a WilliToken.',403]", 'worker error map')
+worker.write_text(s)
+
+# Firestore: legacy reaction documents can be deleted by their owner even if the old
+# document id was not the UID. New reactions still require UID document ids on create.
+rules = Path('firestore.rules')
+r = rules.read_text()
+r2 = r.replace("allow delete: if isParticipant(chatId) && resource.data.uid == request.auth.uid && reactionId == request.auth.uid;", "allow delete: if isParticipant(chatId) && resource.data.uid == request.auth.uid;")
+r2 = r2.replace("allow delete: if isGroupMember(groupId) && resource.data.uid == request.auth.uid && reactionId == request.auth.uid;", "allow delete: if isGroupMember(groupId) && resource.data.uid == request.auth.uid;")
+r2 = r2.replace("allow delete: if isSchoolMember(schoolId) && resource.data.uid == request.auth.uid && reactionId == request.auth.uid;", "allow delete: if isSchoolMember(schoolId) && resource.data.uid == request.auth.uid;")
+if r2 == r:
+    raise RuntimeError('Reaction delete rules were already patched or markers changed')
+rules.write_text(r2)
+
+# Upload UI: don't display an artificial 0% while the resumable session is starting.
+upload = Path('components/DeviceImageUpload.tsx')
+u = upload.read_text()
+u = replace_once(u, "const value=snapshot.totalBytes?Math.min(99,Math.round(snapshot.bytesTransferred/snapshot.totalBytes*100)):0;", "const value=snapshot.totalBytes?Math.max(5,Math.min(99,Math.round(snapshot.bytesTransferred/snapshot.totalBytes*100))):5;", 'upload progress')
+u = replace_once(u, "setBusy(true);setProgress(2);", "setBusy(true);setProgress(5);", 'upload start progress')
+upload.write_text(u)
+
+# Activation page UI.
+page = Path('app/dashboard/activation/page.tsx')
+p = page.read_text()
+p = replace_once(p, "type Success={code:string;emailSent:boolean;activationExpiresAt?:string;categories?:string[];emailError?:string};", "type Success={code:string;emailSent:boolean;activationExpiresAt?:string;categories?:string[];emailError?:string;kind:'payment'|'redeem';alreadyActive?:boolean};", 'success type')
+p = replace_once(p, "const formatDate=(value?:string)=>{", "const benefitsFor=(categories:string[])=>Array.from(new Set(categories.flatMap(category=>BENEFITS[category]||[])));\nconst formatDate=(value?:string)=>{", 'benefit helper')
+p = replace_once(p, "[paymentSuccess,setPaymentSuccess]=useState<Success|null>(null),[copied,setCopied]=useState(false);", "[paymentSuccess,setPaymentSuccess]=useState<Success|null>(null),[copied,setCopied]=useState(false),[emailVerified,setEmailVerified]=useState(false),[refreshingVerification,setRefreshingVerification]=useState(false);", 'verification state')
+p = replace_once(p, "setUser({...data,email:current.email||'',uid:current.uid});", "setUser({...data,email:current.email||'',uid:current.uid});setEmailVerified(current.emailVerified===true);", 'initial verification state')
+p = replace_once(p, "activationExpiresAt:redeemResult.activationExpiresAt||result.activationExpiresAt,categories:", "activationExpiresAt:redeemResult.activationExpiresAt||result.activationExpiresAt,kind:'payment',alreadyActive:redeemResult.alreadyActive===true,categories:", 'payment success kind')
+p = replace_once(p, "activationExpiresAt:result.activationExpiresAt,categories:Array.isArray(result.categories)?result.categories:[],emailError:", "activationExpiresAt:result.activationExpiresAt,kind:'payment',categories:Array.isArray(result.categories)?result.categories:[],emailError:", 'fallback payment kind')
+p = replace_once(p, "setPaymentSuccess({code:'',emailSent:result.emailSent===true,activationExpiresAt:result.activationExpiresAt,emailError:", "setPaymentSuccess({code:'',emailSent:result.emailSent===true,kind:'payment',activationExpiresAt:result.activationExpiresAt,emailError:", 'email-only payment kind')
+p = replace_once(p, "if(!current.email||!current.emailVerified){", "setEmailVerified(current.emailVerified===true);if(!current.email||!current.emailVerified){", 'payment verification gate')
+p = replace_once(p, "const current=auth.currentUser;if(!current){setQuote(null);return}", "const current=auth.currentUser;if(!current){setQuote(null);return}try{await current.reload()}catch{}if(!current.emailVerified){setQuote(null);return}", 'quote verification gate')
+p = replace_once(p, "setPaymentSuccess({code:clean,emailSent:false,activationExpiresAt:result.activationExpiresAt,categories:Array.isArray(result.categories)?result.categories:[],});", "setPaymentSuccess({code:clean,emailSent:false,activationExpiresAt:result.activationExpiresAt,categories:Array.isArray(result.categories)?result.categories:[],kind:'redeem',alreadyActive:result.alreadyActive===true});", 'redeem success kind')
+p = replace_once(p, "async function copyCode(){", "async function refreshVerification(){const current=auth.currentUser;if(!current)return;setRefreshingVerification(true);try{await current.reload();const refreshed=auth.currentUser;const verified=refreshed?.emailVerified===true;setEmailVerified(verified);setUser(previous=>({...previous,email:refreshed?.email||previous?.email||''}));setMessageKind(verified?'info':'error');setMessage(verified?'Your email is verified. You can continue to payment.':'Your email is still unverified. Open the verification email we sent you, verify it, then tap this button again.')}catch(error:any){setMessageKind('error');setMessage(error?.message||'Could not refresh verification status.')}finally{setRefreshingVerification(false)}}\n async function copyCode(){", 'verification refresh')
+p = replace_once(p, "disabled={paying||!selected.length}", "disabled={paying||!selected.length||!emailVerified}", 'payment button gate')
+email_card = """
+   <div className={`mt-6 rounded-2xl border p-5 ${emailVerified?'border-emerald-300/20 bg-emerald-300/10':'border-amber-300/20 bg-amber-300/10'}`}><div className=\"flex items-start gap-3\"><Mail className={emailVerified?'text-emerald-200':'text-amber-200'} size={21}/><div className=\"min-w-0 flex-1\"><p className=\"text-[10px] font-black uppercase tracking-[.16em] text-slate-400\">WilliToken delivery email</p><p className=\"mt-1 break-all text-base font-black text-white\">{user?.email||auth.currentUser?.email||'No email address'}</p><p className={`mt-1 text-xs font-bold ${emailVerified?'text-emerald-100':'text-amber-100'}`}>{emailVerified?'✓ Verified — your WilliToken will be sent to this email address.':'⚠ Email not verified — payment is locked until you verify this email address.'}</p>{!emailVerified&&<div className=\"mt-3 flex flex-wrap gap-2\"><a href={`${BASE}/verify-email/`} className=\"rounded-xl bg-amber-200 px-4 py-2.5 text-xs font-black text-slate-950\">Verify email</a><button type=\"button\" disabled={refreshingVerification} onClick={refreshVerification} className=\"rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-black text-white disabled:opacity-50\">{refreshingVerification?'Checking…':'I verified my email'}</button></div>}</div></div></div>
+"""
+marker = '   <div className="mt-6 grid gap-4 rounded-2xl border border-white/10 bg-slate-950/45 p-5 sm:grid-cols-2"><Menu'
+p = replace_once(p, marker, email_card + '\n' + marker, 'verified email card')
+p = replace_once(p, '{paymentSuccess&&<div className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-5 sm:p-6">', '{paymentSuccess&&<div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={()=>setPaymentSuccess(null)}><div onClick={e=>e.stopPropagation()} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-emerald-300/30 bg-slate-950 p-5 shadow-2xl sm:p-7">', 'success modal wrapper')
+p = replace_once(p, '<p className="text-xs font-black uppercase tracking-[.16em] text-emerald-200">Congratulations!</p><h3 className="mt-1 text-2xl font-black">Your EduWills activation is ready</h3><p className="mt-2 text-sm leading-6 text-emerald-50/80">Payment confirmed. Your unique WilliToken is shown below.</p>', '<p className="text-xs font-black uppercase tracking-[.16em] text-emerald-200">{paymentSuccess.kind===\'redeem\'?\'Activation successful\':\'Congratulations!\'}</p><h3 className="mt-1 text-2xl font-black">{paymentSuccess.alreadyActive?\'Your EduWills access is already active\':\'Your EduWills activation is ready\'}</h3><p className="mt-2 text-sm leading-6 text-emerald-50/80">{paymentSuccess.kind===\'redeem\'?(paymentSuccess.alreadyActive?\'This WilliToken was already activated on your account. Your access is confirmed.\':\'Your WilliToken has been redeemed successfully. Here is what you can now access.\'):\'Payment confirmed. Your unique WilliToken is shown below.\'}</p>', 'success modal copy')
+active = "{paymentSuccess.categories?.length?<p className=\"mt-3 text-xs font-bold text-emerald-100\">Active categories: {paymentSuccess.categories.join(' · ')}</p>:null}"
+access = active + "<div className=\"mt-4 rounded-2xl border border-white/10 bg-white/5 p-4\"><p className=\"text-[10px] font-black uppercase tracking-[.16em] text-cyan-200\">What you have access to</p><ul className=\"mt-3 space-y-2 text-xs leading-5 text-slate-300\">{benefitsFor(paymentSuccess.categories||[]).map(item=><li key={item}>✓ {item}</li>)}</ul></div>"
+p = replace_once(p, active, access, 'access rundown')
+tail_old = '<a href={`${BASE}/dashboard/`} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-200 px-5 py-3 text-sm font-black text-slate-950">Go to my dashboard</a></div></div></div>}'
+tail_new = '<div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={()=>setPaymentSuccess(null)} className="rounded-xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white">Close</button><a href={`${BASE}/dashboard/`} className="inline-flex items-center gap-2 rounded-xl bg-emerald-200 px-5 py-3 text-sm font-black text-slate-950">Go to my dashboard</a></div></div></div></div>}'
+p = replace_once(p, tail_old, tail_new, 'modal close buttons')
+page.write_text(p)
+
+print('All deterministic fixes applied.')
