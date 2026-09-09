@@ -3,10 +3,6 @@ import fs from 'node:fs';
 const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
 
-// The earlier repair layers already provide getDoc/updateDoc/arrayUnion.
-// Do not require getDocs: member profiles are loaded individually so this
-// repair remains compatible with the current Firebase import list.
-
 if(!g.includes('[isMember,setIsMember]')){
   const marker='[unread,setUnread]=useState(0);';
   if(!g.includes(marker)) throw new Error('GROUP_STATE_MARKER_NOT_FOUND');
@@ -16,7 +12,7 @@ if(!g.includes('[isMember,setIsMember]')){
 if(!g.includes('setIsMember(d.ownerId===')){
   const marker="setG(d);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');";
   if(!g.includes(marker)) throw new Error('GROUP_DERIVE_MARKER_NOT_FOUND');
-  g=g.replace(marker,"setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');
+  g=g.replace(marker,"setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');");
 }
 
 if(!g.includes('const loadMembers=async')){
@@ -28,7 +24,6 @@ if(!g.includes('const loadMembers=async')){
   g=g.replace(marker,block+marker);
 }
 
-// Messages and read-state must not run for non-members.
 g=g.replace("if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')", "if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')");
 g=g.replace("if(!g||!user||!understood)return;return onSnapshot(doc(db,'communityGroups',id,'readState'", "if(!g||!user||!understood||!isMember)return;return onSnapshot(doc(db,'communityGroups',id,'readState'");
 
@@ -40,8 +35,6 @@ if(!g.includes('You must join this group before you can view or send messages.')
   g=g.replace(marker,gate+marker);
 }
 
-// The header/info buttons already exist in the current group page. Add the
-// actual Group Info member panel directly inside the workspace return.
 if(!g.includes('GROUP MEMBERS')){
   const marker='return <main className="min-h-screen bg-[#eef3f7] text-ink">';
   if(!g.includes(marker)) throw new Error('GROUP_WORKSPACE_MARKER_NOT_FOUND');
@@ -49,13 +42,9 @@ if(!g.includes('GROUP MEMBERS')){
   g=g.replace(marker,modal);
 }
 
-// Remove repeated unread badges left by earlier repair layers.
 const badge="{unread>0&&<span className=\"ml-1 rounded-full bg-cyan-600 px-1.5 py-0.5 text-[8px] font-black text-white\">{unread>99?'99+':unread}</span>}";
 while(g.includes(badge+badge))g=g.replace(badge+badge,badge);
 
-// The composer may already be a textarea but can lack the accessibility marker.
-// Normalize the first textarea so the Pages verification and runtime both have a
-// stable hook without requiring an obsolete exact source string.
 if(!g.includes('aria-label="Write a message"')){
   if(!/<textarea\b/.test(g)) throw new Error('GROUP_COMPOSER_MISSING');
   g=g.replace(/<textarea\b/, '<textarea aria-label="Write a message"');
