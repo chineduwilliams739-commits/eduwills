@@ -15,8 +15,6 @@ if(!g.includes('setIsMember(d.ownerId===')){
   g=g.replace(marker,"setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');");
 }
 
-// The v4 repair already provides loadMembers(ids). Reuse that function rather
-// than introducing a second implementation inside an effect.
 if(!g.includes('async function loadMembers')){
   const marker=' async function acknowledge(){';
   if(!g.includes(marker)) throw new Error('GROUP_ACK_MARKER_NOT_FOUND');
@@ -50,12 +48,10 @@ if(!g.includes('You must join this group before you can view or send messages.')
 if(!g.includes('GROUP MEMBERS')){
   const marker='return <main className="min-h-screen bg-[#eef3f7] text-ink">';
   if(!g.includes(marker)) throw new Error('GROUP_WORKSPACE_MARKER_NOT_FOUND');
-  const modal=`return <main className="min-h-screen bg-[#eef3f7] text-ink">{info&&<div className="fixed inset-0 z-[80] bg-black/50 p-4" onClick={()=>setInfo(false)}><section className="mx-auto mt-10 max-h-[80vh] max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">GROUP MEMBERS</p><h2 className="mt-1 text-xl font-black">{g.name}</h2><p className="mt-1 text-xs text-slate-500">{members.length} member{members.length===1?'':'s'}</p></div><button type="button" onClick={()=>setInfo(false)} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div><div className="mt-4 space-y-2">{members.length?members.map((m:any)=><div key={m.uid} className="flex items-center gap-3 rounded-2xl border p-3"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-sm font-black text-white">{m.photoURL?<img src={m.photoURL} className="h-full w-full object-cover"/>:String(m.fullName||'L').charAt(0).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black">{m.fullName}</p><p className="truncate text-xs text-slate-400">{m.username?'@'+m.username:'Member'}</p></div></div>):<p className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">No member profiles could be loaded.</p>}</div></section></div>}`;
+  const modal=`return <main className="min-h-screen bg-[#eef3f7] text-ink">{info&&<div className="fixed inset-0 z-[80] bg-black/50 p-4" onClick={()=>setInfo(false)}><section className="mx-auto mt-10 max-h-[80vh] max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">GROUP MEMBERS</p><h2 className="mt-1 text-xl font-black">{g.name}</h2><p className="mt-1 text-xs text-slate-500">{members.length} member{members.length===1?'':'s'}</p></div><button type="button" onClick={()=>setInfo(false)} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div><div className="mt-4 space-y-2">{members.length?members.map((m:any)=><div key={m.uid} className="flex items-center gap-3 rounded-2xl border p-3"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-sm font-black text-white">{m.photoURL?<img src={m.photoURL} className="h-full w-full object-cover"/>:String(m.fullName||'L').charAt(0).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black">{m.fullName}</p><p className="truncate text-xs text-slate-400">{m.username?'@'+m.username:'Member'}</p></div></div>):<p className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">No member profiles could be loaded.</p>}</div></section></div>`;
   g=g.replace(marker,modal);
 }
 
-// Repair a previously injected v6 member-info modal that was missing the JSX
-// expression terminator after the conditional overlay.
 g=g.replace('</section></div><header className="sticky', '</section></div>}<header className="sticky');
 
 const badge="{unread>0&&<span className=\"ml-1 rounded-full bg-cyan-600 px-1.5 py-0.5 text-[8px] font-black text-white\">{unread>99?'99+':unread}</span>}";
@@ -65,6 +61,21 @@ if(!g.includes('aria-label="Write a message"')){
   if(!/<textarea\b/.test(g)) throw new Error('GROUP_COMPOSER_MISSING');
   g=g.replace(/<textarea\b/, '<textarea aria-label="Write a message"');
 }
+
+// Normalize output from earlier build-time community repairs. Older controls-v2 can
+// add isMember/joining again when it sees the newer lock state, and can also add its
+// older joinGroup implementation. Remove those duplicates after all preceding repairs.
+g=g.replace(/\n const \[isMember,setIsMember\]=useState\(false\),\[joining,setJoining\]=useState\(false\)(?:,\[isLocked,setIsLocked\]=useState\(false\))?;\n/g,'\n');
+const stateMarker="[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);";
+if(!g.includes('[isMember,setIsMember]')){
+  if(!g.includes(stateMarker)) throw new Error('GROUP_STATE_NORMALIZATION_MARKER_NOT_FOUND');
+  g=g.replace(stateMarker,stateMarker+"\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);");
+} else if(!g.includes('[isLocked,setIsLocked]')){
+  g=g.replace('const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),','const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),');
+}
+const legacyJoin=" async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n";
+while(g.includes(legacyJoin))g=g.replace(legacyJoin,'\n');
+
 if(!g.includes('async function loadMembers'))throw new Error('GROUP_MEMBER_LOADER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
 fs.writeFileSync(group,g);
@@ -76,4 +87,4 @@ const oldRecent="const recentRows=useMemo(()=>[...chatRows,...groupRows].sort((a
 const newRecent="const recentRows=useMemo(()=>[...chatRows].filter((c:any)=>Boolean(c.lastMessage||previews[`chat:${c.id}`])).sort((a:any,b:any)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,50),[chatRows,previews]);";
 if(c.includes(oldRecent))c=c.replace(oldRecent,newRecent);
 fs.writeFileSync(chat,c);
-console.log('Community UI v6 applied.');
+console.log('Community UI v6 applied and normalized.');
