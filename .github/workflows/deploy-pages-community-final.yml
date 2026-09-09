@@ -1,0 +1,108 @@
+name: Deploy EDUWILLS Pages with final community normalization
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-final
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Apply existing source repairs
+        run: |
+          set -euo pipefail
+          node scripts/repair-activation-news.mjs
+          node scripts/harden-category-home-pages.mjs
+          node scripts/repair-activation-success-ui.mjs
+          node scripts/repair-dashboard-token-status.mjs
+          node scripts/repair-payment-willitoken-copy-ui.mjs
+          node scripts/repair-payment-category-and-revocation-v2.mjs
+          node scripts/repair-paid-token-redeem-gate.mjs
+          node scripts/harden-admin-willitoken-data.mjs
+          node scripts/repair-category-activation-upload.mjs
+          node scripts/implement-community-controls.mjs
+          node scripts/repair-community-controls-v2.mjs
+          node scripts/harden-group-unread-state.mjs
+          node scripts/fix-community-chat-verification.mjs
+          node scripts/harden-community-runtime-v4.mjs
+          node scripts/fix-group-input-and-image-upload-v5.mjs
+          node scripts/repair-community-ui-v6.mjs
+          node scripts/final-community-ts-normalize.mjs
+
+      - name: Verify community source
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          g=Path('app/dashboard/community/group/page.tsx').read_text()
+          c=Path('app/dashboard/community/chat/page.tsx').read_text()
+          assert g.count('const [isMember,setIsMember]') == 1
+          assert g.count('async function joinGroup()') == 1
+          assert g.count('async function loadMembers') == 1
+          assert 'GROUP MEMBERS' in g
+          assert 'aria-label="Write a message"' in g
+          assert 'const recentRows=useMemo(()=>[...chatRows]' in c
+          assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in c
+          print('Final community source verification passed.')
+          PY
+
+      - name: Typecheck
+        run: npx tsc --noEmit --pretty false
+
+      - name: Build application
+        env:
+          NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY }}
+          NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY }}
+          NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
+          NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}
+        run: npm run build
+
+      - name: Verify production artifact
+        run: |
+          set -euo pipefail
+          test -d out
+          test -f out/index.html
+          test -f out/dashboard/index.html
+          test -f out/dashboard/activation/index.html
+          test -f out/login/index.html
+          test -f out/signup/index.html
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
