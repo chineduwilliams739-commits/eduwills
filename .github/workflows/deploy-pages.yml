@@ -59,6 +59,8 @@ jobs:
         run: node scripts/fix-community-chat-verification.mjs
       - name: Apply group composer and image runtime hardening
         run: node scripts/harden-community-runtime-v4.mjs
+      - name: Fix group typing and message image upload
+        run: node scripts/fix-group-input-and-image-upload-v5.mjs
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
       - name: Harden quiz Gemini timeout and preserve gateway errors
@@ -120,6 +122,9 @@ jobs:
               'image upload retry': 'attempt<=3' in upload,
               'chat image storage path': 'match /chatImages/{uid}/{fileName}' in storage,
               'community image storage path': 'match /community/{uid}/{fileName}' in storage,
+              'group message image storage path': 'match /community/{groupId}/messages/{uid}/{fileName}' in storage,
+              'group composer textarea': 'aria-label="Write a message"' in community_group and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
+              'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
               'community message lock UI': 'MESSAGE CONTROL' in community_group and 'messagingLocked' in community_group,
               'community suggested join button': 'CLICK TO JOIN GROUP' in community,
