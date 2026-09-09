@@ -6,7 +6,7 @@ let g=fs.readFileSync(group,'utf8');
 if(!g.includes('[isMember,setIsMember]')){
   const marker='[unread,setUnread]=useState(0);';
   if(!g.includes(marker)) throw new Error('GROUP_STATE_MARKER_NOT_FOUND');
-  g=g.replace(marker,marker+'\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[members,setMembers]=useState<any[]>([]);');
+  g=g.replace(marker,marker+'\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false);');
 }
 
 if(!g.includes('setIsMember(d.ownerId===')){
@@ -15,13 +15,25 @@ if(!g.includes('setIsMember(d.ownerId===')){
   g=g.replace(marker,"setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');");
 }
 
-if(!g.includes('const loadMembers=async')){
+// The v4 repair already provides loadMembers(ids). Reuse that function rather
+// than introducing a second implementation inside an effect.
+if(!g.includes('async function loadMembers')){
   const marker=' async function acknowledge(){';
   if(!g.includes(marker)) throw new Error('GROUP_ACK_MARKER_NOT_FOUND');
-  const block=` useEffect(()=>{let cancelled=false;const loadMembers=async()=>{const ids=Array.isArray(g?.memberIds)?[...new Set(g.memberIds.filter(Boolean))].slice(0,100):[];if(!ids.length){setMembers([]);return}try{const rows=await Promise.all(ids.map(async(uid:string)=>{try{const s=await getDoc(doc(db,'users',uid));const d=s.data()||{};return {uid,fullName:d.fullName||d.displayName||d.name||d.username||'Learner',username:d.username||'',photoURL:d.photoURL||d.avatarUrl||d.profilePhotoURL||''}}catch{return {uid,fullName:'Learner',username:'',photoURL:''}}}));if(!cancelled)setMembers(rows)}catch{if(!cancelled)setMembers([])}};loadMembers();return()=>{cancelled=true}},[g?.id,g?.memberIds]);
- async function joinGroup(){if(!user||!g||joining)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x?.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}
-`;
-  g=g.replace(marker,block+marker);
+  const fn=" async function loadMembers(ids:any[]){const list=Array.isArray(ids)?ids.filter(Boolean):[];try{const rows=await Promise.all(list.map(async uid=>{try{const s=await getDoc(doc(db,'users',String(uid)));const d=s.data()||{};return {uid:String(uid),fullName:String(d.fullName||d.displayName||d.name||d.username||'Learner'),username:String(d.username||''),photoURL:String(d.photoURL||d.avatarUrl||d.profilePhotoURL||'')};}catch{return {uid:String(uid),fullName:'Learner',username:'',photoURL:''}}}));setMembers(rows);}catch{setMembers([])}}\n";
+  g=g.replace(marker,fn+marker);
+}
+
+if(!g.includes('loadMembers(d.memberIds||[])')){
+  const marker='setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||\'\');';
+  if(g.includes(marker)) g=g.replace(marker,'setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));loadMembers(d.memberIds||[]);setName(d.name||\'\');');
+}
+
+if(!g.includes('async function joinGroup')){
+  const marker=' async function acknowledge(){';
+  if(!g.includes(marker)) throw new Error('GROUP_ACK_MARKER_NOT_FOUND_FOR_JOIN');
+  const fn=" async function joinGroup(){if(!user||!g||joining)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x?.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n";
+  g=g.replace(marker,fn+marker);
 }
 
 g=g.replace("if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')", "if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages')");
@@ -49,7 +61,7 @@ if(!g.includes('aria-label="Write a message"')){
   if(!/<textarea\b/.test(g)) throw new Error('GROUP_COMPOSER_MISSING');
   g=g.replace(/<textarea\b/, '<textarea aria-label="Write a message"');
 }
-if(!g.includes('const loadMembers=async'))throw new Error('GROUP_MEMBER_LOADER_MISSING');
+if(!g.includes('async function loadMembers'))throw new Error('GROUP_MEMBER_LOADER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
 fs.writeFileSync(group,g);
 
