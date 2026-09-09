@@ -69,3 +69,5 @@ const newRecent="const recentRows=useMemo(()=>[...chatRows].filter((c:any)=>Bool
 if(c.includes(oldRecent))c=c.replace(oldRecent,newRecent);
 fs.writeFileSync(chat,c);
 console.log('Community UI v6 applied.');
+// Touch the repair script so the guarded workflow runs again after source drift.
+console.log('Community UI v6 repair trigger refreshed.');
