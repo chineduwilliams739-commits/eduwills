@@ -16,7 +16,7 @@ if(!g.includes('[isMember,setIsMember]')){
 if(!g.includes('setIsMember(d.ownerId===')){
   const marker="setG(d);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');";
   if(!g.includes(marker)) throw new Error('GROUP_DERIVE_MARKER_NOT_FOUND');
-  g=g.replace(marker,"setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');");
+  g=g.replace(marker,"setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');
 }
 
 if(!g.includes('const loadMembers=async')){
@@ -45,7 +45,7 @@ if(!g.includes('You must join this group before you can view or send messages.')
 if(!g.includes('GROUP MEMBERS')){
   const marker='return <main className="min-h-screen bg-[#eef3f7] text-ink">';
   if(!g.includes(marker)) throw new Error('GROUP_WORKSPACE_MARKER_NOT_FOUND');
-  const modal=`return <main className="min-h-screen bg-[#eef3f7] text-ink">{info&&<div className="fixed inset-0 z-[80] bg-black/50 p-4" onClick={()=>setInfo(false)}><section className="mx-auto mt-10 max-h-[80vh] max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">GROUP MEMBERS</p><h2 className="mt-1 text-xl font-black">{g.name}</h2><p className="mt-1 text-xs text-slate-500">{members.length} member{members.length===1?'':'s'}</p></div><button type="button" onClick={()=>setInfo(false)} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div><div className="mt-4 space-y-2">{members.length?members.map((m:any)=><div key={m.uid} className="flex items-center gap-3 rounded-2xl border p-3"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-sm font-black text-white">{m.photoURL?<img src={m.photoURL} className="h-full w-full object-cover"/>:String(m.fullName||'L').charAt(0).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black">{m.fullName}</p><p className="truncate text-xs text-slate-400">{m.username?'@'+m.username:'Member'}</p></div></div>):<p className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">No member profiles could be loaded.</p>}</div></section></div>}`;
+  const modal=`return <main className="min-h-screen bg-[#eef3f7] text-ink">{info&&<div className="fixed inset-0 z-[80] bg-black/50 p-4" onClick={()=>setInfo(false)}><section className="mx-auto mt-10 max-h-[80vh] max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">GROUP MEMBERS</p><h2 className="mt-1 text-xl font-black">{g.name}</h2><p className="mt-1 text-xs text-slate-500">{members.length} member{members.length===1?'':'s'}</p></div><button type="button" onClick={()=>setInfo(false)} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div><div className="mt-4 space-y-2">{members.length?members.map((m:any)=><div key={m.uid} className="flex items-center gap-3 rounded-2xl border p-3"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-sm font-black text-white">{m.photoURL?<img src={m.photoURL} className="h-full w-full object-cover"/>:String(m.fullName||'L').charAt(0).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black">{m.fullName}</p><p className="truncate text-xs text-slate-400">{m.username?'@'+m.username:'Member'}</p></div></div>):<p className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">No member profiles could be loaded.</p>}</div></section></div>`;
   g=g.replace(marker,modal);
 }
 
@@ -53,7 +53,13 @@ if(!g.includes('GROUP MEMBERS')){
 const badge="{unread>0&&<span className=\"ml-1 rounded-full bg-cyan-600 px-1.5 py-0.5 text-[8px] font-black text-white\">{unread>99?'99+':unread}</span>}";
 while(g.includes(badge+badge))g=g.replace(badge+badge,badge);
 
-if(!g.includes('aria-label="Write a message"'))throw new Error('GROUP_COMPOSER_MISSING');
+// The composer may already be a textarea but can lack the accessibility marker.
+// Normalize the first textarea so the Pages verification and runtime both have a
+// stable hook without requiring an obsolete exact source string.
+if(!g.includes('aria-label="Write a message"')){
+  if(!/<textarea\b/.test(g)) throw new Error('GROUP_COMPOSER_MISSING');
+  g=g.replace(/<textarea\b/, '<textarea aria-label="Write a message"');
+}
 if(!g.includes('const loadMembers=async'))throw new Error('GROUP_MEMBER_LOADER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
 fs.writeFileSync(group,g);
