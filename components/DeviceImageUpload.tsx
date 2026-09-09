@@ -2,11 +2,11 @@
 
 import {useRef,useState} from 'react';
 import {ImagePlus,Loader2,RefreshCw} from 'lucide-react';
-import {getDownloadURL,ref,uploadBytes,uploadBytesResumable} from 'firebase/storage';
-import {auth,storage} from '@/lib/firebase';
 
 const MAX_INPUT_BYTES=15*1024*1024;
 const MAX_UPLOAD_BYTES=7*1024*1024;
+const CLOUDINARY_CLOUD_NAME=process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME||'';
+const CLOUDINARY_UPLOAD_PRESET=process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET||'';
 
 function loadImage(file:File):Promise<HTMLImageElement>{
  return new Promise((resolve,reject)=>{
@@ -40,31 +40,36 @@ async function compressImage(file:File){
  return file;
 }
 
-function directUpload(storageRef:ReturnType<typeof ref>,file:File,onProgress:(n:number)=>void){
- return new Promise<void>((resolve,reject)=>{
-  let settled=false;const timer=setTimeout(()=>{if(!settled){settled=true;reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))}},60000);
-  uploadBytes(storageRef,file,{contentType:file.type,cacheControl:'public,max-age=31536000'}).then(()=>{if(settled)return;settled=true;clearTimeout(timer);onProgress(96);resolve()}).catch((e:any)=>{if(settled)return;settled=true;clearTimeout(timer);reject(e)});
- });
+function cloudinaryFolder(path:string,uid:string){
+ const clean=path.replace(/^\/+|\/+$/g,'').replace(/[^a-zA-Z0-9/_-]/g,'_');
+ return `eduwills/${clean||'uploads'}/${uid}`;
 }
 
-function resumableUpload(storageRef:ReturnType<typeof ref>,file:File,onProgress:(n:number)=>void){
- return new Promise<void>((resolve,reject)=>{
-  let done=false,lastBytes=0,lastChange=Date.now();let task:any;
-  const finish=(fn:()=>void)=>{if(done)return;done=true;clearInterval(stall);clearTimeout(hard);fn()};
-  const stall=setInterval(()=>{if(done)return;if(task?.snapshot?.bytesTransferred!==lastBytes){lastBytes=task.snapshot.bytesTransferred;lastChange=Date.now()}if(Date.now()-lastChange>20000){try{task.cancel()}catch{};finish(()=>reject(Object.assign(new Error('IMAGE_UPLOAD_STALLED'),{code:'storage/retry-limit-exceeded'}))) }},1000);
-  const hard=setTimeout(()=>{try{task.cancel()}catch{};finish(()=>reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'})))},90000);
-  try{
-   task=uploadBytesResumable(storageRef,file,{contentType:file.type,cacheControl:'public,max-age=31536000'});
-   task.on('state_changed',(snap:any)=>{if(done)return;lastBytes=snap.bytesTransferred;lastChange=Date.now();onProgress(Math.min(92,Math.max(5,Math.round(snap.bytesTransferred/snap.totalBytes*92))))},(error:any)=>finish(()=>reject(error)),()=>finish(()=>{onProgress(95);resolve()}));
-  }catch(error){finish(()=>reject(error));}
+function uploadToCloudinary(file:File,path:string,uid:string,onProgress:(n:number)=>void){
+ return new Promise<string>((resolve,reject)=>{
+  if(!CLOUDINARY_CLOUD_NAME||!CLOUDINARY_UPLOAD_PRESET){
+   reject(new Error('CLOUDINARY_NOT_CONFIGURED'));return;
+  }
+  const endpoint=`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUDINARY_CLOUD_NAME)}/image/upload`;
+  const form=new FormData();form.append('file',file);form.append('upload_preset',CLOUDINARY_UPLOAD_PRESET);form.append('folder',cloudinaryFolder(path,uid));
+  const xhr=new XMLHttpRequest();let settled=false;
+  const timer=setTimeout(()=>{if(!settled){settled=true;xhr.abort();reject(new Error('CLOUDINARY_UPLOAD_TIMEOUT'))}},90000);
+  xhr.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.min(96,Math.max(5,Math.round(e.loaded/e.total*96))));};
+  xhr.onerror=()=>{if(settled)return;settled=true;clearTimeout(timer);reject(new Error('CLOUDINARY_NETWORK_ERROR'))};
+  xhr.onabort=()=>{if(settled)return;settled=true;clearTimeout(timer);reject(new Error('CLOUDINARY_UPLOAD_ABORTED'))};
+  xhr.onreadystatechange=()=>{
+   if(xhr.readyState!==4||settled)return;
+   clearTimeout(timer);settled=true;
+   if(xhr.status>=200&&xhr.status<300){
+    try{const data=JSON.parse(xhr.responseText);if(!data.secure_url)throw new Error('CLOUDINARY_NO_URL');onProgress(100);resolve(data.secure_url)}catch{reject(new Error('CLOUDINARY_INVALID_RESPONSE'))}
+   }else{
+    let message='CLOUDINARY_UPLOAD_FAILED';
+    try{message=JSON.parse(xhr.responseText)?.error?.message||message}catch{}
+    reject(new Error(message));
+   }
+  };
+  try{xhr.open('POST',endpoint);xhr.send(form)}catch(error){clearTimeout(timer);if(!settled){settled=true;reject(error)}}
  });
-}
-
-async function uploadWithFallback(storageRef:ReturnType<typeof ref>,file:File,onProgress:(n:number)=>void){
- if(file.size<=2*1024*1024){
-  try{await directUpload(storageRef,file,onProgress);return}catch(first:any){onProgress(8)}
- }
- await resumableUpload(storageRef,file,onProgress);
 }
 
 export default function DeviceImageUpload({path,onUploaded,label='Upload image',uid}:{path:string;onUploaded:(url:string)=>void;label?:string;uid:string}){
@@ -73,22 +78,19 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
   const file=e.target.files?.[0];e.target.value='';if(!file)return;setMessage('');
   if(!file.type.startsWith('image/')){setMessage('Please choose an image file.');return}
   if(file.size>MAX_INPUT_BYTES){setMessage('Image must be smaller than 15 MB.');return}
-  const current=auth.currentUser;if(!current||current.uid!==uid){setMessage('Your session is no longer active. Please sign in again.');return}
   setBusy(true);setProgress(1);setMessage('Preparing image…');
   try{
    const optimized=await compressImage(file);setProgress(5);
    if(optimized.size>MAX_UPLOAD_BYTES)throw new Error('This image is still too large. Please choose a smaller image.');
-   const safeName=(optimized.name||'image.jpg').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-60)||'image.jpg';
-   const storagePath=path==='users'?`users/${uid}/profile/${Date.now()}_${safeName}`:`${path}/${uid}/${Date.now()}_${safeName}`;
-   const storageRef=ref(storage,storagePath);setMessage('Uploading image…');let lastError:any=null;
+   setMessage('Uploading image…');let lastError:any=null;let url='';
    for(let attempt=1;attempt<=3;attempt++){
-    try{await uploadWithFallback(storageRef,optimized,setProgress);lastError=null;break}catch(error:any){lastError=error;if(attempt<3){setMessage(`Upload interrupted. Retrying (${attempt}/3)…`);await new Promise(r=>setTimeout(r,900*attempt));}}
+    try{url=await uploadToCloudinary(optimized,path,uid,setProgress);lastError=null;break}catch(error:any){lastError=error;if(attempt<3){setMessage(`Upload interrupted. Retrying (${attempt}/3)…`);await new Promise(r=>setTimeout(r,900*attempt));}}
    }
    if(lastError)throw lastError;
-   setMessage('Finalizing image…');const url=await getDownloadURL(storageRef);setProgress(100);onUploaded(url);setMessage('Image uploaded successfully.');
+   setMessage('Finalizing image…');onUploaded(url);setProgress(100);setMessage('Image uploaded successfully.');
   }catch(e:any){
-   const code=String(e?.code||'');
-   const detail=code==='storage/unauthorized'?'Firebase denied this image upload.':code==='storage/unauthenticated'?'Your session expired. Please sign in again.':code==='storage/canceled'?'Upload canceled. Please try again.':code==='storage/retry-limit-exceeded'?'The upload connection failed repeatedly. Please try again.':e?.message==='This image is still too large. Please choose a smaller image.'?e.message:'Image upload failed. Please try again.';
+   const code=String(e?.message||'');
+   const detail=code==='CLOUDINARY_NOT_CONFIGURED'?'Image uploads are not configured yet. Please contact the administrator.':code==='CLOUDINARY_UPLOAD_TIMEOUT'?'The upload timed out. Please try again.':code==='CLOUDINARY_NETWORK_ERROR'?'The upload connection failed. Please try again.':code==='CLOUDINARY_UPLOAD_ABORTED'?'Upload canceled. Please try again.':e?.message==='This image is still too large. Please choose a smaller image.'?e.message:'Image upload failed. Please try again.';
    setMessage(detail);setProgress(0);
   }finally{setBusy(false)}
  }
@@ -97,6 +99,6 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
   <button type="button" onClick={()=>inputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-black disabled:opacity-50">{busy?<Loader2 size={16} className="animate-spin"/>:<ImagePlus size={16}/>} {busy?`Uploading ${progress}%`:label}</button>
   {busy&&<div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-label={`Upload progress ${progress}%`}><div className="h-full rounded-full bg-cyan-600 transition-[width] duration-200" style={{width:`${progress}%`}}/></div>}
   {message&&<p className={`mt-2 text-[11px] font-bold ${/successfully/i.test(message)?'text-emerald-600':'text-slate-500'}`}>{message}</p>}
-  {!busy&&message&&/failed|again|expired|authorized|large|too large|connection|denied/i.test(message)&&<button type="button" onClick={()=>inputRef.current?.click()} className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-black text-cyan-700"><RefreshCw size={13}/> Try another image</button>}
+  {!busy&&message&&/failed|again|expired|authorized|large|too large|connection|denied|not configured|timed out/i.test(message)&&<button type="button" onClick={()=>inputRef.current?.click()} className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-black text-cyan-700"><RefreshCw size={13}/> Try another image</button>}
  </div>;
 }
