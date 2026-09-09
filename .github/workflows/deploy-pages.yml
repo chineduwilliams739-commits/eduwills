@@ -71,7 +71,7 @@ jobs:
           group=Path('app/dashboard/community/group/page.tsx').read_text()
           chat=Path('app/dashboard/community/chat/page.tsx').read_text()
           assert 'aria-label="Write a message"' in group
-          assert 'const loadMembers=async' in group
+          assert ('const loadMembers=async' in group) or ('async function loadMembers' in group)
           assert 'GROUP MEMBERS' in group
           assert 'async function joinGroup()' in group
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
