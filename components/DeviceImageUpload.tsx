@@ -5,8 +5,11 @@ import {ImagePlus,Loader2,RefreshCw} from 'lucide-react';
 
 const MAX_INPUT_BYTES=15*1024*1024;
 const MAX_UPLOAD_BYTES=7*1024*1024;
-const CLOUDINARY_CLOUD_NAME=process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME||'';
-const CLOUDINARY_UPLOAD_PRESET=process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET||'';
+// Cloudinary cloud name and unsigned upload preset are intentionally public browser
+// configuration. Keep the known EduWills values as a production fallback so a
+// missing GitHub Pages environment variable cannot disable image uploads.
+const CLOUDINARY_CLOUD_NAME=process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME||'ds7zf362';
+const CLOUDINARY_UPLOAD_PRESET=process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET||'EDUWILLS';
 
 function loadImage(file:File):Promise<HTMLImageElement>{
  return new Promise((resolve,reject)=>{
