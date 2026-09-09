@@ -42,7 +42,7 @@ async function compressImage(file:File){
 
 function directUpload(storageRef:ReturnType<typeof ref>,file:File,onProgress:(n:number)=>void){
  return new Promise<void>((resolve,reject)=>{
-  let settled=false;const timer=setTimeout(()=>{if(!settled){settled=true;reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))}},30000);
+  let settled=false;const timer=setTimeout(()=>{if(!settled){settled=true;reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))}},60000);
   uploadBytes(storageRef,file,{contentType:file.type,cacheControl:'public,max-age=31536000'}).then(()=>{if(settled)return;settled=true;clearTimeout(timer);onProgress(96);resolve()}).catch((e:any)=>{if(settled)return;settled=true;clearTimeout(timer);reject(e)});
  });
 }
@@ -51,11 +51,11 @@ function resumableUpload(storageRef:ReturnType<typeof ref>,file:File,onProgress:
  return new Promise<void>((resolve,reject)=>{
   let done=false,lastBytes=0,lastChange=Date.now();let task:any;
   const finish=(fn:()=>void)=>{if(done)return;done=true;clearInterval(stall);clearTimeout(hard);fn()};
-  const stall=setInterval(()=>{if(done)return;if(task?.snapshot?.bytesTransferred!==lastBytes){lastBytes=task.snapshot.bytesTransferred;lastChange=Date.now()}if(Date.now()-lastChange>10000){try{task.cancel()}catch{};finish(()=>reject(Object.assign(new Error('IMAGE_UPLOAD_STALLED'),{code:'storage/retry-limit-exceeded'}))) }},1000);
-  const hard=setTimeout(()=>{try{task.cancel()}catch{};finish(()=>reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'})))},45000);
+  const stall=setInterval(()=>{if(done)return;if(task?.snapshot?.bytesTransferred!==lastBytes){lastBytes=task.snapshot.bytesTransferred;lastChange=Date.now()}if(Date.now()-lastChange>20000){try{task.cancel()}catch{};finish(()=>reject(Object.assign(new Error('IMAGE_UPLOAD_STALLED'),{code:'storage/retry-limit-exceeded'}))) }},1000);
+  const hard=setTimeout(()=>{try{task.cancel()}catch{};finish(()=>reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'})))},90000);
   try{
    task=uploadBytesResumable(storageRef,file,{contentType:file.type,cacheControl:'public,max-age=31536000'});
-   task.on('state_changed',(snap:any)=>{if(done)return;lastBytes=snap.bytesTransferred;lastChange=Date.now();onProgress(Math.min(92,Math.max(3,Math.round(snap.bytesTransferred/snap.totalBytes*92))))},(error:any)=>finish(()=>reject(error)),()=>finish(()=>{onProgress(95);resolve()}));
+   task.on('state_changed',(snap:any)=>{if(done)return;lastBytes=snap.bytesTransferred;lastChange=Date.now();onProgress(Math.min(92,Math.max(5,Math.round(snap.bytesTransferred/snap.totalBytes*92))))},(error:any)=>finish(()=>reject(error)),()=>finish(()=>{onProgress(95);resolve()}));
   }catch(error){finish(()=>reject(error));}
  });
 }
@@ -82,7 +82,7 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
    const storagePath=path==='users'?`users/${uid}/profile/${Date.now()}_${safeName}`:`${path}/${uid}/${Date.now()}_${safeName}`;
    const storageRef=ref(storage,storagePath);setMessage('Uploading image…');let lastError:any=null;
    for(let attempt=1;attempt<=3;attempt++){
-    try{await uploadWithFallback(storageRef,optimized,setProgress);lastError=null;break}catch(error:any){lastError=error;if(attempt<3){setMessage(`Upload interrupted. Retrying (${attempt}/3)…`);await new Promise(r=>setTimeout(r,700*attempt));}}
+    try{await uploadWithFallback(storageRef,optimized,setProgress);lastError=null;break}catch(error:any){lastError=error;if(attempt<3){setMessage(`Upload interrupted. Retrying (${attempt}/3)…`);await new Promise(r=>setTimeout(r,900*attempt));}}
    }
    if(lastError)throw lastError;
    setMessage('Finalizing image…');const url=await getDownloadURL(storageRef);setProgress(100);onUploaded(url);setMessage('Image uploaded successfully.');
@@ -93,7 +93,7 @@ export default function DeviceImageUpload({path,onUploaded,label='Upload image',
   }finally{setBusy(false)}
  }
  return <div className="w-full">
-  <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" capture="environment" onChange={choose} className="hidden"/>
+  <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" onChange={choose} className="hidden"/>
   <button type="button" onClick={()=>inputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-black disabled:opacity-50">{busy?<Loader2 size={16} className="animate-spin"/>:<ImagePlus size={16}/>} {busy?`Uploading ${progress}%`:label}</button>
   {busy&&<div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-label={`Upload progress ${progress}%`}><div className="h-full rounded-full bg-cyan-600 transition-[width] duration-200" style={{width:`${progress}%`}}/></div>}
   {message&&<p className={`mt-2 text-[11px] font-bold ${/successfully/i.test(message)?'text-emerald-600':'text-slate-500'}`}>{message}</p>}
