@@ -1,11 +1,5 @@
 import fs from 'node:fs';
 
-function replaceOrFail(text, pattern, replacement, label, flags='') {
-  const re = new RegExp(pattern, flags);
-  if (!re.test(text)) throw new Error(`REPAIR_MATCH_FAILED: ${label}`);
-  return text.replace(re, replacement);
-}
-
 // Firestore REST must receive arrays as arrayValue, not JSON strings.
 const backendPath='workers/payments/src/index.js';
 let b=fs.readFileSync(backendPath,'utf8');
@@ -23,20 +17,14 @@ const newParse="let categories=[];if(Array.isArray(f.categories?.arrayValue?.val
 if(b.includes(oldParse)) b=b.replace(oldParse,newParse);
 fs.writeFileSync(backendPath,b);
 
-// Do not downgrade the modern uploader. The current component intentionally uses
-// direct upload for mobile reliability and resumable upload where appropriate.
+// Image uploads are now handled by the Cloudinary-based DeviceImageUpload.
+// Never run the obsolete Firebase Storage uploader rewrite after the migration.
 const uploadPath='components/DeviceImageUpload.tsx';
-let u=fs.readFileSync(uploadPath,'utf8');
-if (u.includes('uploadBytesResumable') || u.includes('uploadBytes')) {
-  console.log('Modern DeviceImageUpload already present; preserving it.');
-} else {
-  u=u.replace("import {getDownloadURL,ref} from 'firebase/storage';", "import {getDownloadURL,ref,uploadBytes} from 'firebase/storage';");
-  const start=u.indexOf('function uploadFile(');
-  const end=u.indexOf('\n}\n\nexport default function DeviceImageUpload',start);
-  if(start<0||end<0) throw new Error('REPAIR_MATCH_FAILED: uploadFile function');
-  u=u.slice(0,start)+`function uploadFile(storageRef:ReturnType<typeof ref>,file:File,onProgress:(value:number)=>void){\n return new Promise<void>((resolve,reject)=>{\n  let finished=false;\n  const timer=setTimeout(()=>{if(!finished)reject(Object.assign(new Error('IMAGE_UPLOAD_TIMEOUT'),{code:'storage/retry-limit-exceeded'}))},45000);\n  onProgress(12);\n  uploadBytes(storageRef,file,{contentType:file.type,customMetadata:{source:'device'}}).then(()=>{finished=true;clearTimeout(timer);onProgress(96);resolve()}).catch(error=>{finished=true;clearTimeout(timer);reject(error)});\n });\n}`+u.slice(end+2);
-  fs.writeFileSync(uploadPath,u);
+const u=fs.readFileSync(uploadPath,'utf8');
+if (!u.includes('uploadToCloudinary') || !u.includes('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET')) {
+  throw new Error('REPAIR_MATCH_FAILED: Cloudinary DeviceImageUpload');
 }
+console.log('Cloudinary DeviceImageUpload detected; legacy Firebase uploader repair skipped.');
 
 // Persist the category immediately in the browser as a fast UI fallback after redemption.
 const activationPath='app/dashboard/activation/page.tsx';
@@ -46,4 +34,4 @@ if(a.includes(marker) && !a.includes('eduwills_active_category')){
   a=a.replace(marker,"const result=await redeemThroughBackend(current,clean);const redeemedCategories=Array.isArray(result.categories)?result.categories:[];const immediateCategory=redeemedCategories[0]||'';if(immediateCategory){sessionStorage.setItem('eduwills_active_category',immediateCategory.toLowerCase().replace(/\\s+/g,'-'));localStorage.setItem('eduwills_active_category',immediateCategory.toLowerCase().replace(/\\s+/g,'-'));}setCode('');setPaymentSuccess({code:clean");
 }
 fs.writeFileSync(activationPath,a);
-console.log('Category activation and mobile image upload repair V3 applied.');
+console.log('Category activation and Cloudinary image upload repair applied safely.');
