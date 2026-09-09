@@ -1,5 +1,19 @@
 import fs from 'node:fs';
 
+// Cloudinary is used for all client-side EduWills image uploads. These values are
+// intentionally public browser configuration (cloud name + unsigned preset), not
+// Cloudinary API credentials or secrets.
+const envPath='.env.production';
+let env=fs.existsSync(envPath)?fs.readFileSync(envPath,'utf8'):'';
+const setEnv=(key,value)=>{
+  const line=`${key}=${value}`;
+  const re=new RegExp(`^${key}=.*$`,'m');
+  env=re.test(env)?env.replace(re,line):`${env}${env.endsWith('\n')||!env?'':'\n'}${line}\n`;
+};
+setEnv('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME','ds7zf362');
+setEnv('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET','EDUWILLS');
+fs.writeFileSync(envPath,env);
+
 const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
 
@@ -37,4 +51,4 @@ if(!r.includes('match /community/{uid}/{fileName}')) {
   fs.writeFileSync(storage,r);
 }
 
-console.log('Community runtime v4 hardened: group composer/admin lock behavior and community image path verified.');
+console.log('Community runtime v4 hardened and Cloudinary build configuration applied.');
