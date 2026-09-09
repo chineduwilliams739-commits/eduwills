@@ -17,6 +17,14 @@ service firebase.storage {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
+    // Group images uploaded by DeviceImageUpload use community/{uid}/{fileName}.
+    match /community/{uid}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && imageFile() && smallEnough();
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Keep compatibility with any older group-image paths that include groupId.
     match /community/{groupId}/{uid}/{fileName} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid && imageFile() && smallEnough();
