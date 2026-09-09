@@ -24,8 +24,15 @@ service firebase.storage {
       allow delete: if signedIn() && request.auth.uid == uid;
     }
 
-    // Keep compatibility with any older group-image paths that include groupId.
+    // Group settings images use community/{groupId}/{uid}/{fileName}.
     match /community/{groupId}/{uid}/{fileName} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && imageFile() && smallEnough();
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Group message images use community/{groupId}/messages/{uid}/{fileName}.
+    match /community/{groupId}/messages/{uid}/{fileName} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid && imageFile() && smallEnough();
       allow delete: if signedIn() && request.auth.uid == uid;
