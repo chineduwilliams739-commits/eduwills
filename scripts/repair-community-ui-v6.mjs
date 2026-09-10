@@ -40,6 +40,7 @@ if(popupStart>=0 && settingsStart>popupStart){
 }
 
 // Repair the malformed v7 settings textarea, then make the actual message composer a textarea.
+g=g.replace(/onChange=\{e=\s*style=\{\{writingMode:'horizontal-tb',direction:'ltr',textAlign:'left'\}\}>setDesc\(e\.target\.value\)\}/g,'onChange={e=>setDesc(e.target.value)}');
 g=g.replace(/<textarea aria-label="Write a message" value=\{desc\} onChange=\{e= style=\{\{writingMode:'horizontal-tb',direction:'ltr',textAlign:'left'\}\}>setDesc\(e\.target\.value\)\}/g,'<textarea value={desc} onChange={e=>setDesc(e.target.value)}');
 g=g.replace(/<textarea aria-label="Write a message" value=\{desc\}/g,'<textarea value={desc}');
 const composerInput=/<input value=\{draft\} onChange=\{e=>setDraft\(e\.target\.value\)\} onKeyDown=\{e=>e\.key==='Enter'&&!e\.shiftKey&&\(e\.preventDefault\(\),send\(\)\)\} placeholder="Write a message…" className="min-w-0 flex-1 bg-transparent px-2 py-3 text-sm outline-none"\/>/;
