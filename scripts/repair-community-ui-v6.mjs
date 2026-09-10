@@ -3,25 +3,22 @@ import fs from 'node:fs';
 const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
 
+// Normalize accidental literal backslash+n separators left by older deterministic repairs.
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 
-// Earlier community passes can emit the same React state declarations with different
-// whitespace or as separate lines. Normalize the known state declarations by removing
-// every occurrence, then add one canonical declaration inside Group.
-function resetState(name, setter, initializer){
-  const re=new RegExp(`\\[\\s*${name}\\s*,\\s*${setter}\\s*\\]\\s*=\\s*useState\\s*\\(\\s*${initializer}\\s*\\)`,'g');
-  g=g.replace(re,'');
-  // Clean separators left when a state was part of a combined declaration.
-  g=g.replace(/,\\s*,/g,',').replace(/const\\s*;/g,'');
-}
-resetState('isMember','setIsMember','false');
-resetState('joining','setJoining','false');
-resetState('isLocked','setIsLocked','false');
-resetState('members','setMembers','\\[\\]');
-
+// Older repair passes can corrupt the large one-line React state declaration by
+// removing only selected state fragments. Rebuild the entire state header from a
+// stable boundary instead of trying to repair individual commas in place.
 const groupOpen='export default function Group(){';
-if(!g.includes(groupOpen))throw new Error('GROUP_COMPONENT_MISSING');
-g=g.replace(groupOpen,`${groupOpen}\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);`);
+const authEffect='\n useEffect(()=>onAuthStateChanged';
+const go=g.indexOf(groupOpen);
+const ae=go>=0?g.indexOf(authEffect,go):-1;
+if(go<0)throw new Error('GROUP_COMPONENT_MISSING');
+if(ae<0)throw new Error('GROUP_AUTH_EFFECT_MISSING');
+
+const canonicalHeader=`${groupOpen}const id=new URLSearchParams(typeof window!=='undefined'?location.search:'').get('id')||'';const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[understood,setUnderstood]=useState(false),[tour,setTour]=useState(true),[settings,setSettings]=useState(false),[info,setInfo]=useState(false),[name,setName]=useState(''),[desc,setDesc]=useState(''),[avatar,setAvatar]=useState(''),[cover,setCover]=useState(''),[messages,setMessages]=useState<any[]>([]),[draft,setDraft]=useState(''),[image,setImage]=useState(''),[notice,setNotice]=useState(''),[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);`;
+
+g=g.slice(0,go)+canonicalHeader+g.slice(ae);
 
 // Remove duplicate async handlers while preserving the first complete implementation.
 function dedupeAsync(name){
@@ -75,4 +72,4 @@ let c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 fs.writeFileSync(chat,c);
-console.log('Community UI v6 source normalization, state canonicalization, duplicate cleanup, and validation passed.');
+console.log('Community UI v6 source normalization, canonical header rebuild, duplicate cleanup, and validation passed.');
