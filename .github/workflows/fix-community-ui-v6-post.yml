@@ -24,17 +24,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install v6 textarea guard
+        run: node scripts/patch-community-v6-textarea-guard.mjs
       - name: Apply post-v6 Community syntax repair
         run: node scripts/fix-community-ui-v6-post.mjs
-      - name: Commit repaired source
+      - name: Commit repaired Community source and repair script
         run: |
           set -euo pipefail
-          if git diff --quiet -- app/dashboard/community/group/page.tsx; then
-            echo 'No Community source change required.'
+          if git diff --quiet -- app/dashboard/community/group/page.tsx scripts/repair-community-ui-v6.mjs; then
+            echo 'No Community repair change required.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/dashboard/community/group/page.tsx
-          git commit -m 'Fix Community UI post-v6 malformed textarea'
+          git add app/dashboard/community/group/page.tsx scripts/repair-community-ui-v6.mjs
+          git commit -m 'Harden Community v6 textarea repair'
           git push origin HEAD:main
