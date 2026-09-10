@@ -1,0 +1,43 @@
+name: Apply Community UI v7
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: community-ui-v7
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Apply Community UI v7
+        run: node scripts/repair-community-ui-v7.mjs
+
+      - name: Commit repaired group UI
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- app/dashboard/community/group/page.tsx; then
+            echo 'No Community UI v7 source changes needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/community/group/page.tsx
+          git commit -m 'Apply Community UI v7 group interaction fixes'
+          git push origin HEAD:main
