@@ -21,7 +21,7 @@ resetState('members','setMembers','\\[\\]');
 
 const groupOpen='export default function Group(){';
 if(!g.includes(groupOpen))throw new Error('GROUP_COMPONENT_MISSING');
-g=g.replace(groupOpen,`${groupOpen}\\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);`);
+g=g.replace(groupOpen,`${groupOpen}\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);`);
 
 // Remove duplicate async handlers while preserving the first complete implementation.
 function dedupeAsync(name){
