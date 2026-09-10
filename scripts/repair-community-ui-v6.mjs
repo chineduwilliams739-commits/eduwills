@@ -8,6 +8,11 @@ let g=fs.readFileSync(group,'utf8');
 // must not depend on one exact source marker.
 const removeAll=(re)=>{g=g.replace(re,'');};
 
+// Some earlier generated repairs accidentally persisted the two-character literal
+// "\\n" between TypeScript statements. Normalize those separators before parsing
+// or validating the group source.
+g=g.replace(/\\\\n(?=\\s*(?:const|useEffect|async|if|return|<))/g,'\n');
+
 removeAll(/\s*const\s*\[isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\(false\)\s*;?/g);
 removeAll(/\s*const\s*\[joining\s*,\s*setJoining\s*\]\s*=\s*useState\(false\)\s*;?/g);
 removeAll(/\s*const\s*\[isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\(false\)\s*;?/g);
@@ -102,7 +107,7 @@ const counts=(re)=>{const m=g.match(re);return m?m.length:0};
 const stateChecks=[
   [/const\s*\[isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\(false\)\s*;/g,'GROUP_ISMEMBER_STATE_NOT_CANONICAL'],
   [/const\s*\[joining\s*,\s*setJoining\s*\]\s*=\s*useState\(false\)\s*;/g,'GROUP_JOINING_STATE_NOT_CANONICAL'],
-  [/const\s*\[isLocked\s*,\s*setIsLocked\]\s*=\s*useState\(false\)\s*;/g,'GROUP_LOCK_STATE_NOT_CANONICAL'],
+  [/const\s*\[isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\(false\)\s*;/g,'GROUP_LOCK_STATE_NOT_CANONICAL'],
   [/const\s*\[members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\[\]\)\s*;/g,'GROUP_MEMBERS_STATE_NOT_CANONICAL'],
 ];
 for(const [re,error] of stateChecks)if(counts(re)!==1)throw new Error(`${error}:count=${counts(re)}`);
