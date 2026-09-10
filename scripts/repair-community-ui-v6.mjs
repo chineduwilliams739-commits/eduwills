@@ -20,11 +20,16 @@ removeAll(/,?\s*\[isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\(false\)/g);
 removeAll(/,?\s*\[members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\(\[\]\)/g);
 
 // Remove every duplicate helper implementation with brace-aware scanning.
+// Match the function name first, then locate its opening brace. This handles both
+// zero-argument helpers and parameterized helpers such as loadMembers(ids:any[]).
 function removeAllFunctions(source,name){
-  const needle=`async function ${name}(){`;
-  let first=source.indexOf(needle);
-  while(first>=0){
-    let pos=first+needle.length,depth=1,quote='';
+  const signature=new RegExp(`async\\s+function\\s+${name}\\s*\\(`,'g');
+  let match=signature.exec(source);
+  while(match){
+    const first=match.index;
+    let brace=source.indexOf('{',signature.lastIndex);
+    if(brace<0)throw new Error(`MISSING_${name.toUpperCase()}_FUNCTION_BRACE`);
+    let pos=brace+1,depth=1,quote='';
     for(;pos<source.length;pos++){
       const ch=source[pos],prev=source[pos-1];
       if(quote){if(ch===quote&&prev!=='\\\\')quote='';continue;}
@@ -37,7 +42,8 @@ function removeAllFunctions(source,name){
     }
     if(depth!==0)throw new Error(`UNBALANCED_${name.toUpperCase()}_FUNCTION`);
     source=source.slice(0,first)+source.slice(pos);
-    first=source.indexOf(needle);
+    signature.lastIndex=0;
+    match=signature.exec(source);
   }
   return source;
 }
@@ -86,8 +92,7 @@ g=g.replace(/if\(!g\|\|!user\|\|!understood\)return;return onSnapshot\(doc\(db,'
 if(!g.includes('You must join this group before you can view or send messages.')){
   const marker='if(!understood)return <main';
   if(!g.includes(marker))throw new Error('GROUP_UNDERSTOOD_GATE_NOT_FOUND');
-  const gate=`if(!isMember)return <main className="min-h-screen bg-paper p-5 text-ink"><div className="mx-auto max-w-xl"><a href={BASE+'/dashboard/community/'} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black"><ArrowLeft size={17}/> Community</a><section className="mt-5 rounded-[2rem] bg-white p-8 text-center shadow-sm"><Users className="mx-auto text-cyan-600" size={42}/><h1 className="mt-4 text-2xl font-black">Join {g.name}</h1><p className="mt-2 text-sm leading-6 text-slate-500">You must join this group before you can view or send messages.</p><button type="button" onClick={joinGroup} disabled={joining} className="mt-5 rounded-xl bg-ink px-6 py-3 text-sm font-black text-white disabled:opacity-50">{joining?'Joining…':'JOIN GROUP'}</button></section></div></main>;
-`;
+  const gate=`if(!isMember)return <main className="min-h-screen bg-paper p-5 text-ink"><div className="mx-auto max-w-xl"><a href={BASE+'/dashboard/community/'} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black"><ArrowLeft size={17}/> Community</a><section className="mt-5 rounded-[2rem] bg-white p-8 text-center shadow-sm"><Users className="mx-auto text-cyan-600" size={42}/><h1 className="mt-4 text-2xl font-black">Join {g.name}</h1><p className="mt-2 text-sm leading-6 text-slate-500">You must join this group before you can view or send messages.</p><button type="button" onClick={joinGroup} disabled={joining} className="mt-5 rounded-xl bg-ink px-6 py-3 text-sm font-black text-white disabled:opacity-50">{joining?'Joining…':'JOIN GROUP'}</button></section></div></main>`;
   g=g.replace(marker,gate+marker);
 }
 
