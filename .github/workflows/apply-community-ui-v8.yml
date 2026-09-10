@@ -1,0 +1,39 @@
+name: Apply Community UI v8
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: community-ui-v8
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply Community UI v8 repair
+        run: node scripts/repair-community-ui-v8.mjs
+      - name: Commit repaired Community group page
+        run: |
+          if git diff --quiet -- app/dashboard/community/group/page.tsx; then
+            echo 'No Community UI v8 source change needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/community/group/page.tsx
+          git commit -m 'Repair Community group JSX and duplicate lock card'
+          git push origin HEAD:main
