@@ -2,56 +2,40 @@ import fs from 'node:fs';
 
 const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
-
-// Normalize accidental literal newline sequences first.
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
+g=g.replace(/setUnderstood\(d\.creatorRulesAccepted===true\|\|d\.ownerId!==user\.uid\)\},\[id,user\?\.uid\]\);/,'setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid);});},[id,user?.uid]);');
 
-// The previous Community repairs left the group snapshot hook with the dependency
-// array attached to onSnapshot instead of to useEffect. Repair that exact shape.
-g=g.replace(
-  /setUnderstood\(d\.creatorRulesAccepted===true\|\|d\.ownerId!==user\.uid\)\},\[id,user\?\.uid\]\);/,
-  'setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid);});},[id,user?.uid]);'
-);
-
-// Never allow a second derived isLocked binding to coexist with React state.
+// Collapse every community state variant into one canonical declaration.
+const stateMarker='[unread,setUnread]=useState(0);';
+const stateLine='\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);';
+g=g.replace(/\n\s*const \[isMember,setIsMember\]=useState\(false\),\[joining,setJoining\]=useState\(false\)(?:,\[isLocked,setIsLocked\]=useState\(false\))?(?:,\[members,setMembers\]=useState<any\[\]>\(\[\]\))?;?/g,'');
+g=g.replace(/\n\s*const \[isMember,setIsMember\]=useState\(false\);/g,'');
+g=g.replace(/\n\s*const \[joining,setJoining\]=useState\(false\);/g,'');
+g=g.replace(/\n\s*const \[isLocked,setIsLocked\]=useState\(false\);/g,'');
+g=g.replace(/\n\s*const \[members,setMembers\]=useState<any\[\]>\(\[\]\);/g,'');
 g=g.replace(/,isLocked=g\?\.messagingLocked===true(?=;)/g,'');
 g=g.replace(/,\s*isLocked\s*=\s*g\?\.messagingLocked===true(?=;)/g,'');
+if(!g.includes(stateLine.trim())){
+  if(!g.includes(stateMarker))throw new Error('GROUP_STATE_MARKER_NOT_FOUND');
+  g=g.replace(stateMarker,stateMarker+stateLine);
+}
 
-// Remove duplicate MESSAGE CONTROL cards by balancing section tags.
+// Remove duplicate message-control sections.
 function dedupeMessageControl(source){
-  const marker='MESSAGE CONTROL';
-  const first=source.indexOf(marker);
-  if(first<0)return source;
-  while(true){
-    const second=source.indexOf(marker,first+marker.length);
-    if(second<0)break;
-    const start=source.lastIndexOf('<section',second);
-    if(start<0)break;
-    const tags=/<\/?section\b[^>]*>/g;
-    tags.lastIndex=start;
-    let depth=0,end=-1,m;
-    while((m=tags.exec(source))){
-      depth += m[0][1]==='/' ? -1 : 1;
-      if(depth===0){end=m.index+m[0].length;break;}
-    }
-    if(end<0)break;
-    source=source.slice(0,start)+source.slice(end);
-  }
-  return source;
+  const marker='MESSAGE CONTROL'; const first=source.indexOf(marker); if(first<0)return source;
+  while(true){const second=source.indexOf(marker,first+marker.length);if(second<0)break;const start=source.lastIndexOf('<section',second);if(start<0)break;const tags=/<\/?section\b[^>]*>/g;tags.lastIndex=start;let depth=0,end=-1,m;while((m=tags.exec(source))){depth+=m[0][1]==='/'?-1:1;if(depth===0){end=m.index+m[0].length;break}}if(end<0)break;source=source.slice(0,start)+source.slice(end)}return source;
 }
 g=dedupeMessageControl(g);
 
-// Remove the obsolete floating Group Info popup if an earlier repair reintroduced it.
+// Remove any obsolete floating Group Info implementation.
 const popupStart=g.indexOf('{info&&<div className="fixed inset-0 z-50');
 const settingsStart=g.indexOf('{isAdmin&&settings&&',popupStart);
 if(popupStart>=0&&settingsStart>popupStart)g=g.slice(0,popupStart)+g.slice(settingsStart);
 
-// Ensure the real message composer is a horizontal textarea and never camera capture.
+// Force the actual message composer to be horizontal and camera-free.
 const input=/<input value=\{draft\} onChange=\{e=>setDraft\(e\.target\.value\)\} onKeyDown=\{e=>e\.key==='Enter'&&!e\.shiftKey&&\(e\.preventDefault\(\),send\(\)\)\} placeholder="Write a message…" className="min-w-0 flex-1 bg-transparent px-2 py-3 text-sm outline-none"\/>/;
 if(input.test(g))g=g.replace(input,'<textarea aria-label="Write a message" rows={1} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>e.key===\'Enter\'&&!e.shiftKey&&(e.preventDefault(),send())} placeholder="Write a message…" className="min-h-12 max-h-32 min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-sm outline-none" style={{writingMode:\'horizontal-tb\',direction:\'ltr\',textAlign:\'left\'}}/>');
 g=g.replace(/capture="environment"/g,'');
-
-// Remove malformed v7 settings textarea mutations if present.
 g=g.replace(/onChange=\{e=\s*style=\{\{writingMode:'horizontal-tb',direction:'ltr',textAlign:'left'\}\}>setDesc\(e\.target\.value\)\}/g,'onChange={e=>setDesc(e.target.value)}');
 
 const count=(re)=>(g.match(re)||[]).length;
@@ -69,9 +53,8 @@ if(/onChange=\{e=\s*style=/.test(g))throw new Error('MALFORMED_TEXTAREA_HANDLER_
 if(!/setUnderstood\(d\.creatorRulesAccepted===true\|\|d\.ownerId!==user\.uid\);\}\);\},\[id,user\?\.uid\]\);/.test(g))throw new Error('GROUP_AUTH_SNAPSHOT_HOOK_NOT_CANONICAL');
 
 fs.writeFileSync(group,g);
-
 const chat='app/dashboard/community/chat/page.tsx';
 const c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
-console.log('Community UI v6 finalized: hook syntax, horizontal composer, inline Group Info MEMBERS view, canonical lock control, and source validation passed.');
+console.log('Community UI v6 final normalization passed.');
