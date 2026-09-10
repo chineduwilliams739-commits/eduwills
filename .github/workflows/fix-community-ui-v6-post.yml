@@ -1,0 +1,40 @@
+name: Repair Community UI post-v6 syntax
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: community-ui-post-v6
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply post-v6 Community syntax repair
+        run: node scripts/fix-community-ui-v6-post.mjs
+      - name: Commit repaired source
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- app/dashboard/community/group/page.tsx; then
+            echo 'No Community source change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/community/group/page.tsx
+          git commit -m 'Fix Community UI post-v6 malformed textarea'
+          git push origin HEAD:main
