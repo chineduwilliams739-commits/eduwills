@@ -2,49 +2,52 @@ import fs from 'node:fs';
 
 const path='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(path,'utf8');
+g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 
-// Earlier community repair passes can each add the same state when they see a
-// different marker. Normalize the final generated source to exactly one copy.
-g=g.replace(/\n\s*const \[isMember,setIsMember\]=useState\(false\),\[joining,setJoining\]=useState\(false\)(?:,\[isLocked,setIsLocked\]=useState\(false\))?(?:,\[members,setMembers\]=useState<any\[\]>\(\[\]\))?;\n/g,'\n');
-
-const stateMarker='[unread,setUnread]=useState(0);';
-if(!g.includes('[isMember,setIsMember]')){
-  if(!g.includes(stateMarker)) throw new Error('FINAL_GROUP_STATE_MARKER_NOT_FOUND');
-  g=g.replace(stateMarker,stateMarker+'\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);');
-} else {
-  // If a prior pass left a partial canonical state, ensure the lock/member state
-  // variables used by the community UI are present without creating duplicates.
-  if(!g.includes('[isLocked,setIsLocked]')){
-    g=g.replace('[isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),','[isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),');
+// Final safety pass: remove every declaration variant for the four community
+// state variables, then install one canonical declaration. This must remain
+// tolerant of the preceding repair scripts' different formatting.
+const bindings=[
+  /\[isMember\s*,\s*setIsMember\]\s*=\s*useState\s*\(\s*false\s*\)/g,
+  /\[joining\s*,\s*setJoining\]\s*=\s*useState\s*\(\s*false\s*\)/g,
+  /\[isLocked\s*,\s*setIsLocked\]\s*=\s*useState\s*\(\s*false\s*\)/g,
+  /\[members\s*,\s*setMembers\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)/g
+];
+for(const re of bindings)g=g.replace(re,'');
+g=g.replace(/,\s*,/g,',').replace(/\[unread,setUnread\]=useState\(0\)\s*,\s*;/g,'[unread,setUnread]=useState(0);');
+const canonical='const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);';
+if(!g.includes(canonical)){
+  const lines=g.split('\n'); let added=false;
+  for(let i=0;i<lines.length;i++){
+    if(lines[i].includes('[unread,setUnread]=useState(0)')){lines.splice(i+1,0,canonical);added=true;break;}
   }
-  if(!g.includes('[members,setMembers]=useState<any[]>([])')){
-    const marker='[isLocked,setIsLocked]=useState(false),';
-    if(g.includes(marker)) g=g.replace(marker,marker+'[members,setMembers]=useState<any[]>([]),');
-  }
+  if(!added)throw new Error('FINAL_GROUP_STATE_MARKER_NOT_FOUND');
+  g=lines.join('\n');
 }
 
-// Remove every one-line legacy joinGroup implementation, then keep one
-// membership-safe implementation. This catches variants emitted by controls-v2.
-g=g.replace(/\n\s*async function joinGroup\(\)\{[^\n]*\}\n/g,'\n');
-const join=" async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x?.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n";
-if(!g.includes('async function joinGroup')){
-  const marker=' async function acknowledge(){';
-  if(!g.includes(marker)) throw new Error('FINAL_JOIN_MARKER_NOT_FOUND');
-  g=g.replace(marker,join+marker);
+// Preserve exactly one joinGroup implementation if an earlier pass left a
+// one-line duplicate. Do not require a particular formatting style.
+const joins=[...g.matchAll(/async function joinGroup\(\)/g)].map(m=>m.index||0);
+if(joins.length===0)throw new Error('FINAL_JOIN_FUNCTION_MISSING');
+if(joins.length>1){
+  const re=/\n\s*async function joinGroup\(\)\{[^\n]*\}\n/g;
+  let first=true;
+  g=g.replace(re,m=>{if(first){first=false;return m}return '\n'});
 }
 
-// A prior v4/v6 pass can coexist with another member loader. Remove duplicate
-// global one-line loaders while preserving the dedicated useEffect loader.
-const loaderRegex=/\n\s*async function loadMembers\(ids:any\[\]\)\{[^\n]*\}\n/g;
-g=g.replace(loaderRegex,'\n');
-if(!g.includes('async function loadMembers')){
-  const marker=' async function acknowledge(){';
-  if(!g.includes(marker)) throw new Error('FINAL_MEMBER_MARKER_NOT_FOUND');
-  const fn=" async function loadMembers(ids:any[]){const list=Array.isArray(ids)?[...new Set(ids.filter(Boolean))].slice(0,100):[];try{const rows=await Promise.all(list.map(async uid=>{try{const s=await getDoc(doc(db,'users',String(uid)));const d=s.data()||{};return {uid:String(uid),fullName:String(d.fullName||d.displayName||d.name||d.username||'Learner'),username:String(d.username||''),photoURL:String(d.photoURL||d.avatarUrl||d.profilePhotoURL||'')};}catch{return {uid:String(uid),fullName:'Learner',username:'',photoURL:''}}}));setMembers(rows);}catch{setMembers([])}}\n";
-  g=g.replace(marker,fn+marker);
-}
+// The member loader is allowed once; older v4/v5 passes may have emitted a
+// duplicate one-line implementation.
+const loaderRe=/\n\s*async function loadMembers\(ids:any\[\]\)\{[^\n]*\}\n/g;
+let firstLoader=true;
+g=g.replace(loaderRe,m=>{if(firstLoader){firstLoader=false;return m}return '\n'});
+if(!g.includes('async function loadMembers'))throw new Error('FINAL_MEMBER_LOADER_MISSING');
 
-if(!g.includes('GROUP MEMBERS')) throw new Error('FINAL_GROUP_INFO_MISSING');
-if(!g.includes('aria-label="Write a message"')) throw new Error('FINAL_GROUP_COMPOSER_MISSING');
+if(!g.includes('GROUP INFO'))throw new Error('FINAL_GROUP_INFO_MISSING');
+if(!g.includes('>MEMBERS</button>'))throw new Error('FINAL_MEMBERS_TAB_MISSING');
+if(!g.includes('aria-label="Write a message"'))throw new Error('FINAL_GROUP_COMPOSER_MISSING');
+if(g.includes('fixed inset-0 z-50')&&g.includes('>Group info</h2>'))throw new Error('FINAL_FLOATING_GROUP_INFO_REMAINS');
+if(/onChange=\{e=\s*style=/.test(g))throw new Error('FINAL_MALFORMED_TEXTAREA_HANDLER_REMAINS');
+if((g.match(/MESSAGE CONTROL/g)||[]).length>1)throw new Error('FINAL_DUPLICATE_MESSAGE_CONTROL');
+
 fs.writeFileSync(path,g);
 console.log('Final community TypeScript normalization passed.');
