@@ -12,4 +12,4 @@ if(!s.includes(guard)){
 if(!s.includes("onChange=\\{e=\\s*style")) throw new Error('COMMUNITY_V6_TEXTAREA_GUARD_MISSING');
 fs.writeFileSync(path,s);
 console.log('Community v6 broad textarea guard installed.');
-// Trigger deployment from the connector-authored commit after the bot repair.
+// Final connector-authored trigger after the bot repair commit.
