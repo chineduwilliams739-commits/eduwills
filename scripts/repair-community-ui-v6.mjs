@@ -5,21 +5,25 @@ let g=fs.readFileSync(group,'utf8');
 
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 
-// Normalize duplicate community state declarations introduced by earlier repair passes.
-// Keep the first declaration and remove later duplicates for the known state variables.
-const stateNames=['isMember','joining','isLocked','members'];
-for(const name of stateNames){
-  const re=new RegExp(`,\\[${name},set${name.charAt(0).toUpperCase()+name.slice(1)}\\]=useState\\([^;]+\\);`,'g');
-  let matches=[...g.matchAll(re)];
-  if(matches.length>1){
-    for(let i=matches.length-1;i>0;i--)g=g.slice(0,matches[i].index)+g.slice(matches[i].index+matches[i][0].length);
-  }
+// Earlier community passes can emit the same React state declarations with different
+// whitespace or as separate lines. Normalize the known state declarations by removing
+// every occurrence, then add one canonical declaration inside Group.
+function resetState(name, setter, initializer){
+  const re=new RegExp(`\\[\\s*${name}\\s*,\\s*${setter}\\s*\\]\\s*=\\s*useState\\s*\\(\\s*${initializer}\\s*\\)`,'g');
+  g=g.replace(re,'');
+  // Clean separators left when a state was part of a combined declaration.
+  g=g.replace(/,\\s*,/g,',').replace(/const\\s*;/g,'');
 }
-// Specific legacy combined declaration variants.
-g=g.replace(/(\[unread,setUnread\]=useState\(0\)),\[isMember,setIsMember\]=useState\(false\),\[joining,setJoining\]=useState\(false\),\[isLocked,setIsLocked\]=useState\(false\);/g,'$1;');
-g=g.replace(/(\[unread,setUnread\]=useState\(0\)),\[isMember,setIsMember\]=useState\(false\),\[joining,setJoining\]=useState\(false\);/g,'$1;');
+resetState('isMember','setIsMember','false');
+resetState('joining','setJoining','false');
+resetState('isLocked','setIsLocked','false');
+resetState('members','setMembers','\\[\\]');
 
-// Remove duplicate named async handlers while preserving the first complete implementation.
+const groupOpen='export default function Group(){';
+if(!g.includes(groupOpen))throw new Error('GROUP_COMPONENT_MISSING');
+g=g.replace(groupOpen,`${groupOpen}\\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);`);
+
+// Remove duplicate async handlers while preserving the first complete implementation.
 function dedupeAsync(name){
   const marker=`async function ${name}(`;
   const first=g.indexOf(marker);
@@ -56,36 +60,13 @@ function dedupeAsync(name){
 }
 ['joinGroup','loadMembers','toggleLock','acknowledge'].forEach(dedupeAsync);
 
-// Remove legacy nested member-loader effect immediately before joinGroup.
-const nestedStart='useEffect(()=>{let cancelled=false;const loadMembers=async()=>';
-const nestedEnd='async function joinGroup';
-let ns=g.indexOf(nestedStart);
-while(ns>=0){
-  const ne=g.indexOf(nestedEnd,ns);
-  if(ne<0)break;
-  g=g.slice(0,ns)+g.slice(ne);
-  ns=g.indexOf(nestedStart,ns);
-}
+// Remove legacy nested member-loader effects left by older repairs.
 g=g.replace(/\n\s*useEffect\(\(\)=>\{let cancelled=false;const loadMembers=async\(\)=>[\s\S]*?\n\s*(?=async function joinGroup)/,'\n');
-
-// Explicitly guarantee exactly one lock state declaration. If an earlier pass left
-// duplicates in a combined declaration, retain the first occurrence and normalize it.
-const lockDecl='[isLocked,setIsLocked]=useState(false)';
-let lockAt=g.indexOf(lockDecl);
-if(lockAt>=0){
-  let after=lockAt+lockDecl.length;
-  while((after=g.indexOf(lockDecl,after))>=0){
-    const commaStart=g.lastIndexOf(',',after);
-    const semicolon=g.indexOf(';',after);
-    if(commaStart>=0&&commaStart>g.lastIndexOf('\n',after))g=g.slice(0,commaStart)+g.slice(after+lockDecl.length);
-    else g=g.slice(0,after)+g.slice(after+lockDecl.length);
-  }
-}
 
 if(!g.includes('async function joinGroup'))throw new Error('GROUP_JOIN_FUNCTION_MISSING');
 if(!g.includes('aria-label="Write a message"'))throw new Error('GROUP_COMPOSER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
-if((g.match(/\[isLocked,setIsLocked\]=useState\(false\)/g)||[]).length!==1)throw new Error('GROUP_LOCK_STATE_NOT_CANONICAL');
+if((g.match(/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g)||[]).length!==1)throw new Error('GROUP_LOCK_STATE_NOT_CANONICAL');
 
 fs.writeFileSync(group,g);
 
@@ -94,4 +75,4 @@ let c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 fs.writeFileSync(chat,c);
-console.log('Community UI v6 source normalization, duplicate cleanup, and validation passed.');
+console.log('Community UI v6 source normalization, state canonicalization, duplicate cleanup, and validation passed.');
