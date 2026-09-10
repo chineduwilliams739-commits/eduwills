@@ -8,10 +8,10 @@ let g=fs.readFileSync(group,'utf8');
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 
 // Keep the v6 guard deterministic: the repaired group source must contain exactly
-// one canonical member loader and join helper plus the required member UI/composer.
+// one standalone member loader and join helper plus the required member UI/composer.
 const count=(re)=>((g.match(re)||[]).length);
-if(count(/async\s+function\s+loadMembers\s*\([^)]*\)\s*\{/g)!==1)throw new Error('GROUP_MEMBER_LOADER_NOT_CANONICAL');
-if(count(/async\s+function\s+joinGroup\s*\(\s*\)\s*\{/g)!==1)throw new Error('GROUP_JOIN_FUNCTION_NOT_CANONICAL');
+if(count(/async function loadMembers\s*\([^)]*\)\s*\{/g)!==1)throw new Error('GROUP_MEMBER_LOADER_NOT_CANONICAL');
+if(count(/async function joinGroup\s*\(\s*\)\s*\{/g)!==1)throw new Error('GROUP_JOIN_FUNCTION_NOT_CANONICAL');
 if(!g.includes('aria-label="Write a message"'))throw new Error('GROUP_COMPOSER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
 
