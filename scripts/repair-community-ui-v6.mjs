@@ -6,19 +6,35 @@ let g=fs.readFileSync(group,'utf8');
 // Normalize accidental literal backslash+n separators left by older deterministic repairs.
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 
-// Older repair passes can corrupt the large one-line React state declaration by
-// removing only selected state fragments. Rebuild the entire state header from a
-// stable boundary instead of trying to repair individual commas in place.
 const groupOpen='export default function Group(){';
-const authEffect='\n useEffect(()=>onAuthStateChanged';
-const go=g.indexOf(groupOpen);
-const ae=go>=0?g.indexOf(authEffect,go):-1;
-if(go<0)throw new Error('GROUP_COMPONENT_MISSING');
-if(ae<0)throw new Error('GROUP_AUTH_EFFECT_MISSING');
+const authEffect='useEffect(()=>onAuthStateChanged';
+const open=g.indexOf(groupOpen);
+const auth=g.indexOf(authEffect,open);
+if(open<0)throw new Error('GROUP_COMPONENT_MISSING');
+if(auth<0)throw new Error('GROUP_AUTH_EFFECT_MISSING');
 
-const canonicalHeader=`${groupOpen}const id=new URLSearchParams(typeof window!=='undefined'?location.search:'').get('id')||'';const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[understood,setUnderstood]=useState(false),[tour,setTour]=useState(true),[settings,setSettings]=useState(false),[info,setInfo]=useState(false),[name,setName]=useState(''),[desc,setDesc]=useState(''),[avatar,setAvatar]=useState(''),[cover,setCover]=useState(''),[messages,setMessages]=useState<any[]>([]),[draft,setDraft]=useState(''),[image,setImage]=useState(''),[notice,setNotice]=useState(''),[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);`;
+// All of the community repair passes run in one workflow before v6. Older passes can
+// add these four declarations either into the main useState chain or as separate const
+// declarations. Canonicalize the entire pre-auth component header in one operation so
+// the generated TypeScript can never contain duplicate lock/member state.
+let header=g.slice(open+groupOpen.length,auth);
+header=header.replace(/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,?/g,'');
+header=header.replace(/\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,?/g,'');
+header=header.replace(/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,?/g,'');
+header=header.replace(/\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*,?/g,'');
+header=header.replace(/,\s*,/g,',').replace(/\(\s*,/g,'(').replace(/,\s*;/g,';');
+header=header.replace(/\bconst\s*;\s*/g,'');
 
-g=g.slice(0,go)+canonicalHeader+g.slice(ae);
+// Remove any standalone declaration left by a previous repair while it is still in the
+// header region. The canonical declaration below is the only source of these states.
+header=header.replace(/\s*const\s+\[\s*isMember[\s\S]*?\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*;?/g,'');
+header=header.replace(/\s*const\s+\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*;?/g,'');
+header=header.replace(/\s*const\s+\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*;?/g,'');
+header=header.replace(/\s*const\s+\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*;?/g,'');
+header=header.replace(/\s*const\s+\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*;?/g,'');
+
+const canonical='\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);\n ';
+g=g.slice(0,open+groupOpen.length)+canonical+header+g.slice(auth);
 
 // Remove duplicate async handlers while preserving the first complete implementation.
 function dedupeAsync(name){
@@ -60,10 +76,15 @@ function dedupeAsync(name){
 // Remove legacy nested member-loader effects left by older repairs.
 g=g.replace(/\n\s*useEffect\(\(\)=>\{let cancelled=false;const loadMembers=async\(\)=>[\s\S]*?\n\s*(?=async function joinGroup)/,'\n');
 
+// Hard validation: exactly one declaration for each canonical state must survive.
+const count=(needle)=>(g.match(needle)||[]).length;
+if(count(/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g)!==1)throw new Error('GROUP_MEMBER_STATE_NOT_CANONICAL');
+if(count(/\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g)!==1)throw new Error('GROUP_JOINING_STATE_NOT_CANONICAL');
+if(count(/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g)!==1)throw new Error('GROUP_LOCK_STATE_NOT_CANONICAL');
+if(count(/\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)/g)!==1)throw new Error('GROUP_MEMBERS_STATE_NOT_CANONICAL');
 if(!g.includes('async function joinGroup'))throw new Error('GROUP_JOIN_FUNCTION_MISSING');
 if(!g.includes('aria-label="Write a message"'))throw new Error('GROUP_COMPOSER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
-if((g.match(/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g)||[]).length!==1)throw new Error('GROUP_LOCK_STATE_NOT_CANONICAL');
 
 fs.writeFileSync(group,g);
 
@@ -72,4 +93,4 @@ let c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 fs.writeFileSync(chat,c);
-console.log('Community UI v6 source normalization, canonical header rebuild, duplicate cleanup, and validation passed.');
+console.log('Community UI v6 source normalization, deterministic header rebuild, duplicate cleanup, and validation passed.');
