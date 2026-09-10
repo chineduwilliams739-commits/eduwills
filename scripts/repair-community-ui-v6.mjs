@@ -5,19 +5,39 @@ let g=fs.readFileSync(group,'utf8');
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 g=g.replace(/setUnderstood\(d\.creatorRulesAccepted===true\|\|d\.ownerId!==user\.uid\)\},\[id,user\?\.uid\]\);/,'setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid);});},[id,user?.uid]);');
 
-// Collapse every community state variant into one canonical declaration.
-const stateMarker='[unread,setUnread]=useState(0);';
-const stateLine='\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);';
-g=g.replace(/\n\s*const \[isMember,setIsMember\]=useState\(false\),\[joining,setJoining\]=useState\(false\)(?:,\[isLocked,setIsLocked\]=useState\(false\))?(?:,\[members,setMembers\]=useState<any\[\]>\(\[\]\))?;?/g,'');
-g=g.replace(/\n\s*const \[isMember,setIsMember\]=useState\(false\);/g,'');
-g=g.replace(/\n\s*const \[joining,setJoining\]=useState\(false\);/g,'');
-g=g.replace(/\n\s*const \[isLocked,setIsLocked\]=useState\(false\);/g,'');
-g=g.replace(/\n\s*const \[members,setMembers\]=useState<any\[\]>\(\[\]\);/g,'');
-g=g.replace(/,isLocked=g\?\.messagingLocked===true(?=;)/g,'');
+// Remove community state bindings wherever an earlier repair pass placed them.
+// Do not depend on one exact declaration layout: controls-v2 may keep several
+// state variables on the same const line.
+const stateNames=['isMember','joining','isLocked','members'];
+const statePatterns={
+  isMember:/\[isMember\s*,\s*setIsMember\]\s*=\s*useState\s*\(\s*false\s*\)/g,
+  joining:/\[joining\s*,\s*setJoining\]\s*=\s*useState\s*\(\s*false\s*\)/g,
+  isLocked:/\[isLocked\s*,\s*setIsLocked\]\s*=\s*useState\s*\(\s*false\s*\)/g,
+  members:/\[members\s*,\s*setMembers\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)/g
+};
+for(const name of stateNames){
+  g=g.replace(statePatterns[name],'');
+}
+// Clean separators left behind after removing a binding from a combined const.
+g=g.replace(/,\s*,/g,',').replace(/\[unread,setUnread\]=useState\(0\)\s*,\s*;/g,'[unread,setUnread]=useState(0);');
+// Remove any derived binding that conflicts with the React lock state.
 g=g.replace(/,\s*isLocked\s*=\s*g\?\.messagingLocked===true(?=;)/g,'');
-if(!g.includes(stateLine.trim())){
-  if(!g.includes(stateMarker))throw new Error('GROUP_STATE_MARKER_NOT_FOUND');
-  g=g.replace(stateMarker,stateMarker+stateLine);
+g=g.replace(/,isLocked=g\?\.messagingLocked===true(?=;)/g,'');
+
+// Insert exactly one canonical community state declaration after the unread state.
+const canonical=' const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);';
+if(!g.includes(canonical)){
+  const lines=g.split('\n');
+  let inserted=false;
+  for(let i=0;i<lines.length;i++){
+    if(lines[i].includes('[unread,setUnread]=useState(0)')){
+      lines.splice(i+1,0,canonical.trimStart());
+      inserted=true;
+      break;
+    }
+  }
+  if(!inserted)throw new Error('GROUP_STATE_MARKER_NOT_FOUND');
+  g=lines.join('\n');
 }
 
 // Remove duplicate message-control sections.
