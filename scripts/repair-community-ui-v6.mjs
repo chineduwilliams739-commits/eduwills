@@ -7,11 +7,18 @@ let g=fs.readFileSync(group,'utf8');
 // deterministic repairs. These are source separators, not intended string data.
 g=g.replace(/\\n(?=\s*(?:const|useEffect|async|if|return|<))/g,'\n');
 
-// Keep the v6 guard deterministic: the repaired group source must contain exactly
-// one standalone member loader and join helper plus the required member UI/composer.
-const count=(re)=>((g.match(re)||[]).length);
-if(count(/async function loadMembers\s*\([^)]*\)\s*\{/g)!==1)throw new Error('GROUP_MEMBER_LOADER_NOT_CANONICAL');
-if(count(/async function joinGroup\s*\(\s*\)\s*\{/g)!==1)throw new Error('GROUP_JOIN_FUNCTION_NOT_CANONICAL');
+// Older community repairs could leave a second, nested member loader inside a
+// useEffect. Remove that redundant block and keep the standalone loader below it.
+const nestedStart=' useEffect(()=>{let cancelled=false;const loadMembers=async()=>';
+const nestedEnd='\n async function joinGroup';
+const ns=g.indexOf(nestedStart);
+const ne=ns>=0?g.indexOf(nestedEnd,ns):-1;
+if(ns>=0&&ne>ns)g=g.slice(0,ns)+g.slice(ne+1);
+
+// Use exact source markers instead of fragile escaped regexes.
+const count=(needle)=>g.split(needle).length-1;
+if(count('async function loadMembers')!==1)throw new Error('GROUP_MEMBER_LOADER_NOT_CANONICAL');
+if(count('async function joinGroup(){')!==1)throw new Error('GROUP_JOIN_FUNCTION_NOT_CANONICAL');
 if(!g.includes('aria-label="Write a message"'))throw new Error('GROUP_COMPOSER_MISSING');
 if(!g.includes('GROUP MEMBERS'))throw new Error('GROUP_INFO_PANEL_MISSING');
 
