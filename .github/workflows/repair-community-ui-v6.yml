@@ -32,14 +32,20 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           group=Path('app/dashboard/community/group/page.tsx').read_text()
           chat=Path('app/dashboard/community/chat/page.tsx').read_text()
           assert 'aria-label="Write a message"' in group
-          assert 'const loadMembers=async' in group
-          assert 'GROUP MEMBERS' in group
+          assert re.search(r'async function loadMembers\s*\(', group) or 'const loadMembers=async' in group
+          assert 'GROUP INFO' in group
+          assert '>MEMBERS</button>' in group
           assert 'async function joinGroup()' in group
           assert '||!isMember' in group
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
+          assert len(re.findall(r'\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)', group)) == 1
+          assert not re.search(r'\bisLocked\s*=\s*g\?\.messagingLocked===true', group)
+          assert not re.search(r'onChange=\{e=\s*style=', group)
+          assert not ('fixed inset-0 z-50' in group and '>Group info</h2>' in group)
           print('Community UI v6 source verification passed.')
           PY
 
