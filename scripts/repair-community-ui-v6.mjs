@@ -1,7 +1,11 @@
 import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
 
 const path='app/dashboard/community/group/page.tsx';
-let group=fs.readFileSync(path,'utf8');
+// Earlier repair passes can rewrite the same JSX more than once. Use the
+// committed Group page as the canonical baseline so the build workspace can
+// never accumulate duplicate state declarations or malformed JSX.
+let group=execFileSync('git',['show',`HEAD:${path}`],{encoding:'utf8'});
 
 group=group.replace(
   'onChange={e=>setDraft(e.target.value)} onKeyDown=',
@@ -11,7 +15,6 @@ group=group.replace(
   '>MEMBERS</button>',
   ' aria-label="GROUP MEMBERS">MEMBERS</button>'
 );
-
 fs.writeFileSync(path,group);
 
 const required=[
@@ -34,4 +37,4 @@ if((group.match(/\[joining\s*,\s*setJoining\]\s*=\s*useState\s*\(\s*false\s*\)/g
 if((group.match(/\[isLocked\s*,\s*setIsLocked\]\s*=\s*useState\s*\(\s*false\s*\)/g)||[]).length!==1)throw new Error('GROUP_UI_V6_LOCK_STATE_NOT_CANONICAL');
 if((group.match(/\[members\s*,\s*setMembers\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)/g)||[]).length!==1)throw new Error('GROUP_UI_V6_MEMBERS_STATE_NOT_CANONICAL');
 
-console.log('Community UI v6 safe normalization passed.');
+console.log('Community UI v6 canonical Group source replacement passed.');
