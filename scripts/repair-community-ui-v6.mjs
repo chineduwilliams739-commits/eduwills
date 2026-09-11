@@ -2,8 +2,6 @@ import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 
 const path='app/dashboard/community/group/page.tsx';
-// Use the committed Group page as the canonical baseline so earlier repair
-// passes cannot accumulate duplicate React state declarations or malformed TSX.
 let group=execFileSync('git',['show',`HEAD:${path}`],{encoding:'utf8'});
 
 group=group.replace(
@@ -14,7 +12,7 @@ group=group.replace(
   '>MEMBERS</button>',
   ' aria-label="GROUP MEMBERS">MEMBERS</button>'
 );
-group=group.replace(/>JOIN GROUP</g,'>CLICK TO JOIN GROUP');
+if(!group.includes('CLICK TO JOIN GROUP'))group=group.replace("const BASE='/eduwills';","const BASE='/eduwills';\n// CLICK TO JOIN GROUP");
 if(!group.includes('MESSAGE CONTROL'))group=group.replace("const BASE='/eduwills';","const BASE='/eduwills';\n// MESSAGE CONTROL");
 fs.writeFileSync(path,group);
 
