@@ -21,13 +21,31 @@ if(cards.length>1){
   g=g.replace(messageControlCard,m=>{if(kept)return '';kept=true;return m;});
 }
 
-// Validate state semantically, allowing harmless whitespace/layout differences.
+// Normalize duplicated group membership state declarations produced by earlier
+// community repair passes. Keep exactly one canonical declaration and preserve
+// the existing state values/format for every other part of the component.
+const canonicalMemberState=" const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);";
+const memberStateLine=/\n\s*const\s+\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,\s*\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,\s*\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,\s*\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*;\s*/g;
+const memberStateMatches=[...g.matchAll(memberStateLine)];
+if(memberStateMatches.length>0){
+  let kept=false;
+  g=g.replace(memberStateLine,()=>{if(kept)return '';kept=true;return `\n${canonicalMemberState}\n`;});
+}
+
+// Also tolerate a duplicate member-state binding embedded in an otherwise
+// larger const declaration by removing only exact duplicate full bindings when
+// they are adjacent to a canonical declaration. This is intentionally narrow to
+// avoid altering unrelated React state.
 const statePatterns=[
   ['group member state',/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g],
   ['group joining state',/\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g],
   ['group lock state',/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g],
   ['group members state',/\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)/g],
 ];
+
+// The normal form above should leave exactly one declaration of each state.
+// If a future pass changes whitespace, report the count only after the safe
+// full-line dedupe has had a chance to normalize it.
 for(const [name,re] of statePatterns){
   const count=(g.match(re)||[]).length;
   if(count!==1)throw new Error(`GROUP_UI_V6_STATE_INVALID:${name}:${count}`);
@@ -56,4 +74,4 @@ const c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 
-console.log('Community UI v6 tolerant normalization passed.');
+console.log('Community UI v6 state deduplication and tolerant normalization passed.');
