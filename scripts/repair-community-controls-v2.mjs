@@ -4,10 +4,13 @@ const replace=(file,from,to)=>{let s=fs.readFileSync(file,'utf8');if(!s.includes
 
 // Group page: membership state, message access, lock state, and exact join CTA.
 const group='app/dashboard/community/group/page.tsx';
-replace(group,
-  "[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);",
-  "[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0),[isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false);"
-);
+const groupState='[isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false)';
+if(!/\[isMember,setIsMember\]/.test(fs.readFileSync(group,'utf8'))){
+  replace(group,
+    "[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);",
+    "[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0),"+groupState+";"
+  );
+}
 replace(group,
   "setG(d);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');",
   "setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setIsLocked(d.messagingLocked===true);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');"
@@ -16,10 +19,20 @@ replace(group,
   "useEffect(()=>{if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages'),orderBy('createdAt','asc'),limit(200)),s=>setMessages(s.docs.map(x=>({id:x.id,...x.data()}))))},[g?.id,understood]);",
   "useEffect(()=>{if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages'),orderBy('createdAt','asc'),limit(200)),s=>setMessages(s.docs.map(x=>({id:x.id,...x.data()}))))},[g?.id,understood,isMember]);"
 );
-replace(group,
-  "const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;",
-  "const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;\n useEffect(()=>{if(!g||!user||!isMember)return;setDoc(doc(db,'communityGroups',id,'readState',user.uid),{unread:0,lastReadAt:serverTimestamp()},{merge:true}).catch(()=>{})},[g?.id,user?.uid,isMember]);\n async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function toggleLock(){if(!isAdmin)return;try{await updateDoc(doc(db,'communityGroups',id),{messagingLocked:!isLocked,updatedAt:serverTimestamp()});setIsLocked(!isLocked);setNotice(!isLocked?'Sending is now locked for members.':'Sending is now unlocked.')}catch(e:any){setNotice(e?.message||'Could not change message control.')}}"
-);
+const currentGroup=fs.readFileSync(group,'utf8');
+const adminAnchor="const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;";
+if(!currentGroup.includes('async function joinGroup()') && !currentGroup.includes('async function toggleLock()')){
+  replace(group,
+    adminAnchor,
+    adminAnchor+"\n useEffect(()=>{if(!g||!user||!isMember)return;setDoc(doc(db,'communityGroups',id,'readState',user.uid),{unread:0,lastReadAt:serverTimestamp()},{merge:true}).catch(()=>{})},[g?.id,user?.uid,isMember]);\n async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}\n async function toggleLock(){if(!isAdmin)return;try{await updateDoc(doc(db,'communityGroups',id),{messagingLocked:!isLocked,updatedAt:serverTimestamp()});setIsLocked(!isLocked);setNotice(!isLocked?'Sending is now locked for members.':'Sending is now unlocked.')}catch(e:any){setNotice(e?.message||'Could not change message control.')}}"
+  );
+}
+if(!fs.readFileSync(group,'utf8').includes('async function joinGroup()')){
+  replace(group,
+    adminAnchor,
+    adminAnchor+"\n useEffect(()=>{if(!g||!user||!isMember)return;setDoc(doc(db,'communityGroups',id,'readState',user.uid),{unread:0,lastReadAt:serverTimestamp()},{merge:true}).catch(()=>{})},[g?.id,user?.uid,isMember]);\n async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}"
+  );
+}
 replace(group,
   "async function send(){if((!draft.trim()&&!image)||!user)return;",
   "async function send(){if((!draft.trim()&&!image)||!user||!isMember||isLocked)return;"
