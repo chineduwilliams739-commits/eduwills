@@ -19,7 +19,7 @@ replace(group,
   "useEffect(()=>{if(!g||!user||!understood)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages'),orderBy('createdAt','asc'),limit(200)),s=>setMessages(s.docs.map(x=>({id:x.id,...x.data()}))))},[g?.id,understood]);",
   "useEffect(()=>{if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages'),orderBy('createdAt','asc'),limit(200)),s=>setMessages(s.docs.map(x=>({id:x.id,...x.data()}))))},[g?.id,understood,isMember]);"
 );
-const currentGroup=fs.readFileSync(group,'utf8');
+let currentGroup=fs.readFileSync(group,'utf8');
 const adminAnchor="const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;";
 if(!currentGroup.includes('async function joinGroup()') && !currentGroup.includes('async function toggleLock()')){
   replace(group,
@@ -33,12 +33,17 @@ if(!fs.readFileSync(group,'utf8').includes('async function joinGroup()')){
     adminAnchor+"\n useEffect(()=>{if(!g||!user||!isMember)return;setDoc(doc(db,'communityGroups',id,'readState',user.uid),{unread:0,lastReadAt:serverTimestamp()},{merge:true}).catch(()=>{})},[g?.id,user?.uid,isMember]);\n async function joinGroup(){if(!user||!g||joining||isMember)return;setJoining(true);try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),memberCount:(Array.isArray(g.memberIds)?g.memberIds.length:0)+1,updatedAt:serverTimestamp()});setIsMember(true);setNotice('You joined the group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}"
   );
 }
-if(!fs.readFileSync(group,'utf8').includes('async function toggleLock()')){
-  replace(group,
-    "async function send(){if((!draft.trim()&&!image)||!user)return;",
-    "async function toggleLock(){if(!isAdmin)return;try{const next=!isLocked;await updateDoc(doc(db,'communityGroups',id),{messagingLocked:next,updatedAt:serverTimestamp()});setIsLocked(next);setNotice(next?'Sending is now locked for members.':'Sending is now unlocked.')}catch(e:any){setNotice(e?.message||'Could not change message control.')}}\n async function send(){if((!draft.trim()&&!image)||!user)return;"
-  );
+// Ordering-safe toggleLock insertion: the earlier community-controls repair may
+// already have changed the send() guard, so anchor on the stable function signature.
+currentGroup=fs.readFileSync(group,'utf8');
+if(!currentGroup.includes('async function toggleLock()')){
+  const sendMarker='async function send(){';
+  if(!currentGroup.includes(sendMarker)) throw new Error('Could not insert toggleLock: send() anchor not found');
+  currentGroup=currentGroup.replace(sendMarker,"async function toggleLock(){if(!isAdmin)return;try{const next=!isLocked;await updateDoc(doc(db,'communityGroups',id),{messagingLocked:next,updatedAt:serverTimestamp()});setIsLocked(next);setNotice(next?'Sending is now locked for members.':'Sending is now unlocked.')}catch(e:any){setNotice(e?.message||'Could not change message control.')}}\n "+sendMarker);
+  fs.writeFileSync(group,currentGroup);
 }
+const repaired=fs.readFileSync(group,'utf8');
+if(!repaired.includes('async function toggleLock()')) throw new Error('Community repair failed: toggleLock was not inserted');
 replace(group,
   "async function send(){if((!draft.trim()&&!image)||!user)return;",
   "async function send(){if((!draft.trim()&&!image)||!user||!isMember||isLocked)return;"
@@ -53,7 +58,6 @@ replace(group,
 );
 
 // Community page: keep joined groups in the group section rather than Recent Chats.
-// Suggested cards retain the exact join CTA and joined cards use OPEN GROUP.
 const community='app/dashboard/community/page.tsx';
 let c=fs.readFileSync(community,'utf8');
 const cardStart=c.indexOf('function GroupCard(');
@@ -71,7 +75,5 @@ h=h.replace("[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null)
 const oldRows=" const chatRows=useMemo(()=>chats.map((c:any)=>{const ids=Array.isArray(c.participantIds)?c.participantIds:[];const other=ids.find((x:string)=>x!==user?.uid);return {...c,otherId:other,person:display(c.participantProfiles?.[other]||{uid:other,username:c.otherUsername,fullName:c.otherName,photoURL:c.otherPhotoURL})}}),[chats,user?.uid]);";
 const newRows=` useEffect(()=>{if(!user||!chats.length){setUnreadMap({});return}const cleanups=chats.slice(0,100).map((c:any)=>{let lastRead=0;let messageRows:any[]=[];const apply=()=>{const count=messageRows.filter((m:any)=>m.senderId!==user.uid&&(m.createdAt?.toMillis?.()||0)>lastRead).length;setUnreadMap(prev=>({...prev,[c.id]:count}))};const u1=onSnapshot(doc(db,'communityChats',c.id,'readState',user.uid),s=>{const d=s.data()||{};lastRead=d.lastReadAt?.toMillis?.()||0;apply()});const u2=onSnapshot(query(collection(db,'communityChats',c.id,'messages'),orderBy('createdAt','desc'),limit(100)),s=>{messageRows=s.docs.map(x=>({id:x.id,...x.data()}));apply()});return()=>{u1();u2()}});return()=>cleanups.forEach((fn:any)=>fn())},[user?.uid,chats]);\n const chatRows=useMemo(()=>chats.map((c:any)=>{const ids=Array.isArray(c.participantIds)?c.participantIds:[];const other=ids.find((x:string)=>x!==user?.uid);return {...c,otherId:other,person:display(c.participantProfiles?.[other]||{uid:other,username:c.otherUsername,fullName:c.otherName,photoURL:c.otherPhotoURL}),unreadCount:unreadMap[c.id]||0}}),[chats,user?.uid,unreadMap]);`;
 if(h.includes(oldRows)) h=h.replace(oldRows,newRows);
-// Never place groups or schools into the direct-chat list. The source of Recent Chats is
-// communityChats only; group/school collections remain on their own sections.
 fs.writeFileSync(chat,h);
 console.log('Community controls v3 applied: member reads, admin deletes, direct-chat recents and unread badges hardened.');
