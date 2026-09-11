@@ -14,6 +14,21 @@ g=g.replace(/onChange=\{e=\s*style=\{\{writingMode:'horizontal-tb',direction:'lt
 // Keep the current composer camera-free and horizontal.
 g=g.replace(/capture="environment"/g,'');
 
+// Earlier Community control passes could inject the MESSAGE CONTROL card more
+// than once. Normalize those existing cards instead of treating them as a fatal
+// condition. The card itself contains no nested <section>, so this pattern safely
+// captures each complete card and preserves the first canonical copy.
+const messageControlCard=/<section\b[^>]*>(?:(?!<section\b)[\s\S])*?MESSAGE CONTROL[\s\S]*?<\/section>/g;
+const messageControlCards=[...g.matchAll(messageControlCard)];
+if(messageControlCards.length>1){
+  let kept=false;
+  g=g.replace(messageControlCard,match=>{
+    if(kept)return '';
+    kept=true;
+    return match;
+  });
+}
+
 const required=[
   ['group member state','[isMember,setIsMember]=useState(false)'],
   ['group joining state','[joining,setJoining]=useState(false)'],
