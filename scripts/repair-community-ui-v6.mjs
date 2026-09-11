@@ -11,25 +11,31 @@ const messageControlCard=/<section\b[^>]*>(?:(?!<section\b)[\s\S])*?MESSAGE CONT
 const cards=[...g.matchAll(messageControlCard)];
 if(cards.length>1){let kept=false;g=g.replace(messageControlCard,m=>{if(kept)return '';kept=true;return m;});}
 
-// Canonical state normalization: remove every existing declaration/binding for
-// the four group-member states, regardless of whether an earlier repair pass
-// put them together or embedded them in a larger comma-separated const.
-const memberBinding=/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*(?:,\s*)?/g;
-const joiningBinding=/\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*(?:,\s*)?/g;
-const lockBinding=/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*(?:,\s*)?/g;
-const membersBinding=/\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*(?:,\s*)?/g;
-g=g.replace(memberBinding,'').replace(joiningBinding,'').replace(lockBinding,'').replace(membersBinding,'');
+// Canonical Group state replacement. Earlier repair passes may place these
+// bindings in one combined const or in separate const declarations. Instead of
+// trying to delete individual fragments and guessing an anchor, normalize the
+// entire state block between Group() and its first useEffect, then insert one
+// canonical declaration at the end of that block.
+const groupState=/export default function Group\(\)\{([\s\S]*?)(?=\n\s*useEffect\()/;
+const match=g.match(groupState);
+if(!match)throw new Error('GROUP_UI_V6_GROUP_STATE_BLOCK_MISSING');
 
-// Remove empty const fragments left by the binding cleanup, then place exactly
-// one canonical block immediately after the existing unread state declaration.
-g=g.replace(/const\s*;\s*/g,'');
-g=g.replace(/,\s*;/g,';');
-g=g.replace(/\n\s*\n\s*\n/g,'\n\n');
+let stateBlock=match[1];
+const stateBindings=[
+  /\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,?/g,
+  /\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,?/g,
+  /\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,?/g,
+  /\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*,?/g,
+];
+for(const re of stateBindings)stateBlock=stateBlock.replace(re,'');
+stateBlock=stateBlock.replace(/\n\s*const\s*;\s*/g,'\n');
+stateBlock=stateBlock.replace(/,\s*;/g,';');
+stateBlock=stateBlock.replace(/\n\s*\n\s*\n/g,'\n\n');
 
 const canonical='\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);';
-const unread=/const\s*\[unread\s*,\s*setUnread\]\s*=\s*useState\s*\(\s*0\s*\)\s*;/;
-if(!unread.test(g))throw new Error('GROUP_UI_V6_UNREAD_STATE_ANCHOR_MISSING');
-g=g.replace(unread,m=>m+canonical);
+stateBlock=stateBlock.replace(/;\s*$/,';'+canonical);
+if(!stateBlock.includes(canonical.trim()))throw new Error('GROUP_UI_V6_CANONICAL_STATE_INSERT_FAILED');
+g=g.replace(groupState,`export default function Group(){${stateBlock}`);
 
 const statePatterns=[
   ['group member state',/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g],
@@ -63,4 +69,4 @@ const c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 
-console.log('Community UI v6 canonical state normalization passed.');
+console.log('Community UI v6 canonical Group state replacement passed.');
