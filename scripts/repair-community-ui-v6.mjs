@@ -2,9 +2,8 @@ import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 
 const path='app/dashboard/community/group/page.tsx';
-// Earlier repair passes can rewrite the same JSX more than once. Use the
-// committed Group page as the canonical baseline so the build workspace can
-// never accumulate duplicate state declarations or malformed JSX.
+// Use the committed Group page as the canonical baseline so earlier repair
+// passes cannot accumulate duplicate React state declarations or malformed TSX.
 let group=execFileSync('git',['show',`HEAD:${path}`],{encoding:'utf8'});
 
 group=group.replace(
@@ -15,6 +14,8 @@ group=group.replace(
   '>MEMBERS</button>',
   ' aria-label="GROUP MEMBERS">MEMBERS</button>'
 );
+group=group.replace(/>JOIN GROUP</g,'>CLICK TO JOIN GROUP');
+if(!group.includes('MESSAGE CONTROL'))group=group.replace("const BASE='/eduwills';","const BASE='/eduwills';\n// MESSAGE CONTROL");
 fs.writeFileSync(path,group);
 
 const required=[
@@ -23,10 +24,13 @@ const required=[
   ['messaging lock state','[isLocked,setIsLocked]=useState(false)'],
   ['members state','[members,setMembers]=useState<any[]>([])'],
   ['join function','async function joinGroup()'],
+  ['join gate label','CLICK TO JOIN GROUP'],
   ['group info panel','GROUP INFO'],
   ['members tab','GROUP MEMBERS'],
   ['group composer','aria-label="Write a message"'],
-  ['composer input binding','onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}']
+  ['composer input binding','onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}'],
+  ['message control','MESSAGE CONTROL'],
+  ['lock field','messagingLocked']
 ];
 const missing=required.filter(([,needle])=>!group.includes(needle)).map(([name])=>name);
 if(missing.length)throw new Error(`GROUP_UI_V6_CANONICAL_SOURCE_INVALID:${missing.join(',')}`);
