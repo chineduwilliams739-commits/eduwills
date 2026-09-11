@@ -8,10 +8,8 @@ group=group.replace(
   'onChange={e=>setDraft(e.target.value)} onKeyDown=',
   'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)} onKeyDown='
 );
-group=group.replace(
-  '>MEMBERS</button>',
-  ' aria-label="GROUP MEMBERS">MEMBERS</button>'
-);
+group=group.replace(/(?:\s*aria-label="GROUP MEMBERS")+/g,' aria-label="GROUP MEMBERS"');
+group=group.replace('const d={id:s.id,...s.data()};','const d:any={id:s.id,...s.data()};');
 if(!group.includes('CLICK TO JOIN GROUP'))group=group.replace("const BASE='/eduwills';","const BASE='/eduwills';\n// CLICK TO JOIN GROUP");
 if(!group.includes('MESSAGE CONTROL'))group=group.replace("const BASE='/eduwills';","const BASE='/eduwills';\n// MESSAGE CONTROL");
 fs.writeFileSync(path,group);
