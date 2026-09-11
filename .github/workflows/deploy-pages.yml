@@ -207,3 +207,4 @@ jobs:
         uses: actions/deploy-pages@v4
 
 # Repair scripts intentionally run in the build workspace; they no longer push from the Pages build job.
+# Community repair scripts are now idempotent so repeated Pages builds cannot re-declare group state or handlers.
