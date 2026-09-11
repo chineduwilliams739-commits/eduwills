@@ -11,36 +11,25 @@ const messageControlCard=/<section\b[^>]*>(?:(?!<section\b)[\s\S])*?MESSAGE CONT
 const cards=[...g.matchAll(messageControlCard)];
 if(cards.length>1){let kept=false;g=g.replace(messageControlCard,m=>{if(kept)return '';kept=true;return m;});}
 
-// Normalize the complete four-state group declaration wherever earlier repair
-// passes placed it. This works whether it is on its own line or embedded inside
-// a larger comma-separated const declaration.
-const stateBlock=/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,\s*\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,\s*\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*,\s*\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)/g;
-const canonical='[isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([])';
-let first=true;
-let m;
-while((m=stateBlock.exec(g))!==null){
-  if(first){first=false;continue;}
-  const start=m.index;
-  let removeStart=start;
-  let i=start-1;
-  while(i>=0 && /\s/.test(g[i]))i--;
-  if(g[i]===','){
-    removeStart=i;
-    while(removeStart>0 && /\s/.test(g[removeStart-1]))removeStart--;
-  }else{
-    const prefix=g.slice(Math.max(0,start-12),start);
-    const ci=prefix.lastIndexOf('const');
-    if(ci>=0)removeStart=start-12+ci;
-  }
-  const end=stateBlock.lastIndex;
-  g=g.slice(0,removeStart)+g.slice(end);
-  stateBlock.lastIndex=removeStart;
-  first=false;
-}
+// Canonical state normalization: remove every existing declaration/binding for
+// the four group-member states, regardless of whether an earlier repair pass
+// put them together or embedded them in a larger comma-separated const.
+const memberBinding=/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*(?:,\s*)?/g;
+const joiningBinding=/\[\s*joining\s*,\s*setJoining\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*(?:,\s*)?/g;
+const lockBinding=/\[\s*isLocked\s*,\s*setIsLocked\s*\]\s*=\s*useState\s*\(\s*false\s*\)\s*(?:,\s*)?/g;
+const membersBinding=/\[\s*members\s*,\s*setMembers\s*\]\s*=\s*useState\s*<\s*any\[\]\s*>\s*\(\s*\[\]\s*\)\s*(?:,\s*)?/g;
+g=g.replace(memberBinding,'').replace(joiningBinding,'').replace(lockBinding,'').replace(membersBinding,'');
 
-// If there was no full block, do not invent one. If there was one or more,
-// ensure the first surviving block is canonical.
-g=g.replace(stateBlock,canonical);
+// Remove empty const fragments left by the binding cleanup, then place exactly
+// one canonical block immediately after the existing unread state declaration.
+g=g.replace(/const\s*;\s*/g,'');
+g=g.replace(/,\s*;/g,';');
+g=g.replace(/\n\s*\n\s*\n/g,'\n\n');
+
+const canonical='\n const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);';
+const unread=/const\s*\[unread\s*,\s*setUnread\]\s*=\s*useState\s*\(\s*0\s*\)\s*;/;
+if(!unread.test(g))throw new Error('GROUP_UI_V6_UNREAD_STATE_ANCHOR_MISSING');
+g=g.replace(unread,m=>m+canonical);
 
 const statePatterns=[
   ['group member state',/\[\s*isMember\s*,\s*setIsMember\s*\]\s*=\s*useState\s*\(\s*false\s*\)/g],
@@ -74,4 +63,4 @@ const c=fs.readFileSync(chat,'utf8');
 if(!c.includes('Search by name or username'))throw new Error('CHAT_SEARCH_INPUT_MISSING');
 if(c.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]'))throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 
-console.log('Community UI v6 robust state deduplication passed.');
+console.log('Community UI v6 canonical state normalization passed.');
