@@ -50,9 +50,12 @@ while(true){
 g=g.replace(/^\s*\/\/ MESSAGE CONTROL\s*$/gm,'');
 
 // Earlier community repair passes can leave an orphan lock/unlock button outside the
-// MESSAGE CONTROL section. Remove those legacy buttons before inserting one canonical
-// control, otherwise verification can still see two LOCK SENDING labels.
-g=g.replace(/<button\b[^>]*>[^<]*(?:UNLOCK SENDING|LOCK SENDING)[^<]*<\/button>/g,'');
+// MESSAGE CONTROL section. Match the whole button even when its label is split across
+// nested JSX/spans or lines, then remove only buttons containing a lock-control label.
+// This runs before insertion of the canonical control, so it cannot remove the new one.
+g=g.replace(/<button\b[\s\S]*?<\/button>/g,(button)=>
+  /(?:UNLOCK SENDING|LOCK SENDING)/.test(button)?'':button
+);
 
 const lockUi=`{isAdmin&&<section className="mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">MESSAGE CONTROL</p><p className="mt-1 text-xs font-bold text-slate-500">{isLocked?'Members cannot send messages.':'Members can send messages.'}</p></div><button type="button" onClick={toggleLock} className="rounded-xl bg-ink px-4 py-2.5 text-[10px] font-black text-white">{isLocked?'UNLOCK SENDING':'LOCK SENDING'}</button></div></section>}`;
 
