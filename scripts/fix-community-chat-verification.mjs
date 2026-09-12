@@ -18,7 +18,8 @@ s = s.replace(/placeholder="Search by name or username(?:…|\.\.\.)?"/g, 'place
 // relying on one exact surrounding state string. Remove every existing declaration,
 // then insert exactly one immediately before profilePeople. This is idempotent.
 const searchingState = '[searching,setSearching]=useState(false)';
-s = s.replace(new RegExp(`${searchingState.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')},?`, 'g'), '');
+const escapedSearchingState = searchingState.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+s = s.replace(new RegExp(escapedSearchingState + ',?', 'g'), '');
 const profileStateAnchor = '[profilePeople,setProfilePeople]';
 if (s.includes(profileStateAnchor)) {
   s = s.replace(profileStateAnchor, `${searchingState},${profileStateAnchor}`);
