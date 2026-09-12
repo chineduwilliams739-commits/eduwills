@@ -17,13 +17,15 @@ function findMessageControlBlock(source){
   return {start:adminStart,end};
 }
 
-// Earlier repair passes can emit multiple lock sections. Replace them with one
-// parser-safe, deterministic control block. toggleLock still performs the real action.
 while((g.match(/MESSAGE CONTROL/g)||[]).length>0){
   const block=findMessageControlBlock(g);
   if(!block)break;
   g=g.slice(0,block.start)+g.slice(block.end);
 }
+
+// Some earlier repair passes can leave an older lock button without the
+// MESSAGE CONTROL marker. Remove every standalone LOCK SENDING button first.
+g=g.replace(/<button\b[^>]*>\s*(?:\{['\"]LOCK SENDING['\"]\}|LOCK SENDING)\s*<\/button>/g,'');
 
 const lockUi=`{isAdmin && (
   <section className="mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0">
@@ -59,7 +61,8 @@ if(/\/>$/.test(textarea))textarea=textarea.replace(/\/>$/,style+'/>');
 else textarea=textarea.replace(/>$/,style+'>');
 g=g.replace(match[0],textarea);
 
-const lockCount=(g.match(/LOCK SENDING/g)||[]).length;const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
+const lockCount=(g.match(/LOCK SENDING/g)||[]).length;
+const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
 if(lockCount!==1||controlCount!==1)throw new Error(`GROUP_LOCK_UI_NOT_NORMALIZED:${controlCount}:${lockCount}`);
 if(!g.includes('async function toggleLock()'))throw new Error('GROUP_LOCK_TOGGLE_MISSING');
 if(!g.includes('onClick={toggleLock}'))throw new Error('GROUP_LOCK_HANDLER_MISSING');
@@ -67,4 +70,4 @@ if(!g.includes("WebkitWritingMode:'horizontal-tb'"))throw new Error('GROUP_COMPO
 if(!g.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}'))throw new Error('GROUP_COMPOSER_INPUT_HANDLER_MISSING');
 
 fs.writeFileSync(group,g);
-console.log('Community group v8 finalized safely: one parser-safe lock control and valid horizontal composer.');
+console.log('Community group v8 finalized safely: exactly one lock control and valid horizontal composer.');
