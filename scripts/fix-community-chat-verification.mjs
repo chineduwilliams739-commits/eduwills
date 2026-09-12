@@ -6,19 +6,9 @@ let s = fs.readFileSync(path, 'utf8');
 // Recent Chats must contain direct chats only. Groups are displayed in the Groups
 // area of the Community page, not mixed into the direct-message recents list.
 // Normalize any prior recentRows declaration that combines chatRows with groupRows,
-// regardless of its sort/filter/slice suffix, then preserve the direct-chat suffix.
-const recentStart = s.indexOf('const recentRows=useMemo(()=>[...chatRows,...groupRows]');
-if (recentStart >= 0) {
-  const recentEnd = s.indexOf('),[chatRows,groupRows]);', recentStart);
-  if (recentEnd >= 0) {
-    const declarationEnd = recentEnd + '),[chatRows,groupRows]);'.length;
-    const oldDecl = s.slice(recentStart, declarationEnd);
-    const suffixStart = oldDecl.indexOf('].sort(');
-    const directSuffix = suffixStart >= 0 ? oldDecl.slice(suffixStart) : '.sort((a:any,b:any)=>(b.updatedAt||0)-(a.updatedAt||0)),[chatRows]);';
-    const normalized = `const recentRows=useMemo(()=>[...chatRows${directSuffix.replace('],[chatRows,groupRows]);','],[chatRows]);')}`;
-    s = s.slice(0, recentStart) + normalized + s.slice(declarationEnd);
-  }
-}
+// regardless of its sort/filter/slice suffix, to one canonical direct-chat declaration.
+s = s.replace(/const recentRows=useMemo\(\(\)=>\[\.\.\.chatRows,\.\.\.groupRows\][\s\S]*?\),\[chatRows,groupRows\]\);/g,
+  'const recentRows=useMemo(()=>[...chatRows].sort((a:any,b:any)=>(b.updatedAt||0)-(a.updatedAt||0)),[chatRows]);');
 
 // The search implementation uses the username index and performs a name/username
 // fallback scan. Normalize the placeholder without depending on Unicode punctuation.
