@@ -17,15 +17,31 @@ function findMessageControlBlock(source){
   return {start:adminStart,end};
 }
 
-// Earlier repair passes can emit multiple lock sections and their inline ternaries
-// are fragile in the minified group return. Replace them with one parser-simple,
-// deterministic control block. toggleLock still performs the real lock/unlock action.
+// Earlier repair passes can emit multiple lock sections. Replace them with one
+// parser-safe, deterministic control block. toggleLock still performs the real action.
 while((g.match(/MESSAGE CONTROL/g)||[]).length>0){
   const block=findMessageControlBlock(g);
   if(!block)break;
   g=g.slice(0,block.start)+g.slice(block.end);
 }
-const lockUi=`{isAdmin&&<section className="mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">MESSAGE CONTROL</p><p className="mt-1 text-xs font-bold text-slate-500">Use this control to lock or unlock member sending.</p></div><button type="button" onClick={toggleLock} className="rounded-xl bg-ink px-4 py-2.5 text-[10px] font-black text-white">{'LOCK SENDING'}</button></div></section>}`;
+
+const lockUi=`{isAdmin && (
+  <section className="mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0">
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">MESSAGE CONTROL</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">Use this control to lock or unlock member sending.</p>
+      </div>
+      <button
+        type="button"
+        onClick={toggleLock}
+        className="rounded-xl bg-ink px-4 py-2.5 text-[10px] font-black text-white"
+      >
+        LOCK SENDING
+      </button>
+    </div>
+  </section>
+)}`;
 const rulesAnchor='<section className="mx-3 my-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mx-0">';
 if(!g.includes(rulesAnchor))throw new Error('GROUP_RULES_ANCHOR_NOT_FOUND');
 g=g.replace(rulesAnchor,lockUi+'\n '+rulesAnchor);
@@ -43,7 +59,7 @@ if(/\/>$/.test(textarea))textarea=textarea.replace(/\/>$/,style+'/>');
 else textarea=textarea.replace(/>$/,style+'>');
 g=g.replace(match[0],textarea);
 
-const lockCount=(g.match(/['"]LOCK SENDING['"]/g)||[]).length;const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
+const lockCount=(g.match(/LOCK SENDING/g)||[]).length;const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
 if(lockCount!==1||controlCount!==1)throw new Error(`GROUP_LOCK_UI_NOT_NORMALIZED:${controlCount}:${lockCount}`);
 if(!g.includes('async function toggleLock()'))throw new Error('GROUP_LOCK_TOGGLE_MISSING');
 if(!g.includes('onClick={toggleLock}'))throw new Error('GROUP_LOCK_HANDLER_MISSING');
@@ -51,4 +67,4 @@ if(!g.includes("WebkitWritingMode:'horizontal-tb'"))throw new Error('GROUP_COMPO
 if(!g.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}'))throw new Error('GROUP_COMPOSER_INPUT_HANDLER_MISSING');
 
 fs.writeFileSync(group,g);
-console.log('Community group v8 finalized safely: one parser-simple lock control and valid horizontal composer.');
+console.log('Community group v8 finalized safely: one parser-safe lock control and valid horizontal composer.');
