@@ -69,6 +69,11 @@ const textareaRe=/<textarea\b[^>]*aria-label="Write a message"[^>]*>/;
 const match=g.match(textareaRe);
 if(!match) throw new Error('GROUP_COMPOSER_NOT_FOUND');
 let textarea=match[0];
+// The finalizer is the last source mutation before verification, so make the input
+// handler deterministic here as well as in the earlier repair script.
+if(!textarea.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}')){
+  textarea=textarea.replace(/(<textarea\b[^>]*)(?=>)/, '$1 onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}');
+}
 textarea=textarea.replace(/\sstyle=\{\{[^}]*\}\}/,'');
 const style=" style={{writingMode:'horizontal-tb',WebkitWritingMode:'horizontal-tb',textOrientation:'mixed',direction:'ltr',textAlign:'left',whiteSpace:'pre-wrap',wordBreak:'break-word'}}";
 textarea=textarea.replace(/>$/,style+'>');
@@ -81,6 +86,7 @@ const lockCount=(g.match(/['"]LOCK SENDING['"]/g)||[]).length;
 const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
 if(lockCount!==1||controlCount!==1) throw new Error(`GROUP_LOCK_UI_NOT_NORMALIZED:${controlCount}:${lockCount}`);
 if(!g.includes("WebkitWritingMode:'horizontal-tb'")) throw new Error('GROUP_COMPOSER_HORIZONTAL_STYLE_MISSING');
+if(!g.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}')) throw new Error('GROUP_COMPOSER_INPUT_HANDLER_MISSING');
 
 fs.writeFileSync(group,g);
-console.log('Community group v8 finalized: exactly one lock-sending control and forced horizontal composer flow.');
+console.log('Community group v8 finalized: exactly one lock-sending control, horizontal composer flow, and mobile-safe input handling.');
