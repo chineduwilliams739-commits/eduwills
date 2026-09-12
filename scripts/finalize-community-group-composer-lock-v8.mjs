@@ -28,8 +28,6 @@ while(true){
   const adminStart=g.lastIndexOf('{isAdmin&&',marker);
   const sectionStart=adminStart>=0?g.indexOf('<section',adminStart): -1;
   if(adminStart<0||sectionStart<0||sectionStart>marker||marker-adminStart>2000){
-    // A standalone source comment is not a UI block; remove it so verification counts
-    // describe rendered controls rather than comments.
     const commentStart=g.lastIndexOf('//',marker);
     const lineEnd=g.indexOf('\n',marker);
     if(commentStart>=0&&commentStart<marker&&(lineEnd<0||commentStart<lineEnd)){
@@ -46,13 +44,8 @@ while(true){
   g=g.slice(0,adminStart)+g.slice(end);
 }
 
-// Remove any remaining source comments naming the control.
 g=g.replace(/^\s*\/\/ MESSAGE CONTROL\s*$/gm,'');
 
-// Earlier community repair passes can leave an orphan lock/unlock button outside the
-// MESSAGE CONTROL section. Match the whole button even when its label is split across
-// nested JSX/spans or lines, then remove only buttons containing a lock-control label.
-// This runs before insertion of the canonical control, so it cannot remove the new one.
 g=g.replace(/<button\b[\s\S]*?<\/button>/g,(button)=>
   /(?:UNLOCK SENDING|LOCK SENDING)/.test(button)?'':button
 );
@@ -69,19 +62,17 @@ const textareaRe=/<textarea\b[^>]*aria-label="Write a message"[^>]*>/;
 const match=g.match(textareaRe);
 if(!match) throw new Error('GROUP_COMPOSER_NOT_FOUND');
 let textarea=match[0];
-// The finalizer is the last source mutation before verification, so make the input
-// handler deterministic here as well as in the earlier repair script.
 if(!textarea.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}')){
   textarea=textarea.replace(/(<textarea\b[^>]*)(?=>)/, '$1 onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}');
 }
 textarea=textarea.replace(/\sstyle=\{\{[^}]*\}\}/,'');
 const style=" style={{writingMode:'horizontal-tb',WebkitWritingMode:'horizontal-tb',textOrientation:'mixed',direction:'ltr',textAlign:'left',whiteSpace:'pre-wrap',wordBreak:'break-word'}}";
-textarea=textarea.replace(/>$/,style+'>');
+// Preserve self-closing JSX correctly. The previous /\/>$/ mutation inserted the
+// style after the slash, producing invalid TSX such as `<textarea .../> style=...>`.
+if(/\/>$/.test(textarea)) textarea=textarea.replace(/\/>$/,style+'/>');
+else textarea=textarea.replace(/>$/,style+'>');
 g=g.replace(match[0],textarea);
 
-// Count the actual quoted LOCK SENDING label, not the substring inside
-// "UNLOCK SENDING". The previous check used /LOCK SENDING/g, which falsely counted
-// the LOCK portion of the UNLOCK label and rejected a valid single control as 1:2.
 const lockCount=(g.match(/['"]LOCK SENDING['"]/g)||[]).length;
 const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
 if(lockCount!==1||controlCount!==1) throw new Error(`GROUP_LOCK_UI_NOT_NORMALIZED:${controlCount}:${lockCount}`);
