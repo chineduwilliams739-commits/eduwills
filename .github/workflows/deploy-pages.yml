@@ -63,7 +63,9 @@ jobs:
         run: node scripts/fix-group-input-and-image-upload-v5.mjs
       - name: Apply Community UI v6 repair
         run: node scripts/repair-community-ui-v6.mjs
-      - name: Verify Community UI v6 source before build
+      - name: Finalize group lock control and horizontal composer
+        run: node scripts/finalize-community-group-composer-lock-v8.mjs
+      - name: Verify Community UI v8 source before build
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -76,9 +78,12 @@ jobs:
           assert 'async function joinGroup()' in group
           assert 'async function toggleLock()' in group
           assert 'onClick={toggleLock}' in group
+          assert group.count('MESSAGE CONTROL') == 1
+          assert group.count('LOCK SENDING') == 1
+          assert "WebkitWritingMode:'horizontal-tb'" in group
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
-          print('Community UI v6 source verification passed, including toggleLock.')
+          print('Community UI v8 source verification passed: one lock control and horizontal composer.')
           PY
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
@@ -143,9 +148,10 @@ jobs:
               'community image storage path retained for legacy data': 'match /community/{uid}/{fileName}' in storage,
               'group message image storage path retained for legacy data': 'match /community/{groupId}/messages/{uid}/{fileName}' in storage,
               'group composer textarea': 'aria-label="Write a message"' in community_group and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
+              'group composer horizontal flow': "WebkitWritingMode:'horizontal-tb'" in community_group,
               'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
-              'community message lock UI': 'MESSAGE CONTROL' in community_group and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
+              'community message lock UI': community_group.count('MESSAGE CONTROL') == 1 and community_group.count('LOCK SENDING') == 1 and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
               'community suggested join button': 'CLICK TO JOIN GROUP' in community,
               'community chat search': 'usernameIndex' in community_chat and 'Search by name or username' in community_chat and 'name.includes(term)' in community_chat and 'un.includes(term)' in community_chat,
               'community image upload': 'DeviceImageUpload' in community_chat,
