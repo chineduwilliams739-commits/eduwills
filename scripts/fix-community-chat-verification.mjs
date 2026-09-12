@@ -5,9 +5,20 @@ let s = fs.readFileSync(path, 'utf8');
 
 // Recent Chats must contain direct chats only. Groups are displayed in the Groups
 // area of the Community page, not mixed into the direct-message recents list.
-const oldRecent = 'const recentRows=useMemo(()=>[...chatRows,...groupRows].sort((a:any,b:any)=>(b.updatedAt||0)-(a.updatedAt||0)),[chatRows,groupRows]);';
-const newRecent = 'const recentRows=useMemo(()=>[...chatRows].sort((a:any,b:any)=>(b.updatedAt||0)-(a.updatedAt||0)),[chatRows]);';
-if (s.includes(oldRecent)) s = s.replace(oldRecent, newRecent);
+// Normalize any prior recentRows declaration that combines chatRows with groupRows,
+// regardless of its sort/filter/slice suffix, then preserve the direct-chat suffix.
+const recentStart = s.indexOf('const recentRows=useMemo(()=>[...chatRows,...groupRows]');
+if (recentStart >= 0) {
+  const recentEnd = s.indexOf('),[chatRows,groupRows]);', recentStart);
+  if (recentEnd >= 0) {
+    const declarationEnd = recentEnd + '),[chatRows,groupRows]);'.length;
+    const oldDecl = s.slice(recentStart, declarationEnd);
+    const suffixStart = oldDecl.indexOf('].sort(');
+    const directSuffix = suffixStart >= 0 ? oldDecl.slice(suffixStart) : '.sort((a:any,b:any)=>(b.updatedAt||0)-(a.updatedAt||0)),[chatRows]);';
+    const normalized = `const recentRows=useMemo(()=>[...chatRows${directSuffix.replace('],[chatRows,groupRows]);','],[chatRows]);')}`;
+    s = s.slice(0, recentStart) + normalized + s.slice(declarationEnd);
+  }
+}
 
 // The search implementation uses the username index and performs a name/username
 // fallback scan. Normalize the placeholder without depending on Unicode punctuation.
@@ -40,7 +51,7 @@ if (profileStart >= 0 && profileEnd > profileStart) {
 
 if (!s.includes('Search by name or username')) throw new Error('COMMUNITY_CHAT_SEARCH_UI_NOT_FOUND');
 if (!s.includes('usernameIndex') || !s.includes('name.includes(term)') || !s.includes('un.includes(term)')) throw new Error('COMMUNITY_CHAT_SEARCH_IMPLEMENTATION_NOT_FOUND');
-if (s.includes('const recentRows=useMemo(()=>[...chatRows,...groupRows]')) throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
+if (/const recentRows=useMemo\(\(\)=>\[\.\.\.chatRows,\.\.\.groupRows\]/.test(s)) throw new Error('GROUPS_STILL_IN_RECENT_CHATS');
 if ((s.split(searchingState).length - 1) !== 1) throw new Error('COMMUNITY_CHAT_SEARCH_STATE_DUPLICATED');
 if (!s.includes('publicUserIndex') || !s.includes("collection(db,'users')")) throw new Error('COMMUNITY_CHAT_PROFILE_FALLBACK_MISSING');
 
