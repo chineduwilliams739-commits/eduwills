@@ -41,17 +41,17 @@ if(!g.includes('aria-label="Write a message"'))throw new Error('FINAL_GROUP_COMP
 if(g.includes('fixed inset-0 z-50')&&g.includes('>Group info</h2>'))throw new Error('FINAL_FLOATING_GROUP_INFO_REMAINS');
 if(/onChange=\{e=\s*style=/.test(g))throw new Error('FINAL_MALFORMED_TEXTAREA_HANDLER_REMAINS');
 
-// Normalize duplicate MESSAGE CONTROL sections left by earlier idempotent repairs.
-function findSectionEnd(source,start){const re=/<\/?section\b[^>]*>/g;re.lastIndex=start;let depth=0,m;while((m=re.exec(source))){if(m[0].startsWith('</')){depth--;if(depth===0)return m.index+m[0].length;}else depth++;}return -1;}
-while((g.match(/MESSAGE CONTROL/g)||[]).length>1){
-  const first=g.indexOf('MESSAGE CONTROL');
-  const second=g.indexOf('MESSAGE CONTROL',first+1);
-  const adminStart=g.lastIndexOf('{isAdmin&&',second);
-  const sectionStart=adminStart>=0?g.indexOf('<section',adminStart):-1;
-  const end=sectionStart>=0?findSectionEnd(g,sectionStart):-1;
-  if(adminStart<0||sectionStart<0||end<0)throw new Error('FINAL_DUPLICATE_MESSAGE_CONTROL_UNLOCATABLE');
-  let cut=end;while(/\s/.test(g[cut]||''))cut++;if(g[cut]==='}')cut++;
-  g=g.slice(0,adminStart)+g.slice(cut);
+// Keep exactly one complete MESSAGE CONTROL section. Earlier community repair passes
+// can emit two equivalent sections, so normalize the complete JSX block before the
+// v8 composer finalizer runs.
+const controlRe=/\{isAdmin&&<section\b[^>]*>[\s\S]*?MESSAGE CONTROL[\s\S]*?<\/section>\}/g;
+const controlBlocks=[...g.matchAll(controlRe)].map(m=>({text:m[0],index:m.index||0}));
+if(controlBlocks.length===0)throw new Error('FINAL_MESSAGE_CONTROL_MISSING');
+if(controlBlocks.length>1){
+  const firstBlock=controlBlocks[0].text;
+  const firstIndex=controlBlocks[0].index;
+  g=g.replace(controlRe,'');
+  g=g.slice(0,firstIndex)+firstBlock+g.slice(firstIndex);
 }
 if((g.match(/MESSAGE CONTROL/g)||[]).length!==1)throw new Error('FINAL_MESSAGE_CONTROL_NOT_NORMALIZED');
 
