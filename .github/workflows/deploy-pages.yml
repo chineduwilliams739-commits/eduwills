@@ -74,9 +74,11 @@ jobs:
           assert ('const loadMembers=async' in group) or ('async function loadMembers' in group)
           assert 'GROUP MEMBERS' in group
           assert 'async function joinGroup()' in group
+          assert 'async function toggleLock()' in group
+          assert 'onClick={toggleLock}' in group
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
-          print('Community UI v6 source verification passed.')
+          print('Community UI v6 source verification passed, including toggleLock.')
           PY
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
@@ -143,7 +145,7 @@ jobs:
               'group composer textarea': 'aria-label="Write a message"' in community_group and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
               'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
-              'community message lock UI': 'MESSAGE CONTROL' in community_group and 'messagingLocked' in community_group,
+              'community message lock UI': 'MESSAGE CONTROL' in community_group and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
               'community suggested join button': 'CLICK TO JOIN GROUP' in community,
               'community chat search': 'usernameIndex' in community_chat and 'Search by name or username' in community_chat and 'name.includes(term)' in community_chat and 'un.includes(term)' in community_chat,
               'community image upload': 'DeviceImageUpload' in community_chat,
