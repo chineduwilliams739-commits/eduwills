@@ -10,24 +10,20 @@ const newRecent = 'const recentRows=useMemo(()=>[...chatRows].sort((a:any,b:any)
 if (s.includes(oldRecent)) s = s.replace(oldRecent, newRecent);
 
 // The search implementation uses the username index and performs a name/username
-// fallback scan. Mark it explicitly so source verification can validate the actual
-// behavior without depending on punctuation such as a Unicode ellipsis.
-if (s.includes('placeholder="Search by name or username…"')) {
-  s = s.replace('placeholder="Search by name or username…"', 'placeholder="Search by name or username"');
-}
+// fallback scan. Normalize the placeholder without depending on Unicode punctuation.
+s = s.replace(/placeholder="Search by name or username(?:…|\.\.\.)?"/g, 'placeholder="Search by name or username"');
 
-// CI repair ordering can make the legacy community-controls script append the
-// searching state more than once. Canonicalize that state before TypeScript.
-const searchingState='[searching,setSearching]=useState(false)';
-const searchingCount=s.split(searchingState).length-1;
-if(searchingCount>1){
-  s=s.split(searchingState).join('');
-  s=s.replace('[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null);',
-    '[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null),'+searchingState+', [searched,setSearched]=useState(false);');
-}
-if(s.split(searchingState).length-1===0){
-  s=s.replace('[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null);',
-    '[busy,setBusy]=useState(false),[reply,setReply]=useState<any>(null),'+searchingState+', [searched,setSearched]=useState(false);');
+// CI repair ordering can cause the legacy community-controls repair to insert the
+// searching state more than once. Normalize the declaration structurally instead of
+// relying on one exact surrounding state string. Remove every existing declaration,
+// then insert exactly one immediately before profilePeople. This is idempotent.
+const searchingState = '[searching,setSearching]=useState(false)';
+s = s.replace(new RegExp(`${searchingState.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')},?`, 'g'), '');
+const profileStateAnchor = '[profilePeople,setProfilePeople]';
+if (s.includes(profileStateAnchor)) {
+  s = s.replace(profileStateAnchor, `${searchingState},${profileStateAnchor}`);
+} else {
+  throw new Error('COMMUNITY_CHAT_SEARCH_STATE_ANCHOR_MISSING');
 }
 
 // Resolve chat participants from publicUserIndex first, then fall back to the
