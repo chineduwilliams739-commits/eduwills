@@ -2,11 +2,29 @@ import fs from 'node:fs';
 const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
 
-// The v2 community repair already creates the canonical MESSAGE CONTROL section.
-// This finalizer must not delete and recreate that JSX because doing so is fragile
-// when the group page is minified into a single return line. Normalize only the
-// composer and validate the existing control instead.
 g=g.replace(/^\s*\/\/ MESSAGE CONTROL\s*$/gm,'');
+
+// Normalize duplicate lock-control sections produced by earlier community repair passes.
+// Locate the complete section nearest each extra MESSAGE CONTROL marker rather than
+// relying on one exact JSX formatting variant.
+function removeExtraMessageControls(source){
+  while(true){
+    const first=source.indexOf('MESSAGE CONTROL');
+    if(first<0)return source;
+    const second=source.indexOf('MESSAGE CONTROL',first+1);
+    if(second<0)return source;
+    const adminStart=source.lastIndexOf('{isAdmin',second);
+    const sectionStart=source.lastIndexOf('<section',second);
+    if(adminStart<0||sectionStart<adminStart)throw new Error('GROUP_LOCK_DUPLICATE_UNLOCATABLE');
+    const sectionEnd=source.indexOf('</section>',second);
+    if(sectionEnd<0)throw new Error('GROUP_LOCK_DUPLICATE_SECTION_UNBALANCED');
+    let cut=sectionEnd+'</section>'.length;
+    while(/\s/.test(source[cut]||''))cut++;
+    if(source[cut]==='}')cut++;
+    source=source.slice(0,adminStart)+source.slice(cut);
+  }
+}
+g=removeExtraMessageControls(g);
 
 const textareaRe=/<textarea\b[^>]*aria-label="Write a message"[^>]*>/;
 const match=g.match(textareaRe);
@@ -30,4 +48,4 @@ if(!g.includes("WebkitWritingMode:'horizontal-tb'")) throw new Error('GROUP_COMP
 if(!g.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}')) throw new Error('GROUP_COMPOSER_INPUT_HANDLER_MISSING');
 
 fs.writeFileSync(group,g);
-console.log('Community group v8 finalized safely: preserved canonical lock control and normalized the horizontal composer.');
+console.log('Community group v8 finalized safely: exactly one lock control and valid horizontal composer.');
