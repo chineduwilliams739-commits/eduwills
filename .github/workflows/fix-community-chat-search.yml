@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/fix-community-chat-search-and-profiles.mjs'
+      - '.github/workflows/fix-community-chat-search.yml'
   workflow_dispatch:
 
 permissions:
