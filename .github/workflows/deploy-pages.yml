@@ -70,6 +70,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
           group=Path('app/dashboard/community/group/page.tsx').read_text()
           chat=Path('app/dashboard/community/chat/page.tsx').read_text()
           assert 'aria-label="Write a message"' in group
@@ -79,7 +80,9 @@ jobs:
           assert 'async function toggleLock()' in group
           assert 'onClick={toggleLock}' in group
           assert group.count('MESSAGE CONTROL') == 1
-          assert group.count('LOCK SENDING') == 1
+          # Count the actual quoted LOCK SENDING label, not the LOCK substring
+          # inside the distinct UNLOCK SENDING label.
+          assert len(re.findall(r"['\"]LOCK SENDING['\"]", group)) == 1
           assert "WebkitWritingMode:'horizontal-tb'" in group
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
@@ -151,7 +154,7 @@ jobs:
               'group composer horizontal flow': "WebkitWritingMode:'horizontal-tb'" in community_group,
               'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
-              'community message lock UI': community_group.count('MESSAGE CONTROL') == 1 and community_group.count('LOCK SENDING') == 1 and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
+              'community message lock UI': community_group.count('MESSAGE CONTROL') == 1 and len(re.findall(r"['\"]LOCK SENDING['\"]", community_group)) == 1 and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
               'community suggested join button': 'CLICK TO JOIN GROUP' in community,
               'community chat search': 'usernameIndex' in community_chat and 'Search by name or username' in community_chat and 'name.includes(term)' in community_chat and 'un.includes(term)' in community_chat,
               'community image upload': 'DeviceImageUpload' in community_chat,
