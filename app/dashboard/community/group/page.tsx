@@ -1,254 +1,53 @@
 'use client';
-
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, deleteDoc, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { MessageActions } from '@/components/community/MessageActions';
-import { Check, Paperclip, Search, Settings, ArrowLeft, Lock, Unlock, Users, Send, Image as ImageIcon } from 'lucide-react';
-
-const BASE = '/eduwills';
-const rules = ['Be respectful to other members.', 'No spam or harmful content.', 'Keep discussions relevant to the group.'];
-
-const active = (path: string, current: string) => path === current || (path !== BASE && current.startsWith(path));
-
-export default function Group() {
-  const params = useParams();
-  const router = useRouter();
-  const groupId = String((params as any)?.id || (params as any)?.groupId || '');
-
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [group, setGroup] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [onboarding, setOnboarding] = useState(false);
-  const [settings, setSettings] = useState(false);
-  const [info, setInfo] = useState(false);
-  const [members, setMembers] = useState<any[]>([]);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [draft, setDraft] = useState('');
-  const [image, setImage] = useState<string | null>(null);
-  const [notice, setNotice] = useState('');
-  const [search, setSearch] = useState('');
-  const [reply, setReply] = useState<any>(null);
-  const [unread, setUnread] = useState(0);
-
-  useEffect(() => {
-    const auth = getAuth();
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (!u) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const snap = await getDoc(doc(db, 'users', u.uid));
-        setProfile(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-      } finally {
-        setLoading(false);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!groupId) return;
-    return onSnapshot(doc(db, 'communityGroups', groupId), (snap) => {
-      setGroup(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-    });
-  }, [groupId]);
-
-  useEffect(() => {
-    if (!groupId || !user) return;
-    const q = query(collection(db, 'communityGroups', groupId, 'messages'), orderBy('createdAt', 'asc'));
-    return onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
-  }, [groupId, user]);
-
-  useEffect(() => {
-    if (!groupId || !user) return;
-    const ids = Array.isArray(group?.memberIds) ? group.memberIds : [];
-    if (!ids.length) {
-      setMembers([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const loaded: any[] = [];
-      for (const id of ids) {
-        const snap = await getDoc(doc(db, 'users', id));
-        if (snap.exists()) loaded.push({ id: snap.id, ...snap.data() });
-      }
-      if (!cancelled) setMembers(loaded);
-    })();
-    return () => { cancelled = true; };
-  }, [groupId, user, group?.memberIds]);
-
-  const isMember = !!user && Array.isArray(group?.memberIds) && group.memberIds.includes(user.uid);
-  const isAdmin = !!user && (group?.adminIds || []).includes(user.uid);
-  const isOwner = !!user && group?.ownerId === user.uid;
-
-  const joinGroup = async () => {
-    if (!user || !groupId || !group) return;
-    const memberIds = Array.isArray(group.memberIds) ? group.memberIds : [];
-    if (!memberIds.includes(user.uid)) {
-      await updateDoc(doc(db, 'communityGroups', groupId), { memberIds: [...memberIds, user.uid] });
-    }
-  };
-
-  const acknowledge = () => setOnboarding(false);
-
-  const save = async () => {
-    if (!isAdmin || !groupId) return;
-    setNotice('Settings saved.');
-    setSettings(false);
-  };
-
-  const send = async () => {
-    if (!user || !groupId || !isMember || !draft.trim()) return;
-    const text = draft.trim();
-    setDraft('');
-    await addDoc(collection(db, 'communityGroups', groupId, 'messages'), {
-      text,
-      senderId: user.uid,
-      senderName: profile?.displayName || profile?.name || user.displayName || 'User',
-      createdAt: serverTimestamp(),
-      replyTo: reply ? { id: reply.id, text: reply.text || '', senderName: reply.senderName || '' } : null,
-    });
-    setReply(null);
-  };
-
-  const addByUsername = async () => {};
-  const remove = async () => {
-    if (!isOwner || !groupId) return;
-    await deleteDoc(doc(db, 'communityGroups', groupId));
-    router.push(`${BASE}/dashboard/community`);
-  };
-
-  if (loading) return <main className="min-h-screen grid place-items-center">Loading…</main>;
-  if (!group) return <main className="min-h-screen grid place-items-center p-6">Group unavailable.</main>;
-
-  if (!user) {
-    return <main className="min-h-screen grid place-items-center p-6 text-center">Please sign in to view this group.</main>;
-  }
-
-  if (!isMember) {
-    return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <button className="mb-4 inline-flex items-center gap-2 text-sm" onClick={() => router.back()}><ArrowLeft size={16} /> Back</button>
-          <h1 className="text-2xl font-bold">{group.name || 'Group'}</h1>
-          <p className="mt-2 text-slate-600">Join this group to view and participate in its chat.</p>
-          <button className="mt-5 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white" onClick={joinGroup}>Join group</button>
-        </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-5xl py-4">
-        <div className="mx-3 mb-3 flex items-center justify-between gap-3 sm:mx-0">
-          <button className="inline-flex items-center gap-2 text-sm" onClick={() => router.back()}><ArrowLeft size={16} /> Back</button>
-          <div className="flex items-center gap-2">
-            {isAdmin && <button className="rounded-xl border bg-white p-2" onClick={() => setSettings(true)} aria-label="Settings"><Settings size={18} /></button>}
-            <button className="rounded-xl border bg-white p-2" onClick={() => setInfo(true)} aria-label="Group info"><Users size={18} /></button>
-          </div>
-        </div>
-
-        <section className="mx-3 mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:mx-0">
-          <div className="p-5">
-            <h1 className="text-xl font-bold">{group.name || 'Group'}</h1>
-            <p className="mt-1 text-sm text-slate-600">{group.description || 'Community group'}</p>
-          </div>
-        </section>
-
-        {notice && <div className="mx-3 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 sm:mx-0">{notice}</div>}
-
-        <section className="mx-3 mb-3 rounded-2xl border border-slate-200 bg-white shadow-sm sm:mx-0">
-          <div className="h-[55vh] min-h-[360px] space-y-3 overflow-y-auto p-3 sm:p-5">
-            {messages.length ? (
-              messages.map((m) => (
-                <div key={m.id} className={'flex gap-2 ' + (m.senderId === user.uid ? 'justify-end' : '')}>
-                  <div className={'max-w-[86%] ' + (m.senderId === user.uid ? 'items-end' : 'items-start')}>
-                    <div className="rounded-2xl bg-slate-100 px-4 py-3">
-                      <div className="mb-1 text-xs font-semibold text-slate-500">{m.senderName || 'User'}</div>
-                      {m.replyTo && <div className="mb-2 rounded-lg border-l-2 border-slate-300 bg-white/70 px-2 py-1 text-xs text-slate-500">{m.replyTo.text}</div>}
-                      {m.imageUrl && <img src={m.imageUrl} alt="Attached image" className="mb-2 max-h-72 rounded-xl object-contain" />}
-                      {m.text && <div className="whitespace-pre-wrap break-words text-sm">{m.text}</div>}
-                    </div>
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-                      <span>{m.createdAt?.toDate ? m.createdAt.toDate().toLocaleString() : ''}</span>
-                      <button onClick={() => setReply(m)} className="hover:text-slate-700">Reply</button>
-                      <MessageActions message={m} groupId={groupId} canDelete={isAdmin || m.senderId === user.uid} />
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="grid h-full place-items-center text-center">
-                <div>
-                  <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-full bg-slate-100"><Send size={20} /></div>
-                  <p className="font-semibold">No messages yet</p>
-                  <p className="mt-1 text-sm text-slate-500">Start the conversation.</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {reply && (
-            <div className="mx-3 mb-2 flex items-center justify-between rounded-xl bg-slate-100 p-3 text-sm sm:mx-5">
-              <div className="min-w-0"><div className="font-semibold">Replying to {reply.senderName || 'User'}</div><div className="truncate text-slate-500">{reply.text || 'Message'}</div></div>
-              <button onClick={() => setReply(null)} className="ml-3 text-slate-500">Cancel</button>
-            </div>
-          )}
-
-          {image && (
-            <div className="mx-3 mb-2 flex items-center gap-3 rounded-xl bg-slate-100 p-3 sm:mx-5">
-              <img src={image} alt="Selected upload" className="h-16 w-16 rounded-lg object-cover" />
-              <span className="text-sm text-slate-500">Image selected</span>
-              <button onClick={() => setImage(null)} className="ml-auto text-sm">Remove</button>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 border-t border-slate-200 p-3 sm:p-5">
-            <label className="cursor-pointer rounded-xl border bg-white p-3" aria-label="Attach image">
-              <ImageIcon size={18} />
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => setImage(String(reader.result || ''));
-                reader.readAsDataURL(file);
-              }} />
-            </label>
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} placeholder="Write a message…" className="min-w-0 flex-1 rounded-xl border px-4 py-3 outline-none" />
-            <button onClick={() => void send()} disabled={!draft.trim()} className="rounded-xl bg-slate-900 p-3 text-white disabled:opacity-40" aria-label="Send"><Send size={18} /></button>
-          </div>
-        </section>
-
-        {info && (
-          <div className="fixed inset-0 z-50 bg-black/40 p-4" onClick={() => setInfo(false)}>
-            <aside className="mx-auto mt-16 max-w-lg rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-lg font-bold">Group information</h2>
-              <p className="mt-2 text-sm text-slate-600">{members.length} member{members.length === 1 ? '' : 's'}</p>
-              <ul className="mt-4 space-y-2">{members.map((m) => <li key={m.id} className="rounded-lg bg-slate-50 p-2 text-sm">{m.displayName || m.name || m.username || 'User'}</li>)}</ul>
-            </aside>
-          </div>
-        )}
-
-        {isAdmin && settings && (
-          <div className="fixed inset-0 z-50 bg-black/40 p-4" onClick={() => setSettings(false)}>
-            <aside className="mx-auto mt-16 max-w-lg rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-lg font-bold">Group settings</h2>
-              <div className="mt-4 space-y-2">{rules.map((rule) => <div key={rule} className="flex items-center gap-2 text-sm"><Check size={16} />{rule}</div>)}</div>
-              <button onClick={() => void save()} className="mt-5 rounded-xl bg-slate-900 px-4 py-2 font-semibold text-white">Save</button>
-              {isOwner && <button onClick={() => void remove()} className="ml-2 rounded-xl border border-red-200 px-4 py-2 font-semibold text-red-600">Delete group</button>}
-            </aside>
-          </div>
-        )}
+import {useEffect,useState} from 'react';
+import {ArrowLeft,Check,ImagePlus,Info,MoreVertical,Paperclip,Save,Search,Send,Settings,Shield,Trash2,UserPlus,Users,X} from 'lucide-react';
+import {MessageSquareReply} from 'lucide-react';
+import {onAuthStateChanged} from 'firebase/auth';
+import {addDoc,arrayUnion,collection,doc,getDoc,onSnapshot,orderBy,query,serverTimestamp,updateDoc,limit,setDoc} from 'firebase/firestore';
+import {auth,db} from '@/lib/firebase';
+import DeviceImageUpload from '@/components/DeviceImageUpload';
+import MessageActions from '@/components/MessageActions';
+const BASE='/eduwills';
+const rules=[['Be respectful','No harassment, bullying, insults or targeted humiliation.'],['Keep it academic','Use the group for learning, revision and useful educational collaboration.'],['No nudity or sexual content','Profile, group and shared images must not contain nudity or sexually explicit material.'],['No scams or harmful content','No malware, threats, illegal content, scams or deceptive links.'],['Protect privacy','Do not expose another person’s private information without permission.'],['No exam leaks','Do not share stolen papers, leaked answers or services that facilitate cheating.'],['Respect copyright','Only share files you have permission or the right to distribute.'],['Follow moderation','Admins may remove content and escalate serious violations.']];
+const active=(d:any)=>{const e=d?.activationExpiresAt?.toMillis?.()||Date.parse(String(d?.activationExpiresAt||''))||0;return(d?.activationStatus==='active'||d?.activated===true||d?.williTokenActive===true||d?.activationActive===true||d?.isActive===true)&&(!e||e>Date.now())};
+export default function Group(){const id=new URLSearchParams(typeof window!=='undefined'?location.search:'').get('id')||'';const[user,setUser]=useState<any>(null),[profile,setProfile]=useState<any>({}),[g,setG]=useState<any>(null),[loading,setLoading]=useState(true),[understood,setUnderstood]=useState(false),[tour,setTour]=useState(true),[settings,setSettings]=useState(false),[info,setInfo]=useState(false),[membersOpen,setMembersOpen]=useState(false),[name,setName]=useState(''),[desc,setDesc]=useState(''),[avatar,setAvatar]=useState(''),[cover,setCover]=useState(''),[messages,setMessages]=useState<any[]>([]),[draft,setDraft]=useState(''),[image,setImage]=useState(''),[notice,setNotice]=useState(''),[memberSearch,setMemberSearch]=useState(''),[reply,setReply]=useState<any>(null),[unread,setUnread]=useState(0);
+ const [isMember,setIsMember]=useState(false),[joining,setJoining]=useState(false),[isLocked,setIsLocked]=useState(false),[members,setMembers]=useState<any[]>([]);
+useEffect(()=>onAuthStateChanged(auth,async u=>{if(!u){location.replace(BASE+'/login/');return}setUser(u);const s=await getDoc(doc(db,'users',u.uid));const p=s.data()||{};setProfile(p);if(!active(p)){location.replace(BASE+'/dashboard/activation/');return}setLoading(false)}),[]);
+ useEffect(()=>{if(!id||!user)return;return onSnapshot(doc(db,'communityGroups',id),s=>{if(!s.exists()){setNotice('This group no longer exists.');setG(null);return}const d:any={id:s.id,...s.data()};if(d.deleted){setNotice('This group has been deleted.');setG(null);return}setG(d);setIsMember(d.ownerId===user.uid||d.adminIds?.includes(user.uid)||d.memberIds?.includes(user.uid));setIsLocked(d.messagingLocked===true);loadMembers(d.memberIds||[]);setName(d.name||'');setDesc(d.description||'');setAvatar(d.avatarUrl||'');setCover(d.coverImageUrl||'');setUnderstood(d.creatorRulesAccepted===true||d.ownerId!==user.uid);});},[id,user?.uid]);
+ useEffect(()=>{if(!g||!user||!understood||!isMember)return;return onSnapshot(query(collection(db,'communityGroups',id,'messages'),orderBy('createdAt','asc'),limit(200)),s=>setMessages(s.docs.map(x=>({id:x.id,...x.data()}))))},[g?.id,understood]);
+ useEffect(()=>{if(!g||!user||!understood||!isMember)return;return onSnapshot(doc(db,'communityGroups',id,'readState',user.uid),s=>{const d=s.data()||{};setUnread(Number(d.unread||0))})},[g?.id,understood,user?.uid]);
+ const isAdmin=!!g?.adminIds?.includes(user?.uid),isOwner=g?.ownerId===user?.uid;
+ useEffect(()=>{let cancelled=false;const loadMembers=async()=>{const ids=Array.isArray(g?.memberIds)?[...new Set(g.memberIds.filter(Boolean))].slice(0,100):[];if(!ids.length){setMembers([]);return}try{const rows=await Promise.all(ids.map(async(uid:string)=>{try{const s=await getDoc(doc(db,'users',uid));const d=s.data()||{};return {uid,fullName:d.fullName||d.displayName||d.name||d.username||'Learner',username:d.username||'',photoURL:d.photoURL||d.avatarUrl||d.profilePhotoURL||''}}catch{return {uid,fullName:'Learner',username:'',photoURL:''}}}));if(!cancelled)setMembers(rows)}catch{if(!cancelled)setMembers([])}};loadMembers();return()=>{cancelled=true}},[g?.id,g?.memberIds]);
+ async function joinGroup(){if(!user||!g||joining)return;setJoining(true);setNotice('');try{await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(user.uid),updatedAt:serverTimestamp()});setIsMember(true);setG((x:any)=>({...x,memberIds:Array.from(new Set([...(Array.isArray(x?.memberIds)?x.memberIds:[]),user.uid]))}));setNotice('You joined this group.')}catch(e:any){setNotice(e?.message||'Could not join this group.')}finally{setJoining(false)}}
+ async function loadMembers(ids:any[]){const list=Array.isArray(ids)?ids.filter(Boolean):[];try{const rows=await Promise.all(list.map(async uid=>{try{const s=await getDoc(doc(db,'users',String(uid)));const d=s.data()||{};return {uid:String(uid),fullName:String(d.fullName||d.displayName||d.name||d.username||'Learner'),username:String(d.username||''),photoURL:String(d.photoURL||d.avatarUrl||d.profilePhotoURL||'')};}catch{return {uid:String(uid),fullName:'Learner',username:'',photoURL:''}}}));setMembers(rows);}catch{setMembers([])}}
+ async function acknowledge(){try{await updateDoc(doc(db,'communityGroups',id),{creatorRulesAccepted:true,creatorRulesAcceptedAt:serverTimestamp()});setUnderstood(true);setTour(true)}catch(e:any){setNotice(e?.message||'Could not save your acknowledgement.')}}
+ async function save(){if(!isAdmin)return;try{await updateDoc(doc(db,'communityGroups',id),{name:name.trim()||g.name,description:desc.trim(),avatarUrl:avatar,coverImageUrl:cover,updatedAt:serverTimestamp(),memberCount:Array.isArray(g.memberIds)?g.memberIds.length:0});setNotice('Group settings saved.');setSettings(false)}catch(e:any){setNotice(e?.message||'Could not save settings.')}}
+ async function send(){if((!draft.trim()&&!image)||!user)return;const text=draft.trim();const imageUrl=image;setDraft('');setImage('');setReply(null);try{await addDoc(collection(db,'communityGroups',id,'messages'),{senderId:user.uid,senderUsername:profile.username||'',senderName:profile.fullName||'Learner',senderPhotoURL:profile.photoURL||profile.avatarUrl||'',text,imageUrl,replyToId:reply?.id||'',replyToText:reply?.text||'',replyToName:reply?.senderName||'',createdAt:serverTimestamp()})}catch(e:any){setDraft(text);setImage(imageUrl);setNotice(e?.message||'Message could not be sent.')}}
+ async function addByUsername(){const q=memberSearch.trim().toLowerCase();if(!q||!isAdmin)return;try{const s=await getDoc(doc(db,'usernameIndex',q));if(!s.exists())throw new Error('Username not found.');await updateDoc(doc(db,'communityGroups',id),{memberIds:arrayUnion(s.data().uid),updatedAt:serverTimestamp()});setMemberSearch('');setNotice('Learner added.')}catch(e:any){setNotice(e?.message||'Could not add learner.')}}
+ async function remove(){if(!isOwner)return;if(!confirm('Delete this group?'))return;try{await updateDoc(doc(db,'communityGroups',id),{deleted:true,visibility:'private',memberIds:[],adminIds:[],updatedAt:serverTimestamp()});location.assign(BASE+'/dashboard/community/')}catch(e:any){setNotice(e?.message||'Could not delete group.')}}
+ if(loading)return <main className="grid min-h-screen place-items-center bg-paper font-bold text-slate-500">Loading group…</main>;
+ if(!g)return <main className="min-h-screen bg-paper p-6"><a href={BASE+'/dashboard/community/'} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black"><ArrowLeft size={17}/> Community</a><div className="mx-auto mt-12 max-w-xl rounded-3xl bg-white p-8 text-center"><Users className="mx-auto text-slate-300" size={40}/><h1 className="mt-4 text-2xl font-black">Group unavailable</h1><p className="mt-2 text-sm text-slate-500">{notice}</p></div></main>;
+ if(!isMember)return <main className="min-h-screen bg-paper p-5 text-ink"><div className="mx-auto max-w-xl"><a href={BASE+'/dashboard/community/'} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black"><ArrowLeft size={17}/> Community</a><section className="mt-5 rounded-[2rem] bg-white p-8 text-center shadow-sm"><Users className="mx-auto text-cyan-600" size={42}/><h1 className="mt-4 text-2xl font-black">Join {g.name}</h1><p className="mt-2 text-sm leading-6 text-slate-500">You must join this group before you can view or send messages.</p><button type="button" onClick={joinGroup} disabled={joining} className="mt-5 rounded-xl bg-ink px-6 py-3 text-sm font-black text-white disabled:opacity-50">{joining?'Joining…':'JOIN GROUP'}</button></section></div></main>;
+if(!understood)return <main className="min-h-screen bg-paper p-5 text-ink"><div className="mx-auto max-w-3xl"><a href={BASE+'/dashboard/community/'} className="inline-flex items-center gap-2 rounded-xl border bg-white px-4 py-3 text-sm font-black"><ArrowLeft size={17}/> Community</a><section className="mt-5 rounded-[2rem] bg-ink p-7 text-white"><p className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-200">GROUP OWNER ONBOARDING</p><h1 className="mt-3 text-3xl font-black">Before you open {g.name}</h1><p className="mt-3 text-sm leading-6 text-slate-300">Read the rules. After you acknowledge them, the full group workspace opens immediately.</p></section><section className="mt-5 max-h-[60vh] overflow-y-auto rounded-3xl border bg-white p-5">{rules.map((r,i)=><article key={r[0]} className="border-b border-slate-100 py-4 last:border-0"><div className="flex gap-3"><b className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-xs text-white">{i+1}</b><div><h2 className="font-black">{r[0]}</h2><p className="mt-1 text-sm leading-6 text-slate-500">{r[1]}</p></div></div></article>)}</section><button onClick={acknowledge} className="mt-5 w-full rounded-xl bg-ink px-5 py-4 text-sm font-black text-white">Understood! Continue</button></div></main>;
+ return <main className="min-h-screen bg-[#eef3f7] text-ink">{info&&<section className="border-b border-slate-200 bg-white shadow-sm"><div className="mx-auto max-w-5xl p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">GROUP INFO</p><h2 className="mt-1 text-xl font-black">{g.name}</h2><p className="mt-1 text-xs text-slate-500">{g.memberIds?.length||1} members</p></div><button type="button" onClick={()=>{setInfo(false);setMembersOpen(false)}} className="grid h-9 w-9 place-items-center rounded-full bg-slate-100"><X size={17}/></button></div><div className="mt-4 flex gap-2"><button type="button" onClick={()=>setMembersOpen(false)} className={`rounded-xl px-4 py-2 text-xs font-black ${!membersOpen?'bg-ink text-white':'bg-slate-100 text-slate-600'}`}>INFO</button><button type="button" onClick={()=>setMembersOpen(true)} className={`rounded-xl px-4 py-2 text-xs font-black ${membersOpen?'bg-ink text-white':'bg-slate-100 text-slate-600'}`} aria-label="GROUP MEMBERS">MEMBERS</button></div>{membersOpen?<div className="mt-4 space-y-2">{members.length?members.map((m:any)=><div key={m.uid} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-sm font-black text-white">{m.photoURL?<img src={m.photoURL} alt="" className="h-full w-full object-cover"/>:String(m.fullName||'L').charAt(0).toUpperCase()}</div><div className="min-w-0"><p className="truncate text-sm font-black">{m.fullName}</p><p className="truncate text-xs text-slate-400">{m.username?'@'+m.username:'Member'}</p></div></div>):<p className="rounded-2xl bg-slate-50 p-4 text-center text-sm font-bold text-slate-500">No member profiles could be loaded.</p>}</div>:<div className="mt-4 rounded-2xl bg-slate-50 p-4"><p className="text-sm leading-6 text-slate-600">{g.description||'A focused EDUWILLS learning community.'}</p><p className="mt-3 text-xs font-semibold text-slate-500">Use MEMBERS to view everyone in this group.</p></div>}</div></section>}<header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur"><div className="mx-auto flex h-[68px] max-w-5xl items-center gap-3 px-3 sm:px-5"><a href={BASE+'/dashboard/community/'} className="grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-slate-100"><ArrowLeft size={20}/></a><button onClick={()=>setInfo(true)} className="flex min-w-0 flex-1 items-center gap-3 text-left"><div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-white">{g.avatarUrl?<img src={g.avatarUrl} className="h-full w-full object-cover"/>:<Users size={20}/>}</div><div className="min-w-0"><h1 className="truncate text-[15px] font-black">{g.name}</h1><p className="truncate text-[11px] font-semibold text-slate-500">{g.memberIds?.length||1} members · {isAdmin?'Admin':''}{unread>0&&<span className="ml-1 rounded-full bg-cyan-600 px-1.5 py-0.5 text-[8px] font-black text-white">{unread>99?'99+':unread}</span>}</p></div></button><button onClick={()=>setInfo(true)} className="grid h-10 w-10 place-items-center rounded-full hover:bg-slate-100"><Info size={19}/></button>{isAdmin&&<button onClick={()=>setSettings(true)} className="grid h-10 w-10 place-items-center rounded-full hover:bg-slate-100"><MoreVertical size={20}/></button>}</div></header>
+ <div className="mx-auto flex max-w-5xl flex-col"><div className="relative h-32 overflow-hidden bg-ink sm:h-44">{g.coverImageUrl?<img src={g.coverImageUrl} className="h-full w-full object-cover opacity-80"/>:<div className="h-full w-full bg-gradient-to-r from-slate-950 via-cyan-950 to-ink"/>}<div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"/><div className="absolute bottom-4 left-5 text-white"><span className="rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider backdrop-blur">EDUWILLS COMMUNITY</span><p className="mt-2 text-xs font-semibold text-white/80">Learn · discuss · grow together</p></div></div>
+ <section className="border-x border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-cyan-700">{g.type||'Study'} group</p><p className="mt-1 line-clamp-1 text-sm font-bold text-slate-600">{g.description||'A focused EDUWILLS learning community.'}</p></div><button onClick={()=>setInfo(true)} className="shrink-0 rounded-xl bg-slate-100 px-3 py-2 text-[10px] font-black">View info</button></div></section>
+ {notice&&<div className="mx-3 mt-3 rounded-2xl bg-cyan-50 px-4 py-3 text-xs font-bold text-cyan-950 sm:mx-0">{notice}</div>}
+ {tour&&isAdmin&&<section className="mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">YOUR ADMIN GUIDE</p><h2 className="mt-1 text-base font-black">Everything you need is inside this workspace.</h2></div><button onClick={()=>setTour(false)} className="rounded-full p-1 hover:bg-slate-100"><X size={17}/></button></div><div className="mt-3 grid gap-2 sm:grid-cols-4"><div className="rounded-xl bg-slate-50 p-3"><Settings size={16}/><p className="mt-2 text-xs font-black">Settings</p><p className="mt-1 text-[10px] leading-4 text-slate-500">Edit group details and pictures.</p></div><div className="rounded-xl bg-slate-50 p-3"><ImagePlus size={16}/><p className="mt-2 text-xs font-black">Photo</p><p className="mt-1 text-[10px] leading-4 text-slate-500">Send images directly from your device.</p></div><div className="rounded-xl bg-slate-50 p-3"><UserPlus size={16}/><p className="mt-2 text-xs font-black">Members</p><p className="mt-1 text-[10px] leading-4 text-slate-500">Add learners and manage admins.</p></div><div className="rounded-xl bg-slate-50 p-3"><Shield size={16}/><p className="mt-2 text-xs font-black">Rules</p><p className="mt-1 text-[10px] leading-4 text-slate-500">Keep the community safe and academic.</p></div></div><button onClick={()=>setTour(false)} className="mt-3 rounded-xl bg-ink px-4 py-2.5 text-xs font-black text-white">Got it</button></section>}
+ <section className="mx-3 my-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mx-0"><div className="flex items-center gap-2 text-[10px] font-black text-slate-400"><Shield size={14} className="text-cyan-600"/> EDUWILLS COMMUNITY RULES APPLY · Keep conversations respectful and educational.</div></section>
+ <section className="mx-3 mb-3 rounded-2xl border border-slate-200 bg-white shadow-sm sm:mx-0"><div className="h-[55vh] min-h-[360px] space-y-3 overflow-y-auto p-3 sm:p-5">{messages.length ? (
+  messages.map((m) => (
+    <div key={m.id} className={'flex gap-2 '+(m.senderId===user.uid?'justify-end':'')}>
+      <div className={'max-w-[86%] '+(m.senderId===user.uid?'items-end':'items-start')}>
+        <div className="mb-1 flex items-center gap-2 px-1"><div className="grid h-6 w-6 place-items-center overflow-hidden rounded-full bg-ink text-[8px] font-black text-white">{m.senderPhotoURL?<img src={m.senderPhotoURL} className="h-full w-full object-cover"/>:String(m.senderName||'L')[0]}</div><span className="text-[9px] font-black text-slate-400">{m.senderName||m.senderUsername||'Learner'}</span></div>
+        <div className="relative"><div className={'overflow-hidden rounded-2xl border px-3.5 py-2.5 '+(m.senderId===user.uid?'bg-ink text-white':'bg-slate-50 text-ink')}>{m.replyToText&&<div className="mb-2 rounded-xl border-l-2 border-cyan-500 bg-black/5 px-2.5 py-1.5 text-[10px]"><b>{m.replyToName||'Learner'}</b><p className="mt-0.5 line-clamp-2 opacity-70">{m.replyToText}</p></div>}{m.imageUrl&&<img src={m.imageUrl} className="mb-2 max-h-72 w-full rounded-xl object-cover"/>}{m.text&&<p className="whitespace-pre-wrap text-sm leading-6">{m.text}</p>}<div className="mt-1 flex items-center justify-end gap-1 text-[9px] opacity-60">{m.createdAt?.toDate?m.createdAt.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'Sending…'}{m.edited&&<span>· edited</span>}</div></div><div className="absolute -right-9 bottom-0"><MessageActions message={m} currentUid={user.uid} isAdmin={isAdmin} collectionPath={'communityGroups/'+id+'/messages'} onReply={setReply} onNotice={setNotice}/></div></div>
       </div>
-    </main>
-  );
-}
+    </div>
+  ))
+) : (
+  <div className="grid h-full place-items-center text-center"><div><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-cyan-50 text-cyan-700"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">Welcome to {g.name}</h2><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Start the academic conversation. Your messages stay inside this group.</p></div></div>
+)}</div>
+ {image&&<div className="mx-3 mb-2 rounded-xl border bg-slate-50 p-2 sm:mx-4"><div className="flex items-center gap-2"><img src={image} className="h-16 w-16 rounded-xl object-cover"/><div className="min-w-0 flex-1"><p className="text-xs font-black">Photo ready</p><p className="text-[10px] text-slate-400">It will be checked by EDUWILLS safety moderation.</p></div><button onClick={()=>setImage('')} className="grid h-8 w-8 place-items-center rounded-full hover:bg-white"><X size={15}/></button></div></div>}
+ {reply&&<div className="flex items-center gap-2 border-t border-slate-100 bg-cyan-50 px-3 py-2"><MessageSquareReply size={15} className="text-cyan-700"/><div className="min-w-0 flex-1"><p className="text-[10px] font-black text-cyan-800">Replying to {reply.senderName||'Learner'}</p><p className="truncate text-[10px] text-slate-500">{reply.text||'Image'}</p></div><button onClick={()=>setReply(null)}><X size={15}/></button></div>}<div className="flex items-end gap-2 border-t border-slate-100 bg-white p-2.5"><div className="flex flex-1 items-center rounded-2xl bg-slate-100 px-2"><DeviceImageUpload uid={user.uid} path={'community/'+id+'/messages'} label="" onUploaded={u=>setImage(u)}/><textarea aria-label="Write a message" rows={1} value={draft} onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)} onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&(e.preventDefault(),send())} placeholder="Write a message…" className="min-h-12 max-h-32 min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-sm outline-none" style={{writingMode:'horizontal-tb',direction:'ltr',textAlign:'left'}}/></div><button onClick={send} disabled={!draft.trim()&&!image} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-ink text-white disabled:opacity-30"><Send size={17}/></button></div></section></div>
+ {isAdmin&&settings&&<div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={()=>setSettings(false)}><aside onClick={e=>e.stopPropagation()} className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl"><div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-white px-5 py-4"><button onClick={()=>setSettings(false)} className="grid h-9 w-9 place-items-center rounded-full hover:bg-slate-100"><X size={19}/></button><div><h2 className="text-lg font-black">Group settings</h2><p className="text-[10px] font-bold text-slate-400">Manage your EDUWILLS community</p></div></div><div className="p-5 space-y-4"><section className="rounded-2xl bg-slate-50 p-4"><p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">BASIC INFORMATION</p><input value={name} onChange={e=>setName(e.target.value)} className="mt-3 w-full rounded-xl border bg-white px-4 py-3 text-sm font-bold" placeholder="Group name"/><textarea value={desc} onChange={e=>setDesc(e.target.value)} className="mt-2 min-h-24 w-full rounded-xl border bg-white px-4 py-3 text-sm font-bold" placeholder="Description"/></section><section className="rounded-2xl border p-4"><p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">GROUP PICTURE</p><div className="mt-3 flex items-center gap-4"><div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-white">{avatar?<img src={avatar} className="h-full w-full object-cover"/>:<Users size={25}/>}</div><DeviceImageUpload uid={user.uid} path={'community/'+id} label="Choose from device" onUploaded={u=>setAvatar(u)}/></div></section><section className="rounded-2xl border p-4"><p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">COVER IMAGE</p><DeviceImageUpload uid={user.uid} path={'community/'+id} label="Choose cover from device" onUploaded={u=>setCover(u)}/>{cover&&<img src={cover} className="mt-3 h-28 w-full rounded-xl object-cover"/>}</section><section className="rounded-2xl border p-4"><div className="flex items-center gap-2"><UserPlus size={17}/><p className="text-sm font-black">Add a learner</p></div><div className="mt-3 flex gap-2"><input value={memberSearch} onChange={e=>setMemberSearch(e.target.value)} placeholder="Username" className="min-w-0 flex-1 rounded-xl border bg-slate-50 px-3 py-3 text-xs font-bold"/><button onClick={addByUsername} className="rounded-xl bg-ink px-4 py-3 text-xs font-black text-white">Add</button></div></section><button onClick={save} className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 py-3.5 text-sm font-black text-white"><Save size={16}/>Save changes</button>{isOwner&&<button onClick={remove} className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3.5 text-sm font-black text-white"><Trash2 size={16}/>Delete group</button>}</div></aside></div>}
+ </main>}
