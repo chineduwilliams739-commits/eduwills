@@ -4,10 +4,8 @@ const group='app/dashboard/community/group/page.tsx';
 let g=fs.readFileSync(group,'utf8');
 
 // Normalize all legacy/admin MESSAGE CONTROL JSX before inserting the canonical block.
-// The previous regex assumed a particular formatting shape and could miss controls
-// emitted by earlier repair scripts. This pass locates every MESSAGE CONTROL marker,
-// walks back to its nearest {isAdmin&&<section ...>} wrapper, and removes the complete
-// balanced section regardless of whitespace/attribute changes.
+// Locate every MESSAGE CONTROL marker, walk back to its nearest admin section wrapper,
+// and remove the complete balanced section regardless of whitespace/attribute changes.
 function findBalancedSectionEnd(source, sectionStart){
   const tokenRe=/<\/?section\b[^>]*>/g;
   tokenRe.lastIndex=sectionStart;
@@ -48,9 +46,13 @@ while(true){
   g=g.slice(0,adminStart)+g.slice(end);
 }
 
-// Remove any remaining source comments naming the control so exactly one visible marker
-// remains after the canonical UI is inserted.
+// Remove any remaining source comments naming the control.
 g=g.replace(/^\s*\/\/ MESSAGE CONTROL\s*$/gm,'');
+
+// Earlier community repair passes can leave an orphan lock/unlock button outside the
+// MESSAGE CONTROL section. Remove those legacy buttons before inserting one canonical
+// control, otherwise verification can still see two LOCK SENDING labels.
+g=g.replace(/<button\b[^>]*>[^<]*(?:UNLOCK SENDING|LOCK SENDING)[^<]*<\/button>/g,'');
 
 const lockUi=`{isAdmin&&<section className="mx-3 mt-3 rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm sm:mx-0"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-cyan-700">MESSAGE CONTROL</p><p className="mt-1 text-xs font-bold text-slate-500">{isLocked?'Members cannot send messages.':'Members can send messages.'}</p></div><button type="button" onClick={toggleLock} className="rounded-xl bg-ink px-4 py-2.5 text-[10px] font-black text-white">{isLocked?'UNLOCK SENDING':'LOCK SENDING'}</button></div></section>}`;
 
