@@ -74,7 +74,10 @@ const style=" style={{writingMode:'horizontal-tb',WebkitWritingMode:'horizontal-
 textarea=textarea.replace(/>$/,style+'>');
 g=g.replace(match[0],textarea);
 
-const lockCount=(g.match(/LOCK SENDING/g)||[]).length;
+// Count the actual quoted LOCK SENDING label, not the substring inside
+// "UNLOCK SENDING". The previous check used /LOCK SENDING/g, which falsely counted
+// the LOCK portion of the UNLOCK label and rejected a valid single control as 1:2.
+const lockCount=(g.match(/['"]LOCK SENDING['"]/g)||[]).length;
 const controlCount=(g.match(/MESSAGE CONTROL/g)||[]).length;
 if(lockCount!==1||controlCount!==1) throw new Error(`GROUP_LOCK_UI_NOT_NORMALIZED:${controlCount}:${lockCount}`);
 if(!g.includes("WebkitWritingMode:'horizontal-tb'")) throw new Error('GROUP_COMPOSER_HORIZONTAL_STYLE_MISSING');
