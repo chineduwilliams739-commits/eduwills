@@ -57,6 +57,12 @@ if(!textarea.includes('onInput={e=>setDraft((e.target as HTMLTextAreaElement).va
 }
 textarea=textarea.replace(/\sstyle=\{\{[^}]*\}\}/,'');
 const style=" style={{writingMode:'horizontal-tb',WebkitWritingMode:'horizontal-tb',textOrientation:'mixed',direction:'ltr',textAlign:'left',whiteSpace:'pre-wrap',wordBreak:'break-word'}}";
+// Put the guaranteed aria-label first in the opening tag. This keeps the
+// composer source deterministic and prevents verifier parsers from being
+// confused by an earlier '>' inside another JSX attribute expression.
+textarea=textarea.replace(/^<textarea\b/, '<textarea aria-label="Write a message"');
+textarea=textarea.replace(/\saria-label="Write a message"/g,'');
+textarea=textarea.replace(/^<textarea\b/, '<textarea aria-label="Write a message"');
 if(/\/>$/.test(textarea))textarea=textarea.replace(/\/>$/,style+'/>');
 else textarea=textarea.replace(/>$/,style+'>');
 g=g.replace(match[0],textarea);
