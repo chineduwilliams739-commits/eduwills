@@ -80,16 +80,35 @@ jobs:
           assert 'async function toggleLock()' in group
           assert 'onClick={toggleLock}' in group
           assert group.count('MESSAGE CONTROL') == 1
-          # Count the actual quoted LOCK SENDING label, not the LOCK substring
-          # inside the distinct UNLOCK SENDING label.
           assert len(re.findall(r"['\"]LOCK SENDING['\"]", group)) == 1
-          # Match the actual finalized JSX composer invariant.
-          # The standard writingMode property is the browser-facing requirement;
-          # do not make the vendor-prefixed spelling the build gate.
-          assert "writingMode:'horizontal-tb'" in group
+
+          # Parse the generated composer itself instead of depending on exact
+          # JSX whitespace, quote style, or property ordering.
+          composer_match = re.search(
+              r'<textarea\b(?=[^>]*aria-label\s*=\s*["\']Write a message["\'])[^>]*>',
+              group,
+              re.S,
+          )
+          assert composer_match, 'Generated group composer textarea not found'
+          composer = composer_match.group(0)
+          style_match = re.search(r'style\s*=\s*\{\{(.*?)\}\}', composer, re.S)
+          assert style_match, 'Generated group composer style object not found'
+          composer_style = style_match.group(1)
+
+          def has_style_property(name, value):
+              pattern = rf'\b{re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']'
+              return bool(re.search(pattern, composer_style))
+
+          assert has_style_property('writingMode', 'horizontal-tb'), \
+              'Group composer writingMode is not horizontal-tb'
+          assert has_style_property('direction', 'ltr'), \
+              'Group composer direction is not ltr'
+          assert has_style_property('textAlign', 'left'), \
+              'Group composer textAlign is not left'
+
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
-          print('Community UI v8 source verification passed: one lock control and horizontal composer.')
+          print('Community UI v8 source verification passed: one lock control and semantic horizontal composer styles.')
           PY
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
