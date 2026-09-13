@@ -82,22 +82,37 @@ jobs:
           assert group.count('MESSAGE CONTROL') == 1
           assert len(re.findall(r"['\"]LOCK SENDING['\"]", group)) == 1
 
-          # Parse the generated composer itself instead of depending on exact
-          # JSX whitespace, quote style, or property ordering.
-          composer_match = re.search(
-              r'<textarea\b(?=[^>]*aria-label\s*=\s*["\']Write a message["\'])[^>]*>',
-              group,
-              re.S,
+          # Locate the complete textarea element even when JSX attributes span
+          # multiple lines. Do not depend on attribute order or whitespace.
+          textarea_candidates = re.finditer(r'<textarea\b[\s\S]*?>', group, re.I)
+          composer_match = next(
+              (
+                  match for match in textarea_candidates
+                  if re.search(
+                      r'aria-label\s*=\s*["\']Write a message["\']',
+                      match.group(0),
+                      re.I,
+                  )
+              ),
+              None,
           )
           assert composer_match, 'Generated group composer textarea not found'
           composer = composer_match.group(0)
-          style_match = re.search(r'style\s*=\s*\{\{(.*?)\}\}', composer, re.S)
-          assert style_match, 'Generated group composer style object not found'
+
+          # Parse a JSX style={{...}} expression across newlines. The
+          # expression is intentionally captured from the composer tag only,
+          # so unrelated style objects elsewhere cannot satisfy this check.
+          style_match = re.search(
+              r'\bstyle\s*=\s*\{\{\s*([\s\S]*?)\s*\}\}',
+              composer,
+              re.I,
+          )
+          assert style_match, 'Generated group composer style={{...}} expression not found'
           composer_style = style_match.group(1)
 
           def has_style_property(name, value):
-              pattern = rf'\b{re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']'
-              return bool(re.search(pattern, composer_style))
+              pattern = rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']'
+              return bool(re.search(pattern, composer_style, re.I))
 
           assert has_style_property('writingMode', 'horizontal-tb'), \
               'Group composer writingMode is not horizontal-tb'
@@ -144,6 +159,41 @@ jobs:
           rules = Path('firestore.rules').read_text()
           storage = Path('storage.rules').read_text()
           actions = Path('components/MessageActions.tsx').read_text()
+
+          # Reuse the same multiline-safe composer parser as the dedicated
+          # Community UI v8 gate so the broad verifier cannot regress to an
+          # exact-format JSX check.
+          textarea_candidates = re.finditer(r'<textarea\b[\s\S]*?>', community_group, re.I)
+          community_composer = next(
+              (
+                  match.group(0) for match in textarea_candidates
+                  if re.search(
+                      r'aria-label\s*=\s*["\']Write a message["\']',
+                      match.group(0),
+                      re.I,
+                  )
+              ),
+              None,
+          )
+          community_style = ''
+          if community_composer:
+              style_match = re.search(
+                  r'\bstyle\s*=\s*\{\{\s*([\s\S]*?)\s*\}\}',
+                  community_composer,
+                  re.I,
+              )
+              if style_match:
+                  community_style = style_match.group(1)
+
+          def has_composer_style(name, value):
+              if not community_style:
+                  return False
+              return bool(re.search(
+                  rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']',
+                  community_style,
+                  re.I,
+              ))
+
           checks = {
               'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
               'category navigation': all(x in category for x in ('HOME', 'COMMUNITY', 'const homeActive =', 'const quizActive =')),
@@ -172,8 +222,8 @@ jobs:
               'chat image storage path retained for legacy data': 'match /chatImages/{uid}/{fileName}' in storage,
               'community image storage path retained for legacy data': 'match /community/{uid}/{fileName}' in storage,
               'group message image storage path retained for legacy data': 'match /community/{groupId}/messages/{uid}/{fileName}' in storage,
-              'group composer textarea': 'aria-label="Write a message"' in community_group and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
-              'group composer horizontal flow': "writingMode:'horizontal-tb'" in community_group,
+              'group composer textarea': community_composer is not None and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
+              'group composer horizontal flow': has_composer_style('writingMode', 'horizontal-tb') and has_composer_style('direction', 'ltr') and has_composer_style('textAlign', 'left'),
               'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
               'community message lock UI': community_group.count('MESSAGE CONTROL') == 1 and len(re.findall(r"['\"]LOCK SENDING['\"]", community_group)) == 1 and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
