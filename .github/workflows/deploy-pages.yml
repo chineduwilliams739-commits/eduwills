@@ -71,8 +71,83 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
+
           group=Path('app/dashboard/community/group/page.tsx').read_text()
           chat=Path('app/dashboard/community/chat/page.tsx').read_text()
+
+          def scan_jsx_opening_tag(source, tag_name, start=0):
+              """Return the complete opening tag without regex-parsing JSX nesting."""
+              needle='<' + tag_name
+              pos=start
+              while True:
+                  pos=source.find(needle,pos)
+                  if pos < 0:
+                      return None
+                  after=pos+len(needle)
+                  if after>=len(source) or not (source[after].isspace() or source[after] in '/>'):
+                      pos=after
+                      continue
+                  i=after
+                  brace_depth=0
+                  quote=None
+                  escaped=False
+                  while i<len(source):
+                      ch=source[i]
+                      if quote:
+                          if escaped:
+                              escaped=False
+                          elif ch=='\\':
+                              escaped=True
+                          elif ch==quote:
+                              quote=None
+                      else:
+                          if ch in "'\"`":
+                              quote=ch
+                          elif ch=='{':
+                              brace_depth+=1
+                          elif ch=='}' and brace_depth:
+                              brace_depth-=1
+                          elif ch=='>' and brace_depth==0:
+                              return source[pos:i+1]
+                      i+=1
+                  return None
+
+          def jsx_attribute(tag, name):
+              """Read a named attribute from a complete JSX opening tag."""
+              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*=\s*([\"\'])(.*?)\1', tag, re.S)
+              return m.group(2) if m else None
+
+          def jsx_style_body(tag):
+              """Extract style={{...}} with balanced braces, quotes and nesting."""
+              m=re.search(r'\bstyle\s*=\s*\{\{', tag, re.I)
+              if not m:
+                  return None
+              i=m.end()
+              depth=2
+              quote=None
+              escaped=False
+              start=i
+              while i<len(tag):
+                  ch=tag[i]
+                  if quote:
+                      if escaped:
+                          escaped=False
+                      elif ch=='\\':
+                          escaped=True
+                      elif ch==quote:
+                          quote=None
+                  else:
+                      if ch in "'\"`":
+                          quote=ch
+                      elif ch=='{':
+                          depth+=1
+                      elif ch=='}':
+                          depth-=1
+                          if depth==0:
+                              return tag[start:i]
+                  i+=1
+              return None
+
           assert 'aria-label="Write a message"' in group
           assert ('const loadMembers=async' in group) or ('async function loadMembers' in group)
           assert 'GROUP MEMBERS' in group
@@ -82,48 +157,30 @@ jobs:
           assert group.count('MESSAGE CONTROL') == 1
           assert len(re.findall(r"['\"]LOCK SENDING['\"]", group)) == 1
 
-          # Locate the complete textarea element even when JSX attributes span
-          # multiple lines. Do not depend on attribute order or whitespace.
-          textarea_candidates = re.finditer(r'<textarea\b[\s\S]*?>', group, re.I)
-          composer_match = next(
-              (
-                  match for match in textarea_candidates
-                  if re.search(
-                      r'aria-label\s*=\s*["\']Write a message["\']',
-                      match.group(0),
-                      re.I,
-                  )
-              ),
-              None,
-          )
-          assert composer_match, 'Generated group composer textarea not found'
-          composer = composer_match.group(0)
+          textarea=None
+          cursor=0
+          while True:
+              candidate=scan_jsx_opening_tag(group,'textarea',cursor)
+              if not candidate:
+                  break
+              if jsx_attribute(candidate,'aria-label')=='Write a message':
+                  textarea=candidate
+                  break
+              cursor=group.find(candidate,cursor)+len(candidate)
+          assert textarea, 'Generated group composer textarea not found'
 
-          # Parse a JSX style={{...}} expression across newlines. The
-          # expression is intentionally captured from the composer tag only,
-          # so unrelated style objects elsewhere cannot satisfy this check.
-          style_match = re.search(
-              r'\bstyle\s*=\s*\{\{\s*([\s\S]*?)\s*\}\}',
-              composer,
-              re.I,
-          )
-          assert style_match, 'Generated group composer style={{...}} expression not found'
-          composer_style = style_match.group(1)
+          composer_style=jsx_style_body(textarea)
+          assert composer_style is not None, 'Generated group composer style={{...}} expression not found'
 
-          def has_style_property(name, value):
-              pattern = rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']'
-              return bool(re.search(pattern, composer_style, re.I))
+          def has_style_property(name,value):
+              return bool(re.search(rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']',composer_style,re.I))
 
-          assert has_style_property('writingMode', 'horizontal-tb'), \
-              'Group composer writingMode is not horizontal-tb'
-          assert has_style_property('direction', 'ltr'), \
-              'Group composer direction is not ltr'
-          assert has_style_property('textAlign', 'left'), \
-              'Group composer textAlign is not left'
-
+          assert has_style_property('writingMode','horizontal-tb'), 'Group composer writingMode is not horizontal-tb'
+          assert has_style_property('direction','ltr'), 'Group composer direction is not ltr'
+          assert has_style_property('textAlign','left'), 'Group composer textAlign is not left'
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
-          print('Community UI v8 source verification passed: one lock control and semantic horizontal composer styles.')
+          print('Community UI v8 source verification passed: structural JSX parser found the composer and semantic horizontal styles.')
           PY
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
@@ -160,39 +217,65 @@ jobs:
           storage = Path('storage.rules').read_text()
           actions = Path('components/MessageActions.tsx').read_text()
 
-          # Reuse the same multiline-safe composer parser as the dedicated
-          # Community UI v8 gate so the broad verifier cannot regress to an
-          # exact-format JSX check.
-          textarea_candidates = re.finditer(r'<textarea\b[\s\S]*?>', community_group, re.I)
-          community_composer = next(
-              (
-                  match.group(0) for match in textarea_candidates
-                  if re.search(
-                      r'aria-label\s*=\s*["\']Write a message["\']',
-                      match.group(0),
-                      re.I,
-                  )
-              ),
-              None,
-          )
-          community_style = ''
-          if community_composer:
-              style_match = re.search(
-                  r'\bstyle\s*=\s*\{\{\s*([\s\S]*?)\s*\}\}',
-                  community_composer,
-                  re.I,
-              )
-              if style_match:
-                  community_style = style_match.group(1)
+          def scan_jsx_opening_tag(source, tag_name, start=0):
+              needle='<' + tag_name
+              pos=start
+              while True:
+                  pos=source.find(needle,pos)
+                  if pos < 0:
+                      return None
+                  after=pos+len(needle)
+                  if after>=len(source) or not (source[after].isspace() or source[after] in '/>'):
+                      pos=after
+                      continue
+                  i=after; brace_depth=0; quote=None; escaped=False
+                  while i<len(source):
+                      ch=source[i]
+                      if quote:
+                          if escaped: escaped=False
+                          elif ch=='\\': escaped=True
+                          elif ch==quote: quote=None
+                      else:
+                          if ch in "'\"`": quote=ch
+                          elif ch=='{': brace_depth+=1
+                          elif ch=='}' and brace_depth: brace_depth-=1
+                          elif ch=='>' and brace_depth==0: return source[pos:i+1]
+                      i+=1
+                  return None
 
-          def has_composer_style(name, value):
-              if not community_style:
-                  return False
-              return bool(re.search(
-                  rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']',
-                  community_style,
-                  re.I,
-              ))
+          def jsx_attribute(tag,name):
+              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*=\s*([\"\'])(.*?)\1',tag,re.S)
+              return m.group(2) if m else None
+
+          def jsx_style_body(tag):
+              m=re.search(r'\bstyle\s*=\s*\{\{',tag,re.I)
+              if not m: return None
+              i=m.end(); depth=2; quote=None; escaped=False; start=i
+              while i<len(tag):
+                  ch=tag[i]
+                  if quote:
+                      if escaped: escaped=False
+                      elif ch=='\\': escaped=True
+                      elif ch==quote: quote=None
+                  else:
+                      if ch in "'\"`": quote=ch
+                      elif ch=='{': depth+=1
+                      elif ch=='}':
+                          depth-=1
+                          if depth==0: return tag[start:i]
+                  i+=1
+              return None
+
+          composer=None; cursor=0
+          while True:
+              candidate=scan_jsx_opening_tag(community_group,'textarea',cursor)
+              if not candidate: break
+              if jsx_attribute(candidate,'aria-label')=='Write a message': composer=candidate; break
+              cursor=community_group.find(candidate,cursor)+len(candidate)
+          community_style=jsx_style_body(composer) if composer else ''
+
+          def has_composer_style(name,value):
+              return bool(community_style and re.search(rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']',community_style,re.I))
 
           checks = {
               'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
@@ -206,7 +289,7 @@ jobs:
               'provider timeout': 'const QUIZ_PROVIDER_TIMEOUT = 15000;' in client,
               'adaptive grounded refill': 'generationTarget = Math.min(100' in client and 'refillRounds < 8' in client,
               'gateway-only generation': 'geminiText(' not in client and 'getGenerativeModel(' not in client and 'GoogleAIBackend' not in client,
-              'no browser Gemini implementation': not re.search(r'\bgetAI\s*\(|\bGoogleAIBackend\b|\bgemini\.generateContent\s*\(|\bgeminiText\s*\(', client),
+              'no browser Gemini implementation': not re.search(r'\bgetAI\s*|\bGoogleAIBackend\b|\bgemini\.generateContent\s*\(|\bgeminiText\s*\(', client),
               'quota hardening version': "v33-quiz-reliable-generation" in client,
               'timer starts after generation': 'const readyAtMs = Date.now();' in page,
               'safe explanation parser': 'readableExplanation' in client and "value === '{}'" in client,
@@ -222,7 +305,7 @@ jobs:
               'chat image storage path retained for legacy data': 'match /chatImages/{uid}/{fileName}' in storage,
               'community image storage path retained for legacy data': 'match /community/{uid}/{fileName}' in storage,
               'group message image storage path retained for legacy data': 'match /community/{groupId}/messages/{uid}/{fileName}' in storage,
-              'group composer textarea': community_composer is not None and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
+              'group composer textarea': composer is not None and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
               'group composer horizontal flow': has_composer_style('writingMode', 'horizontal-tb') and has_composer_style('direction', 'ltr') and has_composer_style('textAlign', 'left'),
               'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
@@ -242,8 +325,7 @@ jobs:
           missing = [name for name, ok in checks.items() if not ok]
           if missing:
               print('Repair verification failed:')
-              for item in missing:
-                  print(' -', item)
+              for item in missing: print(' -', item)
               raise SystemExit(1)
           print(f'All repair, community-control, forwarding, unread, Cloudinary upload and quiz/dashboard checks passed ({len(checks)} checks).')
           PY
@@ -292,4 +374,3 @@ jobs:
 # Repair scripts intentionally run in the build workspace; they no longer push from the Pages build job.
 # Community repair scripts are now idempotent so repeated Pages builds cannot re-declare group state or handlers.
 # Chat verification repair is normalized structurally so reruns remain safe after community-control rewrites.
-# Fresh-run trigger from corrected main commit.
