@@ -76,7 +76,7 @@ jobs:
           chat=Path('app/dashboard/community/chat/page.tsx').read_text()
 
           def scan_jsx_opening_tag(source, tag_name, start=0):
-              """Return the complete opening tag without regex-parsing JSX nesting."""
+              """Scan JSX structurally so nested expressions and multiline attributes are safe."""
               needle='<' + tag_name
               pos=start
               while True:
@@ -113,20 +113,25 @@ jobs:
                   return None
 
           def jsx_attribute(tag, name):
-              """Read a named attribute from a complete JSX opening tag."""
-              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*=\s*([\"\'])(.*?)\1', tag, re.S)
+              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*=\s*(["\'])(.*?)\1', tag, re.S)
               return m.group(2) if m else None
 
           def jsx_style_body(tag):
-              """Extract style={{...}} with balanced braces, quotes and nesting."""
-              m=re.search(r'\bstyle\s*=\s*\{\{', tag, re.I)
-              if not m:
+              """Parse style={{...}} by balancing the outer JSX and inner object braces."""
+              key=re.search(r'(?<![A-Za-z0-9_$:-])style\s*=\s*',tag,re.I)
+              if not key:
                   return None
-              i=m.end()
-              depth=2
+              i=key.end()
+              if i>=len(tag) or tag[i]!='{':
+                  return None
+              i+=1
+              if i>=len(tag) or tag[i]!='{':
+                  return None
+              i+=1
+              start=i
+              depth=1
               quote=None
               escaped=False
-              start=i
               while i<len(tag):
                   ch=tag[i]
                   if quote:
@@ -147,6 +152,11 @@ jobs:
                               return tag[start:i]
                   i+=1
               return None
+
+          def style_value(body,name):
+              """Accept normal or multiline style entries and either quote style."""
+              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*:\s*(["\'])(.*?)\1',body,re.S|re.I)
+              return m.group(2).strip() if m else None
 
           assert 'aria-label="Write a message"' in group
           assert ('const loadMembers=async' in group) or ('async function loadMembers' in group)
@@ -171,16 +181,12 @@ jobs:
 
           composer_style=jsx_style_body(textarea)
           assert composer_style is not None, 'Generated group composer style={{...}} expression not found'
-
-          def has_style_property(name,value):
-              return bool(re.search(rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']',composer_style,re.I))
-
-          assert has_style_property('writingMode','horizontal-tb'), 'Group composer writingMode is not horizontal-tb'
-          assert has_style_property('direction','ltr'), 'Group composer direction is not ltr'
-          assert has_style_property('textAlign','left'), 'Group composer textAlign is not left'
+          assert style_value(composer_style,'writingMode')=='horizontal-tb', 'Group composer writingMode is not horizontal-tb'
+          assert style_value(composer_style,'direction')=='ltr', 'Group composer direction is not ltr'
+          assert style_value(composer_style,'textAlign')=='left', 'Group composer textAlign is not left'
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
-          print('Community UI v8 source verification passed: structural JSX parser found the composer and semantic horizontal styles.')
+          print('Community UI v8 source verification passed: structural JSX parser accepted multiline horizontal composer styles.')
           PY
       - name: Apply faster and more diverse quiz generator
         run: node scripts/upgrade-quiz-generator-v24.mjs
@@ -244,13 +250,18 @@ jobs:
                   return None
 
           def jsx_attribute(tag,name):
-              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*=\s*([\"\'])(.*?)\1',tag,re.S)
+              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*=\s*(["\'])(.*?)\1',tag,re.S)
               return m.group(2) if m else None
 
           def jsx_style_body(tag):
-              m=re.search(r'\bstyle\s*=\s*\{\{',tag,re.I)
-              if not m: return None
-              i=m.end(); depth=2; quote=None; escaped=False; start=i
+              key=re.search(r'(?<![A-Za-z0-9_$:-])style\s*=\s*',tag,re.I)
+              if not key: return None
+              i=key.end()
+              if i>=len(tag) or tag[i]!='{': return None
+              i+=1
+              if i>=len(tag) or tag[i]!='{': return None
+              i+=1
+              start=i; depth=1; quote=None; escaped=False
               while i<len(tag):
                   ch=tag[i]
                   if quote:
@@ -266,6 +277,10 @@ jobs:
                   i+=1
               return None
 
+          def style_value(body,name):
+              m=re.search(rf'(?<![A-Za-z0-9_$:-]){re.escape(name)}\s*:\s*(["\'])(.*?)\1',body,re.S|re.I)
+              return m.group(2).strip() if m else None
+
           composer=None; cursor=0
           while True:
               candidate=scan_jsx_opening_tag(community_group,'textarea',cursor)
@@ -275,7 +290,7 @@ jobs:
           community_style=jsx_style_body(composer) if composer else ''
 
           def has_composer_style(name,value):
-              return bool(community_style and re.search(rf'(?<![A-Za-z0-9_$]){re.escape(name)}\s*:\s*["\']{re.escape(value)}["\']',community_style,re.I))
+              return style_value(community_style,name)==value
 
           checks = {
               'dashboard primary navigation': all(x in dashboard for x in ('HOME', 'EXAM', 'QUIZ', 'COMMUNITY', 'MORE')),
