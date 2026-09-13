@@ -83,7 +83,9 @@ jobs:
           # Count the actual quoted LOCK SENDING label, not the LOCK substring
           # inside the distinct UNLOCK SENDING label.
           assert len(re.findall(r"['\"]LOCK SENDING['\"]", group)) == 1
-          assert "WebkitWritingMode:'horizontal-tb'" in group
+          # Accept the corrected composer source regardless of harmless JSX spacing
+          # or quote normalization, while requiring explicit horizontal writing mode.
+          assert re.search(r'WebkitWritingMode\s*:\s*[\'\"]horizontal-tb[\'\"]', group)
           assert 'const recentRows=useMemo(()=>[...chatRows]' in chat
           assert 'const recentRows=useMemo(()=>[...chatRows,...groupRows]' not in chat
           print('Community UI v8 source verification passed: one lock control and horizontal composer.')
@@ -151,7 +153,7 @@ jobs:
               'community image storage path retained for legacy data': 'match /community/{uid}/{fileName}' in storage,
               'group message image storage path retained for legacy data': 'match /community/{groupId}/messages/{uid}/{fileName}' in storage,
               'group composer textarea': 'aria-label="Write a message"' in community_group and 'onInput={e=>setDraft((e.target as HTMLTextAreaElement).value)}' in community_group,
-              'group composer horizontal flow': "WebkitWritingMode:'horizontal-tb'" in community_group,
+              'group composer horizontal flow': bool(re.search(r'WebkitWritingMode\s*:\s*[\'\"]horizontal-tb[\'\"]', community_group)),
               'group composer not camera capture': 'capture="environment"' not in community_group,
               'group membership state': 'isMember' in community_group and 'CLICK TO JOIN GROUP' in community_group,
               'community message lock UI': community_group.count('MESSAGE CONTROL') == 1 and len(re.findall(r"['\"]LOCK SENDING['\"]", community_group)) == 1 and 'messagingLocked' in community_group and 'async function toggleLock()' in community_group and 'onClick={toggleLock}' in community_group,
