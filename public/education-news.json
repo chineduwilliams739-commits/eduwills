@@ -1,27 +1,11 @@
 {
-  "generatedAt": "2026-09-13T10:18:37.297Z",
+  "generatedAt": "2026-09-14T10:41:50.985Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
     "total": 20
   },
   "items": [
-    {
-      "title": "Public Finance for Basic Education in Nigeria. - Unicef",
-      "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxOdFF6d01xQndWSGMtOU9RQmQzQjdOSVBueXRkbjhSbzVGVG5YcTU3M1d6NS1MdEVOYXl0SFJiejNOY2l2dzBKZzdjWmdPTUNJRjlSVHp5VlZHTENIY3NpcHBLeFY0VjlqTEUyVGl4ZndPSkRTcnczSE4wcTVMN21LaGtySQ?oc=5",
-      "source": "Unicef",
-      "publishedAt": "Mon, 07 Sep 2026 12:00:00 GMT",
-      "description": "Public Finance for Basic Education in Nigeria. &nbsp;&nbsp; Unicef",
-      "region": "Nigeria"
-    },
-    {
-      "title": "College Enrollment Statistics [2026]: Total + by Demographic - Education Data Initiative",
-      "link": "https://news.google.com/rss/articles/CBMiZkFVX3lxTE5VaHNmempRTmpkWWtKV0Rqd2Zxb19kOW9OR1NUMDVyckoydFlhSFMtVHVMcEo5OTR6cU50ZWdKdzlCZmhQa012STRYQUxtR2ctWVpWZlhVTXlFbXExdTdRSTBtZlcxZw?oc=5",
-      "source": "Education Data Initiative",
-      "publishedAt": "Mon, 07 Sep 2026 07:00:00 GMT",
-      "description": "College Enrollment Statistics [2026]: Total + by Demographic &nbsp;&nbsp; Education Data Initiative",
-      "region": "International"
-    },
     {
       "title": "NCC to Begin Data-Free Education Access October 1 - Voice of Nigeria",
       "link": "https://news.google.com/rss/articles/CBMieEFVX3lxTE9KNnJCZXhHLUVndXhCdkdPUU0yQ3ZlMGl0UE1VZUg3ZnFWWk9BSEtobW9fX2NkaGgzU3A2S2lOY0NWS2JjTlF6OHJjY250aUg1ekcxY2pTWDVzRE44ZmU5eGtrTXJudGthcTV2dFQtZU1laVVueE9SdQ?oc=5",
@@ -63,38 +47,6 @@
       "region": "Nigeria"
     },
     {
-      "title": "UMSV and Apex Technical School Launch Innovative Partnership to Reimagine Higher Education - University of Mount Saint Vincent",
-      "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNTndzOHN3U1R5VjQ1YWFLOXA2LTVsdDB1U1dzTDN0X0phR0ZSMXF0b3JfNUhxalBEbWhnSkdsRkhla2Y3UXJtejMtLTQ0NEhlVUlSeDlBcUpBZUJLOHg5NUthVE1MQWFCMDZVeGFrZ3kzLXFlbEk1SGRzMVVUcjMwS3NaU2pUUWRYNmhWS2l0eEpVSXRLamZVTldqOGpkUTN1OURJWVVHSmtxSGg0cE51dF95d1lpMFJvM2kzeTd3?oc=5",
-      "source": "University of Mount Saint Vincent",
-      "publishedAt": "Mon, 07 Sep 2026 07:00:00 GMT",
-      "description": "UMSV and Apex Technical School Launch Innovative Partnership to Reimagine Higher Education &nbsp;&nbsp; University of Mount Saint Vincent",
-      "region": "International"
-    },
-    {
-      "title": "Can Nigerian Education Survive Attack? - leadership.ng",
-      "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTFBfRUpRMkFjTnh1N1dGeG5DTjdQQjBBOE1NRGhyODV2YUdWM01qOHA2TWpqclJvSWl6c0RadC1qOG40WDRENHNoMDU0ZWZqdUpHQjZ1RDc2V1E3a0c4em5rdWUyc3FJanR0elNCYg?oc=5",
-      "source": "leadership.ng",
-      "publishedAt": "Fri, 11 Sep 2026 02:35:30 GMT",
-      "description": "Can Nigerian Education Survive Attack? &nbsp;&nbsp; leadership.ng",
-      "region": "Nigeria"
-    },
-    {
-      "title": "How Does University of Vermont Rank Among America's Best Colleges? - U.S. News & World Report",
-      "link": "https://news.google.com/rss/articles/CBMicEFVX3lxTE9uRURkamdkLWRjMlFsMmJzTkozdll3T3hKZmIyNDd1VTJId3VkaV94cU9hWFRKQ3VacnRaSXVSTXRsZ1lOeE9NeVlCTzJ6UGtxbUJ0UTAwZEFmWmw1cURuMDd4VzlBYlRoajlxWXY5NDQ?oc=5",
-      "source": "U.S. News & World Report",
-      "publishedAt": "Fri, 11 Sep 2026 20:43:21 GMT",
-      "description": "How Does University of Vermont Rank Among America's Best Colleges? &nbsp;&nbsp; U.S. News & World Report",
-      "region": "International"
-    },
-    {
-      "title": "University-college status: The reform Nigeria’s colleges of education need - punchng.com",
-      "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNYnpjVWo1T0NxWnR0c0hKYWZtZ0syaVVNRXpRMVZka2tfWnFIeUIzU0Vmb2s1OTZZc2IwbjVFQlJrV3J4dDlTOXVDa2NuNnh4Qm9WR0kybWRVN1ZXdVZsRHQtNE1HQU5uR3NpM25aTWJwRW1mRG02aHZOSmlTSHo4TXFfVkYtcmQ5ZF9OSTBaNTdxRlJxS3hGQg?oc=5",
-      "source": "punchng.com",
-      "publishedAt": "Tue, 08 Sep 2026 08:12:34 GMT",
-      "description": "University-college status: The reform Nigeria’s colleges of education need &nbsp;&nbsp; punchng.com",
-      "region": "Nigeria"
-    },
-    {
       "title": "Annual partnership breakfast connects local school leaders with School of Education faculty - Liberty University",
       "link": "https://news.google.com/rss/articles/CBMizAFBVV95cUxPMVZEU3NWYkRCU0dxZHdzYjRGeXQ4RnZ0SEdvRlRoOERVOVBzZDdtd2FlaTNuRXFJQnZ1d2NDdi1oOUZqYldzNVlIVUNhXzAxSEE5QVVkVHZTbnBXeHIwbDFqNl9FeXVIdzl0MXZ3RHdoblZJWkY4eDQ3UkptNTFuQXlnTzVBY3VPcjlKOGxJc3RpZTRfbkJtazJubXhhT1N0el9FZER3RDEzVG5Iem5OT2EtbTVCYWt1RG1rZWtBSmZlWnZQZW1ZREU2Y2M?oc=5",
       "source": "Liberty University",
@@ -103,35 +55,99 @@
       "region": "International"
     },
     {
-      "title": "Digital Education Reforms ‘ll Tackle Certificate Racketeering — Alausa - News Agency of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQUGNJMHU5dW1sNm5GVWlRd01aMTd1dFFuN3hIc0xydWdNX3NrZklMSTVRY2E2S3RIQ3QzMGhva0xJdVE2VW94dHc4dlBDRENha2I1cWNWT2JCMkE1T3NWaEd0cm43alR4ZFpCbnVyTjZrS200NWRvclVHWTZhNnI3dFl4cUZwdFZxWkw5MThvQVc?oc=5",
-      "source": "News Agency of Nigeria",
-      "publishedAt": "Tue, 08 Sep 2026 20:04:01 GMT",
-      "description": "Digital Education Reforms ‘ll Tackle Certificate Racketeering — Alausa &nbsp;&nbsp; News Agency of Nigeria",
+      "title": "Can Nigerian Education Survive Attack? - LEADERSHIP Newspapers",
+      "link": "https://news.google.com/rss/articles/CBMibEFVX3lxTFBfRUpRMkFjTnh1N1dGeG5DTjdQQjBBOE1NRGhyODV2YUdWM01qOHA2TWpqclJvSWl6c0RadC1qOG40WDRENHNoMDU0ZWZqdUpHQjZ1RDc2V1E3a0c4em5rdWUyc3FJanR0elNCYg?oc=5",
+      "source": "LEADERSHIP Newspapers",
+      "publishedAt": "Fri, 11 Sep 2026 02:35:30 GMT",
+      "description": "Can Nigerian Education Survive Attack? &nbsp;&nbsp; LEADERSHIP Newspapers",
       "region": "Nigeria"
     },
     {
-      "title": "The Nigerian child and the right to education: Rhetoric or reality? - Business News Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxOTmpGTVdUdktBZVZad2dRNTJ5SmhlOHlkekpnc3ZWME9OTE9uZ0QzNHdDcVJiRnZKaWVDRGNhTERCdG12N0RGY24wMkVkMGRlakE2N2I4RHZVTGVncDVaeXBYZkIyeDVFVFZFNjR5dTJqTEx6Q2FPNlhYZG9qRHhrN0xHanFlUEtMeG1mMGEwRXZaU2t4MVlGd3E2Zi1OTTZ2QkxQTUY4QVE?oc=5",
-      "source": "Business News Nigeria",
-      "publishedAt": "Mon, 07 Sep 2026 15:23:17 GMT",
-      "description": "The Nigerian child and the right to education: Rhetoric or reality? &nbsp;&nbsp; Business News Nigeria",
+      "title": "Feds float ending tax-exempt status for private universities that have race-based policies - Virginia Mercury",
+      "link": "https://news.google.com/rss/articles/CBMiygFBVV95cUxPNEdKckp0SWNTSl9JTFVCNlFKRGpXRXcwcEtZOWNtT1kzc1dnOFQtYVY0d1YxOVNKSi1MVG9lY0J0MmJFYVk4am1wUUNDTmYwQTVVbUFlSTRiZ251OTBmam9RbHRON1Zfa3l1b3BPd3JUYzlGTUNNcUpDWVo3QWc3REcwTUwyd21tTnRVeTRvT1UwXzlJSzlDTGp3S25YSEUxdi0yUGJIcHlqYWlpWmE3akR0UWNReU5QMFMxcXZqa3BQV1piZjlsQnN3?oc=5",
+      "source": "Virginia Mercury",
+      "publishedAt": "Thu, 10 Sep 2026 09:54:07 GMT",
+      "description": "Feds float ending tax-exempt status for private universities that have race-based policies &nbsp;&nbsp; Virginia Mercury",
+      "region": "International"
+    },
+    {
+      "title": "University-college status: The reform Nigeria’s colleges of education need - Punch Newspapers",
+      "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNYnpjVWo1T0NxWnR0c0hKYWZtZ0syaVVNRXpRMVZka2tfWnFIeUIzU0Vmb2s1OTZZc2IwbjVFQlJrV3J4dDlTOXVDa2NuNnh4Qm9WR0kybWRVN1ZXdVZsRHQtNE1HQU5uR3NpM25aTWJwRW1mRG02aHZOSmlTSHo4TXFfVkYtcmQ5ZF9OSTBaNTdxRlJxS3hGQg?oc=5",
+      "source": "Punch Newspapers",
+      "publishedAt": "Tue, 08 Sep 2026 08:12:34 GMT",
+      "description": "University-college status: The reform Nigeria’s colleges of education need &nbsp;&nbsp; Punch Newspapers",
       "region": "Nigeria"
+    },
+    {
+      "title": "Iowa’s University Reforms Show the Way Forward - City Journal",
+      "link": "https://news.google.com/rss/articles/CBMihgFBVV95cUxPOGxaX2o1U2E1MHlGb2N1M1B2LUFFTFdtdmRsQ2VOTmlnVnA4Y0JDV0VGX3JPeG9yQjI5OXhfVEhsSG44MjRhcU1GbU04bnFYNTBCRmlueUNXQkF0RGxZUkwxV01QSS1tTkRoZW5xYnlpRUlPUHdLblp5WlhCaEFFNFROZE94QQ?oc=5",
+      "source": "City Journal",
+      "publishedAt": "Tue, 08 Sep 2026 21:04:28 GMT",
+      "description": "Iowa’s University Reforms Show the Way Forward &nbsp;&nbsp; City Journal",
+      "region": "International"
+    },
+    {
+      "title": "Digital Education Reforms ‘ll Tackle Certificate Racketeering — Alausa - nannews.ng",
+      "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQUGNJMHU5dW1sNm5GVWlRd01aMTd1dFFuN3hIc0xydWdNX3NrZklMSTVRY2E2S3RIQ3QzMGhva0xJdVE2VW94dHc4dlBDRENha2I1cWNWT2JCMkE1T3NWaEd0cm43alR4ZFpCbnVyTjZrS200NWRvclVHWTZhNnI3dFl4cUZwdFZxWkw5MThvQVc?oc=5",
+      "source": "nannews.ng",
+      "publishedAt": "Tue, 08 Sep 2026 20:04:01 GMT",
+      "description": "Digital Education Reforms ‘ll Tackle Certificate Racketeering — Alausa &nbsp;&nbsp; nannews.ng",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Education expert questions whether $100K-a-year colleges are worth it - The Hill",
+      "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNTF9MYWp0dW13dlZ3NUw1NWV6ejlBVk1LbEk5MjNvbk9MWlFaVHVra1dpWVZXMW1DaWlkT1VSUEppR2xwYUxNUy1YeUNfYU4zYUdSalo4Sl9rNkFIVk5nQ1ZpZ0lXeDc5NjN1T3Njdm1MWjNZbXNxMTEyczZNdUljMVlfT29mVHBDcTUxMTZR0gGTAUFVX3lxTFA2emVVUHRocVBIci0zaG9mR1BJcGNxZ0FIOG9qcDdQNExJRkI5NTl6WHhLVlluMU1jQ19kX19NN0huS3FBOTZxSjlSTThlSGhaMjRUcEtBOXI3S21KcnJkYm42TjZWRWpJR3MwZVpSVVk1djBXMlVTam51ZkJSWWRBdG8tUkRSZHFqZTZGN000eVFBTQ?oc=5",
+      "source": "The Hill",
+      "publishedAt": "Tue, 08 Sep 2026 11:46:00 GMT",
+      "description": "Education expert questions whether $100K-a-year colleges are worth it &nbsp;&nbsp; The Hill",
+      "region": "International"
     },
     {
       "title": "Katsina State Government Marks Launch of UK-funded SCALE Programme to Strengthen Foundational Learning - Nigeria Communications Week",
-      "link": "https://news.google.com/rss/articles/CBMi7wFBVV95cUxPNlVoSTFOR3dkNzluT3FBV3BkYnNzNHVKZmtLdVhQSFJ2QnRyYlhZWGd3MzJaSEotUllZcjg1SHRBZzJPaUFmUV9vSEx2ejU2N0Y2Tkk0LTdteC1neUZZRUtjZUhaSmRXcldGTVpNU1RUWWpTUnB4SU1nU19uZ2ZQNngwQ2NFR3NxeVJzSl9tNE44YVUyMHBLQ2lMQ1FQWUtUdFZYWjJfMGtCVnMtZ0MwUk40MXV4cmlnNjhjbWdwbVo4Zm0zMUcydEJUOS1fVHhnQW5sRmpPam8zRzRlUG9UajhWZWZ6d3lCZi01UGR2Zw?oc=5",
+      "link": "https://news.google.com/rss/articles/CBMi6gFBVV95cUxPVWNpX1M5cWRTQ295YmZCMFR2aXBNYS1qYnQtbHBwM0F4YlE2b2IwNW9WN3lxNy1ZeHBvNTVJZkR3dmZ5bXpzVzRPbFg2dmNoaU9ZNW9kNEQxLXdsbDR4dlJRWWdfMFZONFVJMFVVOF9YMGFFbWQ5VHhNYXhuemtBOXlRQ3pob3h4T295amdWcWZXS0QybnJ0OG45UVhFY1RvSVdIRkV0b0w3ZzNDTnBwUjNGenZfZXhqcWw4eTZRblpsR3Y1eWtzZnFza1dRNWQxYUppMHoyQTRIZU1fbHFTY1BETlJ1YWVtUEE?oc=5",
       "source": "Nigeria Communications Week",
       "publishedAt": "Fri, 11 Sep 2026 23:01:44 GMT",
       "description": "Katsina State Government Marks Launch of UK-funded SCALE Programme to Strengthen Foundational Learning &nbsp;&nbsp; Nigeria Communications Week",
       "region": "Nigeria"
     },
     {
-      "title": "FG sets October 1 take-off for students’ free educational data - The Guardian Nigeria News",
+      "title": "Free data alone won’t fix Nigerian education – But it’s a very good start - Business News Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiswFBVV95cUxQeHhNaExqdjgtOVc5RUx0T0x1am83X0p3SnFSQzlmN1dPeTViOTR2bzlqbXJBcllLZkVQNGJDT29zOVJWZ0xkYzhGT1ppR29tc2E2Mng1cHFvenZzSVBkMWROUzVEbHZ6ZTVJaE1aVDYzeC1GQkhEZlZrT3dKSFRoTEdOTVNwSkJZNXZGVlh2dWZjLWV6N01zTHF6Sm9HMkhfTm5TbHY0RGxFM01zVElSWjk4UQ?oc=5",
+      "source": "Business News Nigeria",
+      "publishedAt": "Mon, 14 Sep 2026 06:45:20 GMT",
+      "description": "Free data alone won’t fix Nigerian education – But it’s a very good start &nbsp;&nbsp; Business News Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "NCC Launches Zero-Rated Education Platforms Initiative to Cut Data Costs for Nigerian Students - TechAfrica News",
+      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPSkpEMzhSSDgyUWRzQ3pPTkJzYUo3ZnFWUjJGVm1GNlowVGVmN2phbDFOYXFCZENOTERIeWRaT0NFOENjRk5aamZMS3NOLU82SXdNS2p5bDMwS3JWY0tlbzQ5SDRnMDJyMUNEcVJsVHMxM2MtdFNKblFPZVpQUUNKRzVoQ043dWpfdW1LaXZMQlVTN3dwMDNj?oc=5",
+      "source": "TechAfrica News",
+      "publishedAt": "Mon, 14 Sep 2026 07:02:15 GMT",
+      "description": "NCC Launches Zero-Rated Education Platforms Initiative to Cut Data Costs for Nigerian Students &nbsp;&nbsp; TechAfrica News",
+      "region": "Nigeria"
+    },
+    {
+      "title": "FG sets October 1 take-off for students’ free educational data - guardian.ng",
       "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQOVVld0huR1lmZnMyT1hvLXg3aUhEVTRVMXV2ejVGY3JkWE9zZlpSRTZCY21xc2IwTmV5N09HQkFpckI3UUg5cGpBLXo3aFZMZVg0Z2NxWXlZS20weXJUUHYxVV9zekVqSlhKNnNhSl9oRTd5Y2F0cEt3a2lrWFpfQm9MWE5WVHdpXzB5YVhZbEs?oc=5",
-      "source": "The Guardian Nigeria News",
+      "source": "guardian.ng",
       "publishedAt": "Thu, 10 Sep 2026 16:18:00 GMT",
-      "description": "FG sets October 1 take-off for students’ free educational data &nbsp;&nbsp; The Guardian Nigeria News",
+      "description": "FG sets October 1 take-off for students’ free educational data &nbsp;&nbsp; guardian.ng",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Nigeria’s Education Ministry opens ₦50 million equity‑free grants to student founders - Capmad",
+      "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxPRnpCYnB6bTdJdjFGYXltWGktUlF2V1EySXAtTFp2Xy1yaXZDcnhQd0M4My1KZmZsQzRjdERaOWctOXF5ZnczSnphZ2JfSXpwTEQ5Z3l6NHh6dHpuMEo3aHBmODEyYnExUGFONVl5cTY1RWNXWVI5RzQ1RXJXbndHWk5Kc2VZTldaa1NERS1vNXdTRTJYQ1JkOFAwQ1A2UWl0U3djbmtWYkprNmFkaFE0?oc=5",
+      "source": "Capmad",
+      "publishedAt": "Tue, 08 Sep 2026 02:09:00 GMT",
+      "description": "Nigeria’s Education Ministry opens ₦50 million equity‑free grants to student founders &nbsp;&nbsp; Capmad",
+      "region": "Nigeria"
+    },
+    {
+      "title": "[VIDEO] Insecurity Is Not Nigeria’s Main Issue, It’s Out-Of-School Children — Reno Omokri - Channels Television",
+      "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOR2hJT2o3V2NneV9nRnVzdm51Qmh1cHpuTlAzNXlzNS1rcVkyS1JnTkFKNTIxT1ljVVprQVhnRzdWeG5WY1UwZFh5RXlPRGVVQnc4cTRJVDNCU0V1LU8xT2pTcXhfQkthQ2NYOFAzbkN3U1NBdlRwci1OWlNPekhYLVFiQ0Y1MGhsTVhXNVpPM0p0cXhZbjRqNEtFemE2NjkteVBNS2U5OEZVdDBZQXJyNlJXRF9Gdw?oc=5",
+      "source": "Channels Television",
+      "publishedAt": "Mon, 14 Sep 2026 05:31:30 GMT",
+      "description": "[VIDEO] Insecurity Is Not Nigeria’s Main Issue, It’s Out-Of-School Children — Reno Omokri &nbsp;&nbsp; Channels Television",
       "region": "Nigeria"
     },
     {
@@ -143,27 +159,11 @@
       "region": "Nigeria"
     },
     {
-      "title": "How to verify your academic certificates online through FG’s portal - punchng.com",
-      "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPQ1hZMDZkRjRGMF9Oa1dsWlN1Zno1RlRVUy16QVZvVHB4TlM5Ymw2QzJ0OVppSE41dTVtMFRrN2lXNG1hNUk5UWp6WElCVjJWNkMyNHU0UGtEd2c2QldLVWwtWDlwYXIxeFNPUDJYRFN0amlqMWxDVnBKMXJsX2JjYlBzWjRtVnZIV21RMjFpTGU?oc=5",
-      "source": "punchng.com",
-      "publishedAt": "Thu, 10 Sep 2026 07:17:41 GMT",
-      "description": "How to verify your academic certificates online through FG’s portal &nbsp;&nbsp; punchng.com",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Mutfwang urges northern leaders to tackle Almajiri problem through education - Premium Times Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxPejhYY0FfSTFHUldBcmhrNlJfR0VVazRQLTFEQXd1bzM5QTdUbnhKOEhMZDRHUndGV3hNaUF0aE5GLTBDQUZQaGdpM29Odk1keno0TmZyM19jeGVyeU1HS0o0Q2p3YjBBN1FqVDMyTjBsOENkMUdzcURiR2dZVmFRX29Dd3pBTEgxNnFJWGp3TnM2b0RoME15VDRGTnJNcEhTVDViU1cwTjZ6bUhGQzFVZUNjeFhCMTZjNjFFbjJxcHloT3pXbVNSckFMSEZUNUNfQ3RmWUZfTXA3Zw?oc=5",
-      "source": "Premium Times Nigeria",
-      "publishedAt": "Tue, 08 Sep 2026 10:10:44 GMT",
-      "description": "Mutfwang urges northern leaders to tackle Almajiri problem through education &nbsp;&nbsp; Premium Times Nigeria",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Over 1m Out-of-school Children Return To School In 20 Months — Alausa - News Agency of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMihwFBVV95cUxOLUF2eG5Pd1gxRnA5MmVIUmZMWjNzS0hMU3BkTk8tempLSzdGWmdVVXFJZlR4ZWE3U0FuZVE1cDlkUXJlV1ZvX0wzQmVzcGVHSWdMNjJOMW5BQjNveDhOdm12Q0RwSkJTLXoydmlsMVFJZlFnNnNFcWdLX1AyanRpYWQzaExBaDA?oc=5",
-      "source": "News Agency of Nigeria",
-      "publishedAt": "Tue, 08 Sep 2026 17:36:30 GMT",
-      "description": "Over 1m Out-of-school Children Return To School In 20 Months — Alausa &nbsp;&nbsp; News Agency of Nigeria",
+      "title": "FG tightens accreditation, admission rules, pays lecturers tools allowances - Punch Newspapers",
+      "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxOcDFvWnVmYmc4VWRpUmhuUUJkUHo0NGVFZFVWX18wTm1fZnUxcVJCMGl5Q1QzYk4zNkZyVXBvRDFLQTI5SlBCaDRfVG1OMUhyRUdIQWx1ZUVZZHNOalJlYzdvZjN6UmFFU3RyOG1IdEFvdV9hTERWM0lnTnd1RWcwSXprak92TkNaaVp3S0FmSGtSTUxoazRyS1lR?oc=5",
+      "source": "Punch Newspapers",
+      "publishedAt": "Thu, 10 Sep 2026 01:30:20 GMT",
+      "description": "FG tightens accreditation, admission rules, pays lecturers tools allowances &nbsp;&nbsp; Punch Newspapers",
       "region": "Nigeria"
     }
   ]
