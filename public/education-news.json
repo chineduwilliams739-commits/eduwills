@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T11:37:59.309Z",
+  "generatedAt": "2026-10-02T11:07:48.887Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
@@ -12,38 +12,6 @@
       "source": "UNICEF",
       "publishedAt": "Wed, 30 Sep 2026 10:49:44 GMT",
       "description": "Hassan Goes to School, Finally &nbsp;&nbsp; UNICEF",
-      "region": "Nigeria"
-    },
-    {
-      "title": "US News ranks App State No. 1 Best Value School for In-State Students in the South - Appalachian State University",
-      "link": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE00T1ZGVUsyZUM2MGdnV25jUTl2UUVCZ0ZxZzVUNVd1MXRqT2E4ZzRZRGFNdndXS3R4V2k1YVF5bHY5ZEYxMlYxdG1tMGgwMUlFV3JEQ2t2RHFEX0U?oc=5",
-      "source": "Appalachian State University",
-      "publishedAt": "Thu, 24 Sep 2026 19:40:48 GMT",
-      "description": "US News ranks App State No. 1 Best Value School for In-State Students in the South &nbsp;&nbsp; Appalachian State University",
-      "region": "International"
-    },
-    {
-      "title": "Nigeria Repositions Education for Global Outsourcing - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1xWHNkOVAwYzdEdVRkTzJWOXV0eUpxN25udHRYUFdwcTVka1gzRExSWGV4YTB6MVlwTTgzM28zUTNQU1h3NVRGM3JoSUctS0Y1cUtXVXd6SzlURVc4ekZEOFpkQ3IyYTRlWWZwTEw0OVhYNEN3WktJOWYwSzc?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Sun, 27 Sep 2026 22:06:23 GMT",
-      "description": "Nigeria Repositions Education for Global Outsourcing &nbsp;&nbsp; Voice of Nigeria",
-      "region": "Nigeria"
-    },
-    {
-      "title": "College rankings, like those of US News and World Report, remain influential, despite their many flaws and decades of criticism - The Conversation",
-      "link": "https://news.google.com/rss/articles/CBMi8AFBVV95cUxQXzdjR3FEOFo1eXVjSDdxZUo4eFBWQ2RNTnprV3FETDhhR1ptVzZkdFNDYnRiWlpIUi1SdUY3WVJQaVVINWE0QXN6aDBuclh4YjZ6dTJZNWlSWE9WMGJBZ2NMNWN6U1Y4VVc3YVZtNTJXeC1PMEdMTXhsUzFiRUUtMDZUN205TTdSbW1CWF81ckhOZWJpbzFJQjcyNGNWUmxraE82SzRhMHdIYm1PbEY0NXdCSnF1eTNIdk9UTTBoTzhyRkYwNDlTZUg2ZkJSMDVOMlVITm13SlFsQi0tRnV3dG1KTDRtcVp4cmhGNmtvblA?oc=5",
-      "source": "The Conversation",
-      "publishedAt": "Mon, 28 Sep 2026 12:39:51 GMT",
-      "description": "College rankings, like those of US News and World Report, remain influential, despite their many flaws and decades of criticism &nbsp;&nbsp; The Conversation",
-      "region": "International"
-    },
-    {
-      "title": "Nigeria @66: Development In Education Sector Neither Here Nor There — Stakeholders - Independent Newspaper Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPMk5TcGVzU1dfTlN6SlRhZXJyZ1F5MVA1RDJnRmtjREV1ZHhfWEs2V1FjbWZFZlh4RzRXQy1YamUxMmcybGJBYXp5RTg4cTVnOHZ4U1RWYXRGbUsxT1FtY2VzRXJ3dWFzcUU0ZXhZd3BZcGtBSFNFbDBFRUlqdWNSUTJMU2JBYTUxTFZMR1BEaHhubVBUbFFEVXc2QTZFUTA2MFVyMA?oc=5",
-      "source": "Independent Newspaper Nigeria",
-      "publishedAt": "Tue, 29 Sep 2026 23:25:57 GMT",
-      "description": "Nigeria @66: Development In Education Sector Neither Here Nor There — Stakeholders &nbsp;&nbsp; Independent Newspaper Nigeria",
       "region": "Nigeria"
     },
     {
@@ -71,6 +39,38 @@
       "region": "International"
     },
     {
+      "title": "Nigeria @66: Development In Education Sector Neither Here Nor There — Stakeholders - Independent Newspaper Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPMk5TcGVzU1dfTlN6SlRhZXJyZ1F5MVA1RDJnRmtjREV1ZHhfWEs2V1FjbWZFZlh4RzRXQy1YamUxMmcybGJBYXp5RTg4cTVnOHZ4U1RWYXRGbUsxT1FtY2VzRXJ3dWFzcUU0ZXhZd3BZcGtBSFNFbDBFRUlqdWNSUTJMU2JBYTUxTFZMR1BEaHhubVBUbFFEVXc2QTZFUTA2MFVyMA?oc=5",
+      "source": "Independent Newspaper Nigeria",
+      "publishedAt": "Tue, 29 Sep 2026 23:25:57 GMT",
+      "description": "Nigeria @66: Development In Education Sector Neither Here Nor There — Stakeholders &nbsp;&nbsp; Independent Newspaper Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "College rankings, like those of US News and World Report, remain influential, despite their many flaws and decades of criticism - The Conversation",
+      "link": "https://news.google.com/rss/articles/CBMi8AFBVV95cUxQXzdjR3FEOFo1eXVjSDdxZUo4eFBWQ2RNTnprV3FETDhhR1ptVzZkdFNDYnRiWlpIUi1SdUY3WVJQaVVINWE0QXN6aDBuclh4YjZ6dTJZNWlSWE9WMGJBZ2NMNWN6U1Y4VVc3YVZtNTJXeC1PMEdMTXhsUzFiRUUtMDZUN205TTdSbW1CWF81ckhOZWJpbzFJQjcyNGNWUmxraE82SzRhMHdIYm1PbEY0NXdCSnF1eTNIdk9UTTBoTzhyRkYwNDlTZUg2ZkJSMDVOMlVITm13SlFsQi0tRnV3dG1KTDRtcVp4cmhGNmtvblA?oc=5",
+      "source": "The Conversation",
+      "publishedAt": "Mon, 28 Sep 2026 12:39:51 GMT",
+      "description": "College rankings, like those of US News and World Report, remain influential, despite their many flaws and decades of criticism &nbsp;&nbsp; The Conversation",
+      "region": "International"
+    },
+    {
+      "title": "Faith leaders could help expand hypertension screening and education in Nigeria - News-Medical",
+      "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxNT09YM3ZGLUhQWk00T0lIX2pHVGRYM1hBODhGck1va1ZPbmtOMzkwSS1wWDNvRmtEMVc3TXJTb2Zqa05EaHJfUTJjaElmc3ZqU3B6QmdRalpTT0JqWDRlZ0VoOEl6b1V2SFZwRU01R0VTRXFMMDVtdFUwQ2lYb3BXbGpHUWtWVzRHUXRyTE5zRUdIZVBhT1FWLWhqYUtRMjdST2ZEMzZWeGZJR3NrRERuY2Z1STVBN0dkcHNhWUh0M0hZT2hiSXc?oc=5",
+      "source": "News-Medical",
+      "publishedAt": "Fri, 02 Oct 2026 03:36:00 GMT",
+      "description": "Faith leaders could help expand hypertension screening and education in Nigeria &nbsp;&nbsp; News-Medical",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Pa. election 2026: Where Garrity, Shapiro stand on public school funding, vouchers, and other education issues - Spotlight PA",
+      "link": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxPR1c0dU9GdkZHOTJZR0o1dmZSdk05WTBCQUpVeVI1WUxUcmZrUHd5RjFBd05zNHFIeXpPZENJb2pyaDhWWkRBVUpoZklsM0xreDNueUJybVVXMEJEbmJlemgwQjhXbUxrMFFkaHVVR1pIcGp5QmlsRWQ2Mno1cElRR2lVQm81N1VKdmVSQ2RLdWdaUEw4S1JLS19HNGVvUGlyNXI5N0NNOWNGM0tITG5GaGtBSXlUeHcyeE9pTlQ0T2Q5LXc?oc=5",
+      "source": "Spotlight PA",
+      "publishedAt": "Fri, 02 Oct 2026 07:59:27 GMT",
+      "description": "Pa. election 2026: Where Garrity, Shapiro stand on public school funding, vouchers, and other education issues &nbsp;&nbsp; Spotlight PA",
+      "region": "International"
+    },
+    {
       "title": "NIGERIA AT 66: STAKEHOLDERS SEEK SELFLESS LEADERSHIP, BETTER EDUCATION AND DEVELOPMENT - anambrastate.gov.ng",
       "link": "https://news.google.com/rss/articles/CBMiswFBVV95cUxOSDdfN0Y4TnpTV3JDRVRYRzhMc2RueEdDLWtuODloOXJ0UE1DcE9nWnAtQlV4eGcwU3d2OTZ1UFNkNkhiS1RjTEN6MFpsamtwS2FnNkVoSXozTzdublJSRzFJdWFwRFdXS0ExTEZyaFAxM21aM1NwemQ4MkxjQ1AzRnFaN1J3d2FWdTM5RXYtLXB1enVlREpXN2Fxa0J1bTJlZFVFVlRiSFhKeUQ1b1ZYQXBXbw?oc=5",
       "source": "anambrastate.gov.ng",
@@ -79,11 +79,11 @@
       "region": "Nigeria"
     },
     {
-      "title": "University School earns high marks in U.S. News’ Best High Schools - ETSU News",
-      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPMlFOczd2eUUwX2JjQ0I2UjFPamdMcGpXWE5QVjV4bkhuSzFWTFNpQVUwcFR4cUItc1Q3Z2psVDM0eDJUWGEzb0ZobUhMOTJZRkVjb3dRdTd4M3dNQ0dwdVhyZU04YlZ5eVZVc1ZQZ2RsVGt5eDc5a2JRQlp0ZDNkamp2ZEVfRFRwRml6WDk0aWx4RkRNX1paQVNXSQ?oc=5",
-      "source": "ETSU News",
-      "publishedAt": "Tue, 29 Sep 2026 19:20:42 GMT",
-      "description": "University School earns high marks in U.S. News’ Best High Schools &nbsp;&nbsp; ETSU News",
+      "title": "Nvidia program on pause year into deal with Oregon to get AI education in schools, colleges - Oregon Capital Chronicle",
+      "link": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxQTUZFSzZDREFtT1R3ZzJGMEg4b0RpWmQ5M1MzcE9ETVZ6YldlSVdDam1wTjVHLWQ2R0xSeVQ1V2RhdXVGVzQ0SDB3cW41Y05JeTRVVklhMnNHUjBDcjhNeXZ0S3ZGYk9OTHJ4Y1k0dlE3THpjaTBkWEs1XzNtcXNUMHBManUtVFBsV0lQcjZZTVdxdDhtWVBmVG43V2FFSTlUTU5OVU1vMUN4VWRDZzREMjB3YVNWLXlQNVF0ekhvTloySk96MlpFNzhLSzh5Q1JmcjRJ?oc=5",
+      "source": "Oregon Capital Chronicle",
+      "publishedAt": "Thu, 01 Oct 2026 13:08:04 GMT",
+      "description": "Nvidia program on pause year into deal with Oregon to get AI education in schools, colleges &nbsp;&nbsp; Oregon Capital Chronicle",
       "region": "International"
     },
     {
@@ -95,35 +95,27 @@
       "region": "Nigeria"
     },
     {
-      "title": "This Central Georgia university was named best value public school in Georgia. Here's why - 13WMAZ",
-      "link": "https://news.google.com/rss/articles/CBMiqgJBVV95cUxORmpreEstN3JSR28wQm8ybmpxZWZabmZwTXFfMlBkTndtc2JydnpMUDNUU3hmdUpPWDBGWnhtLVRPVnhsRkI1dmt2Q2hmT1dLeEE3U3NSZW1xblVPZk9HR2MzWkZ5VUh5d25OZTNaWEFMcHdoVzVZN2xYN0RTa1JzQURTeS14NGsyX3lWVmUwOHlrY0JqX2doRnRfMXB1SVdEd1FFZXF0N3dNV2VyMFhYbFR0Z2s1SmFobjN0MC1hTjlwSGhaak51UGxwNWY1aDVrY0dwSGhwMTZzem5lX2tIZFItZ2hxN0h0Tk5MUFdJaDN0NVJpa3dpUVFlOXF1VTZqd2NnYjlIRl94em55ckt2STh6a00zdnE0bW9BRVJZb2hKeE1zYndWWVFR?oc=5",
-      "source": "13WMAZ",
-      "publishedAt": "Tue, 29 Sep 2026 13:07:00 GMT",
-      "description": "This Central Georgia university was named best value public school in Georgia. Here's why &nbsp;&nbsp; 13WMAZ",
+      "title": "FSU College of Music earns three Music School Finder 2027 Standout recognitions - Florida State University News",
+      "link": "https://news.google.com/rss/articles/CBMizgFBVV95cUxNdkd1djU5VEcxT2x2aE5sWXlkamc4ZGZlSFhhX1pVdjFKQm03SkVtdTRMRkFoaVZVRHNaX0J3R0xrUnRpb3pkTlctdXZiM2xPNng0cDl5OXlrZGZ4SG1jeTdUMUZpU0Jvc2hNQTJubmdkQkl6RDhEcndZcXhRTk9IbGdMdFVERHFhX25DMHk5SU00VXdvaUkzemx4N18wUDhYc1BkUmZpT1JxbVc0LXVKRFpZUDhIYUZUcjRGZFVzNDNfdldndDV2LTl4Z3hEUQ?oc=5",
+      "source": "Florida State University News",
+      "publishedAt": "Thu, 01 Oct 2026 13:11:24 GMT",
+      "description": "FSU College of Music earns three Music School Finder 2027 Standout recognitions &nbsp;&nbsp; Florida State University News",
       "region": "International"
     },
     {
-      "title": "Nigeria Police arrest commissioner, five odas pesins for alleged involvement in di death of deputy director for Delta State - BBC",
-      "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFBuLUhIQlRtS2hBVUtBLVdJU1BvazluVlZqcko1MHltREpQN2xaTFZoSzRWVXExTk1UT01tdHc0U1N3T18ySng4UVRyNG5kSHJfdzRRa1ZMT0NuR0o5WlHSAWNBVV95cUxOYi1WMjBLWFV1U3g5NFl1b1JwYmZWX3hqaV9GSWluRGE0SnVCenZnNm4tSUtQNnhvVWxFWXNFbDVZRzBXcTZWSlM5eG1xcTZHenkxZ3ZlN0pvbHJBSzYwT0tSVWs?oc=5",
-      "source": "BBC",
-      "publishedAt": "Wed, 30 Sep 2026 07:06:06 GMT",
-      "description": "Nigeria Police arrest commissioner, five odas pesins for alleged involvement in di death of deputy director for Delta State &nbsp;&nbsp; BBC",
-      "region": "Nigeria"
-    },
-    {
-      "title": "FG to rank tertiary institutions nationwide on 22 indicators - Punch Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNM3ozNFBCMGJFSXhvOWNpRXZhOUtvT0xkSFR2NWZWeVUxWGRhcTNiazdOWWNQaklGNWVfanhHbm9KZkhtV0RMSk4zajNpUUtmQVdKWV9oTWotNk5qZ2dUQTdBQTYtRzdoRWprZjEwT3dtMmdQTUVsZC1JS2d1YlROUDd1ekJuTzll?oc=5",
+      "title": "Nigeria @66: Education gets fresh push, old problems remain - Punch Newspapers",
+      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQMlloaExyVUhSM3lpTzRUZWJoLTN4WFlQMU9mbzZaUzlLUldJdGFndUJfM05Rdm1ocE0zeFRPUE1xM1RnQ0I1ZlZyY0tDaGsyZ0x4N3VnOEpzc29iUEVWR3NWTVRhUE5kM2t0ZHV5TUJ6Uzh1YWVWbXJyZDV3RHNkaExYYkRQZHRq?oc=5",
       "source": "Punch Newspapers",
-      "publishedAt": "Wed, 30 Sep 2026 09:23:26 GMT",
-      "description": "FG to rank tertiary institutions nationwide on 22 indicators &nbsp;&nbsp; Punch Newspapers",
+      "publishedAt": "Wed, 30 Sep 2026 23:13:50 GMT",
+      "description": "Nigeria @66: Education gets fresh push, old problems remain &nbsp;&nbsp; Punch Newspapers",
       "region": "Nigeria"
     },
     {
-      "title": "FG, Cambridge Judge Business School Explore Partnership To Equip Nigerian Youths For Future Jobs - fmino.gov.ng",
-      "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxPbnUzWkVDMWNiM2Z3VS1aeXlpYlJCUnR3WEE2X2dyVTh2Q0hhaUk3WFUxM0xzQ0o1UWRaeFM1ZUZBaHVIOTZ1MXhpZk9TZ0VGWnhFNWRyS0pibkdMTTRwTXRiLUZxcDFtQlJKOEdPTml2UUlzQU96QWxQa044OVlRX016alNIV242QlNtWTBkMHBLUjBFQVdtZ3k3M2VaaWxyemo1YXNUVF9pbzFYMF92WjlpRmc0aF9U?oc=5",
-      "source": "fmino.gov.ng",
-      "publishedAt": "Fri, 25 Sep 2026 11:17:59 GMT",
-      "description": "FG, Cambridge Judge Business School Explore Partnership To Equip Nigerian Youths For Future Jobs &nbsp;&nbsp; fmino.gov.ng",
+      "title": "Independence Day: Adunni Foundation Launches Renewed Push for Basic Education in Nigeria - PRNigeria News",
+      "link": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE9hdFBNNVg5OGtELVJDdjJ6UnRJV3MwNVozNlk2WndtUExTTzZuemFmTjF2UzdTVVYtcHdqZXpRV2lzSUtYVER4YTdhREt1enRiVG5vVzFMNU15SkcxcEVYdURyQ0dIeWlf?oc=5",
+      "source": "PRNigeria News",
+      "publishedAt": "Thu, 01 Oct 2026 19:32:35 GMT",
+      "description": "Independence Day: Adunni Foundation Launches Renewed Push for Basic Education in Nigeria &nbsp;&nbsp; PRNigeria News",
       "region": "Nigeria"
     },
     {
@@ -135,6 +127,22 @@
       "region": "Nigeria"
     },
     {
+      "title": "NIGERIA@66: Education Key to Nigeria’s Development, Says Minister Alausa - TVC News",
+      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQTklTN05PeXg0V01CZzNOSW5vaVpSWl9ONmtnLXBzc2R4TzZBbDNPQThYd3RkclI1TVV4MTRsUi1UeDV5dVc4NmZSNmkyeVNtbWVRTnZpb29qTEcwZnhucFh2Q0hqLWg5TUdPZGlCWHdST2pYWmpDZ2tsUzQwYlprcXZmdDJKb2w4MzhodGVCemljdjlkM1JR?oc=5",
+      "source": "TVC News",
+      "publishedAt": "Thu, 01 Oct 2026 12:38:00 GMT",
+      "description": "NIGERIA@66: Education Key to Nigeria’s Development, Says Minister Alausa &nbsp;&nbsp; TVC News",
+      "region": "Nigeria"
+    },
+    {
+      "title": "UBEC Urges States to Utilise Childhood Education Funds - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMif0FVX3lxTFAybUlYYjJHNDRGNTBUWnZsdEN6UkVkUFl2UkFsXzY4VEpMRHdfU1Fma3l2UlY3NEpYNUhUNkpsZHRaQVA2dlNFM1A2ckduXy02X3NxVmN3dEdfU2FCUGY0emFTQldzb1dTdHZveklLamNOY2h2UDFKX0dRbl92blU?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Tue, 29 Sep 2026 13:49:00 GMT",
+      "description": "UBEC Urges States to Utilise Childhood Education Funds &nbsp;&nbsp; Voice of Nigeria",
+      "region": "Nigeria"
+    },
+    {
       "title": "Nigeria gives students free educational data - ITWeb Africa",
       "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxOR0hZZUtMQV80VTFtbkFXenA5ZnU3QnN4VjhqRC15eGJvb1Z0SFVoV0JkQTVaR3ZIOWJIaDFPeXoyaW12T1ZkYlE1Z1BzdHdtUFZoZVFORjhTVmVWUWxDNzhXcUl5LWpsa3dqZEx3Tzc1blllaXg2SGtaMU5RYy10ZkRtc2N2UHJSaFkzaTlScm1XME9Z?oc=5",
       "source": "ITWeb Africa",
@@ -143,27 +151,19 @@
       "region": "Nigeria"
     },
     {
-      "title": "Nigeria @66: Education gets fresh push, old problems remain - Punch Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxNeFRZZFhSTjMwRko3VS00TkE0bzdaMVltdWJWYUhmNExlRTlReHgxQmlDVUlqaTAtbUdyUlBrT2NRRVdnbURMNXpacDNlaUtTdUFXSWxCUjIxSUhvTndiNzNMM3N3a2dSWFhSa0JoZW9jcmRVYXpLOVJnTktoUmZOSVpQbw?oc=5",
-      "source": "Punch Newspapers",
-      "publishedAt": "Wed, 30 Sep 2026 23:11:43 GMT",
-      "description": "Nigeria @66: Education gets fresh push, old problems remain &nbsp;&nbsp; Punch Newspapers",
+      "title": "Education Minister Orders Ranking Of Nigerian Tertiary Institutions - thefact.ng",
+      "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPUjFMcFphZjZ0Vmg4S3cwdFFOei1OOGlzZkQ4dkowZmkyY1h4VEhDZTFXZGZWZFFiTUF5aDRVUWtwWDY4NXJHemNrU1BQMGFxOHNIQnc4cU1QaVItNHU1cTNEazVJRm01VWZ0TjhRTnVmVDYtU3RISDYzalZiR1Nka1c4aS14c1A4VUNnT0w0NUw?oc=5",
+      "source": "thefact.ng",
+      "publishedAt": "Thu, 01 Oct 2026 19:58:38 GMT",
+      "description": "Education Minister Orders Ranking Of Nigerian Tertiary Institutions &nbsp;&nbsp; thefact.ng",
       "region": "Nigeria"
     },
     {
-      "title": "UBEC To Begin 10-Year Education Roadmap In October - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMiekFVX3lxTE9sTXMwUFAyMXFuUUFPTTc3VmFCcDZHanBOUU42Y04wcThBZkRHcjBpa0JfZnlzMnVWTG1EcHJSZ2lFNncwNXlWT09TaVlfakZzRTdUb2RhWVIwV291LWplUTJZcV8xOGd5MDRjVGVJMHhIcEFSUGJ4Y2xB?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Mon, 28 Sep 2026 11:22:30 GMT",
-      "description": "UBEC To Begin 10-Year Education Roadmap In October &nbsp;&nbsp; Voice of Nigeria",
-      "region": "Nigeria"
-    },
-    {
-      "title": "UBEC To Begin 10-year Basic Education Implementation Roadmap In October - News Agency of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMilgFBVV95cUxNbDZNem1Sb1ZuMG1WcnJhc0pPZ1U4YlhSaTNOR3FtRnNxZ2cxcTdxZTk3OXc1cHVhRm94NjN2aDdjcUZ4Z0RRMkFGTXZ4RzZJRG1xZGFVVHJmZFhiQ3l1aDJiM0YyQXRXbjBqbnBjUUtLTi1hNVRBcFkyZjhSdmdYYXJfM3FJWG9HcXdwT3g5Q0FqLVFHT3c?oc=5",
-      "source": "News Agency of Nigeria",
-      "publishedAt": "Tue, 29 Sep 2026 01:41:16 GMT",
-      "description": "UBEC To Begin 10-year Basic Education Implementation Roadmap In October &nbsp;&nbsp; News Agency of Nigeria",
+      "title": "UBEC raises alarm over 10m Nigerian children missing early education - The Guardian Nigeria News",
+      "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNdXZMV0ZGeVlab1l6Tm9xNHZzaEJ4UjJLSDctVUxqMEEwSTVmanZQQXBTdFlvQTB4c3FKYzJDQXk5alhud3hzaFRyc2FEWFNkVS1xaks1YVA4dDFyVldHZzQ1dTN1V19zTUZPSG43SWxSalhUbWZhQkpZc2VITTdMeWxwc1h6M0xwUlNYZUhiajc2aGFyOXF6TWpn?oc=5",
+      "source": "The Guardian Nigeria News",
+      "publishedAt": "Tue, 29 Sep 2026 14:32:00 GMT",
+      "description": "UBEC raises alarm over 10m Nigerian children missing early education &nbsp;&nbsp; The Guardian Nigeria News",
       "region": "Nigeria"
     }
   ]
