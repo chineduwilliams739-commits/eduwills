@@ -1,27 +1,11 @@
 {
-  "generatedAt": "2026-10-04T11:07:57.253Z",
+  "generatedAt": "2026-10-05T12:17:58.018Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
     "total": 20
   },
   "items": [
-    {
-      "title": "Nigeria’s school kidnapping threat is changing: 4 lessons from the 56-day Oyo attack - theconversation.com",
-      "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxPWUxWMHIxTlRVdzRXVVRzdWgxOVl3Y2ZNaDJrY3pwSHJxTDhEd0NIckUzSU1jc2RucHVnMUtfYUxPSW1BQ1JYcGFTQ0FpaVJjRE1iTlRRQ3NRbGk2MVVCMkhJTTFmOV9MWUU3U252d29jR0Y5dHI5MGtBQV9lS0NxNU1PZERhaW5fQ2xEa29XWHhFZlVqbHNVeWNfMWJBd2ZvekFWMGVKTGFBclQ4bTE0cVlhSm53Zlln?oc=5",
-      "source": "theconversation.com",
-      "publishedAt": "Wed, 30 Sep 2026 13:25:56 GMT",
-      "description": "Nigeria’s school kidnapping threat is changing: 4 lessons from the 56-day Oyo attack &nbsp;&nbsp; theconversation.com",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Harvard Business School takes up Northeastern’s case for higher education - Northeastern Global News",
-      "link": "https://news.google.com/rss/articles/CBMiggFBVV95cUxQemR2Y0xnaGE4b2oyTC1lVFZkVDViQ0tWbkhCQ0tlLV82TWhCV0U2eHlYblYwb0FsNGk5SlE1azlybWxtcGZOdElSUXR5X0xHNFp5TjZONGhfYUUtenZFcjJ3OWVSQjhNVWtreE9rRlB0RkNaT2RaWmNrMHA5anN4dDB3?oc=5",
-      "source": "Northeastern Global News",
-      "publishedAt": "Wed, 30 Sep 2026 21:16:25 GMT",
-      "description": "Harvard Business School takes up Northeastern’s case for higher education &nbsp;&nbsp; Northeastern Global News",
-      "region": "International"
-    },
     {
       "title": "Faith leaders could help expand hypertension screening and education in Nigeria - News-Medical",
       "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxNT09YM3ZGLUhQWk00T0lIX2pHVGRYM1hBODhGck1va1ZPbmtOMzkwSS1wWDNvRmtEMVc3TXJTb2Zqa05EaHJfUTJjaElmc3ZqU3B6QmdRalpTT0JqWDRlZ0VoOEl6b1V2SFZwRU01R0VTRXFMMDVtdFUwQ2lYb3BXbGpHUWtWVzRHUXRyTE5zRUdIZVBhT1FWLWhqYUtRMjdST2ZEMzZWeGZJR3NrRERuY2Z1STVBN0dkcHNhWUh0M0hZT2hiSXc?oc=5",
@@ -39,11 +23,27 @@
       "region": "International"
     },
     {
-      "title": "Nigeria @66: Development In Education Sector Neither Here Nor There — Stakeholders - Independent Newspaper Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPMk5TcGVzU1dfTlN6SlRhZXJyZ1F5MVA1RDJnRmtjREV1ZHhfWEs2V1FjbWZFZlh4RzRXQy1YamUxMmcybGJBYXp5RTg4cTVnOHZ4U1RWYXRGbUsxT1FtY2VzRXJ3dWFzcUU0ZXhZd3BZcGtBSFNFbDBFRUlqdWNSUTJMU2JBYTUxTFZMR1BEaHhubVBUbFFEVXc2QTZFUTA2MFVyMA?oc=5",
-      "source": "Independent Newspaper Nigeria",
-      "publishedAt": "Tue, 29 Sep 2026 23:25:57 GMT",
-      "description": "Nigeria @66: Development In Education Sector Neither Here Nor There — Stakeholders &nbsp;&nbsp; Independent Newspaper Nigeria",
+      "title": "Independence Day: Adunni Foundation Launches Renewed Push for Basic Education in Nigeria - PRNigeria News",
+      "link": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE9hdFBNNVg5OGtELVJDdjJ6UnRJV3MwNVozNlk2WndtUExTTzZuemFmTjF2UzdTVVYtcHdqZXpRV2lzSUtYVER4YTdhREt1enRiVG5vVzFMNU15SkcxcEVYdURyQ0dIeWlf?oc=5",
+      "source": "PRNigeria News",
+      "publishedAt": "Thu, 01 Oct 2026 19:32:35 GMT",
+      "description": "Independence Day: Adunni Foundation Launches Renewed Push for Basic Education in Nigeria &nbsp;&nbsp; PRNigeria News",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Harvard Business School takes up Northeastern’s case for higher education - Northeastern Global News",
+      "link": "https://news.google.com/rss/articles/CBMiggFBVV95cUxQemR2Y0xnaGE4b2oyTC1lVFZkVDViQ0tWbkhCQ0tlLV82TWhCV0U2eHlYblYwb0FsNGk5SlE1azlybWxtcGZOdElSUXR5X0xHNFp5TjZONGhfYUUtenZFcjJ3OWVSQjhNVWtreE9rRlB0RkNaT2RaWmNrMHA5anN4dDB3?oc=5",
+      "source": "Northeastern Global News",
+      "publishedAt": "Wed, 30 Sep 2026 21:16:25 GMT",
+      "description": "Harvard Business School takes up Northeastern’s case for higher education &nbsp;&nbsp; Northeastern Global News",
+      "region": "International"
+    },
+    {
+      "title": "FG to rank tertiary institutions nationwide on 22 indicators - Punch Newspapers",
+      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNM3ozNFBCMGJFSXhvOWNpRXZhOUtvT0xkSFR2NWZWeVUxWGRhcTNiazdOWWNQaklGNWVfanhHbm9KZkhtV0RMSk4zajNpUUtmQVdKWV9oTWotNk5qZ2dUQTdBQTYtRzdoRWprZjEwT3dtMmdQTUVsZC1JS2d1YlROUDd1ekJuTzll?oc=5",
+      "source": "Punch Newspapers",
+      "publishedAt": "Wed, 30 Sep 2026 09:23:26 GMT",
+      "description": "FG to rank tertiary institutions nationwide on 22 indicators &nbsp;&nbsp; Punch Newspapers",
       "region": "Nigeria"
     },
     {
@@ -55,11 +55,11 @@
       "region": "International"
     },
     {
-      "title": "Nigeria @66: Education gets fresh push, old problems remain - Punch Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMigwFBVV95cUxNeFRZZFhSTjMwRko3VS00TkE0bzdaMVltdWJWYUhmNExlRTlReHgxQmlDVUlqaTAtbUdyUlBrT2NRRVdnbURMNXpacDNlaUtTdUFXSWxCUjIxSUhvTndiNzNMM3N3a2dSWFhSa0JoZW9jcmRVYXpLOVJnTktoUmZOSVpQbw?oc=5",
-      "source": "Punch Newspapers",
-      "publishedAt": "Wed, 30 Sep 2026 23:12:56 GMT",
-      "description": "Nigeria @66: Education gets fresh push, old problems remain &nbsp;&nbsp; Punch Newspapers",
+      "title": "Nigeria@66: Scale Up Investment In Tech Education — Expert Tells FG - News Agency of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxOSWFCWC1lazdCX3d5N1p5TUI5SnRzR0E4UEhGeXNVUFpaUENVTDE1UF9KVGx5R0VEQzZzZ1ZqbXp4Q1JaLXVXbGwtQUF1V3B0dzFjMXBNbDRxUWxGQnBBVWttc2R5eUZSNngxTW5GdGJEWUdpUVpFdmtyLW4tbllvcGl4T05mWUNyMGtR?oc=5",
+      "source": "News Agency of Nigeria",
+      "publishedAt": "Thu, 01 Oct 2026 07:29:02 GMT",
+      "description": "Nigeria@66: Scale Up Investment In Tech Education — Expert Tells FG &nbsp;&nbsp; News Agency of Nigeria",
       "region": "Nigeria"
     },
     {
@@ -71,11 +71,27 @@
       "region": "International"
     },
     {
-      "title": "Independence Day: Adunni Foundation Launches Renewed Push for Basic Education in Nigeria - PRNigeria News",
-      "link": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE9hdFBNNVg5OGtELVJDdjJ6UnRJV3MwNVozNlk2WndtUExTTzZuemFmTjF2UzdTVVYtcHdqZXpRV2lzSUtYVER4YTdhREt1enRiVG5vVzFMNU15SkcxcEVYdURyQ0dIeWlf?oc=5",
-      "source": "PRNigeria News",
-      "publishedAt": "Thu, 01 Oct 2026 19:32:35 GMT",
-      "description": "Independence Day: Adunni Foundation Launches Renewed Push for Basic Education in Nigeria &nbsp;&nbsp; PRNigeria News",
+      "title": "Nigeria gives students free educational data - itweb.africa",
+      "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxOR0hZZUtMQV80VTFtbkFXenA5ZnU3QnN4VjhqRC15eGJvb1Z0SFVoV0JkQTVaR3ZIOWJIaDFPeXoyaW12T1ZkYlE1Z1BzdHdtUFZoZVFORjhTVmVWUWxDNzhXcUl5LWpsa3dqZEx3Tzc1blllaXg2SGtaMU5RYy10ZkRtc2N2UHJSaFkzaTlScm1XME9Z?oc=5",
+      "source": "itweb.africa",
+      "publishedAt": "Thu, 01 Oct 2026 07:53:15 GMT",
+      "description": "Nigeria gives students free educational data &nbsp;&nbsp; itweb.africa",
+      "region": "Nigeria"
+    },
+    {
+      "title": "University School earns high marks in U.S. News’ Best High Schools - ETSU News",
+      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPMlFOczd2eUUwX2JjQ0I2UjFPamdMcGpXWE5QVjV4bkhuSzFWTFNpQVUwcFR4cUItc1Q3Z2psVDM0eDJUWGEzb0ZobUhMOTJZRkVjb3dRdTd4M3dNQ0dwdVhyZU04YlZ5eVZVc1ZQZ2RsVGt5eDc5a2JRQlp0ZDNkamp2ZEVfRFRwRml6WDk0aWx4RkRNX1paQVNXSQ?oc=5",
+      "source": "ETSU News",
+      "publishedAt": "Tue, 29 Sep 2026 19:20:42 GMT",
+      "description": "University School earns high marks in U.S. News’ Best High Schools &nbsp;&nbsp; ETSU News",
+      "region": "International"
+    },
+    {
+      "title": "NIGERIA@66: Education Key to Nigeria’s Development, Says Minister Alausa - TVC News",
+      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQTklTN05PeXg0V01CZzNOSW5vaVpSWl9ONmtnLXBzc2R4TzZBbDNPQThYd3RkclI1TVV4MTRsUi1UeDV5dVc4NmZSNmkyeVNtbWVRTnZpb29qTEcwZnhucFh2Q0hqLWg5TUdPZGlCWHdST2pYWmpDZ2tsUzQwYlprcXZmdDJKb2w4MzhodGVCemljdjlkM1JR?oc=5",
+      "source": "TVC News",
+      "publishedAt": "Thu, 01 Oct 2026 12:38:00 GMT",
+      "description": "NIGERIA@66: Education Key to Nigeria’s Development, Says Minister Alausa &nbsp;&nbsp; TVC News",
       "region": "Nigeria"
     },
     {
@@ -87,35 +103,27 @@
       "region": "International"
     },
     {
-      "title": "Nigeria@66: Scale Up Investment In Tech Education — Expert Tells FG - nannews.ng",
-      "link": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxOSWFCWC1lazdCX3d5N1p5TUI5SnRzR0E4UEhGeXNVUFpaUENVTDE1UF9KVGx5R0VEQzZzZ1ZqbXp4Q1JaLXVXbGwtQUF1V3B0dzFjMXBNbDRxUWxGQnBBVWttc2R5eUZSNngxTW5GdGJEWUdpUVpFdmtyLW4tbllvcGl4T05mWUNyMGtR?oc=5",
-      "source": "nannews.ng",
-      "publishedAt": "Thu, 01 Oct 2026 07:29:02 GMT",
-      "description": "Nigeria@66: Scale Up Investment In Tech Education — Expert Tells FG &nbsp;&nbsp; nannews.ng",
+      "title": "EIDU Donates Learning Materials to Oyo Schools - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMidEFVX3lxTE8yMGN2Tjh1NnJ5eld0OGVZVW5YdlB0LW5hT0ZPQUt5QWs3ZVJTLW1mbFdGWTBlZVIzbVRTWTdORVQyZ2dQWDZmTm1RTjBjRkRwYXdzMGpVR0ZMYlBoN0Z1TVJiMjdaVDJydHUxckJxM0p6RE1u?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Mon, 05 Oct 2026 10:16:11 GMT",
+      "description": "EIDU Donates Learning Materials to Oyo Schools &nbsp;&nbsp; Voice of Nigeria",
       "region": "Nigeria"
     },
     {
-      "title": "Most college students get grants. See how they cut the price at 2,100 schools. - The Washington Post",
-      "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPRlpLUmxMc0hLRi1peGIxeUx4bFlSTmRIMTNBMWl2V0JxdXlpeHZHQ3ZvT1ZQa290ZHBTaDB5YnJIcVcwQkpPeXlkSjBQckdUeU9aOS05VkFaZ1RJN01WUFFibDNnUWZET2ZJS00tVW43Q09yVlQ5QWZkV3NSZHZkRUtPcUw4QkpPcFpCZ2t3dVFDZ0c5TDdQdHJBNlRETVhNRnVhcDg1cG5WUWx0empLdVprMGFsRVlNbl9Edl93?oc=5",
-      "source": "The Washington Post",
-      "publishedAt": "Thu, 01 Oct 2026 17:00:01 GMT",
-      "description": "Most college students get grants. See how they cut the price at 2,100 schools. &nbsp;&nbsp; The Washington Post",
-      "region": "International"
-    },
-    {
-      "title": "Nigeria gives students free educational data - itweb.africa",
-      "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxOR0hZZUtMQV80VTFtbkFXenA5ZnU3QnN4VjhqRC15eGJvb1Z0SFVoV0JkQTVaR3ZIOWJIaDFPeXoyaW12T1ZkYlE1Z1BzdHdtUFZoZVFORjhTVmVWUWxDNzhXcUl5LWpsa3dqZEx3Tzc1blllaXg2SGtaMU5RYy10ZkRtc2N2UHJSaFkzaTlScm1XME9Z?oc=5",
-      "source": "itweb.africa",
-      "publishedAt": "Thu, 01 Oct 2026 07:53:15 GMT",
-      "description": "Nigeria gives students free educational data &nbsp;&nbsp; itweb.africa",
+      "title": "Zero-rated education platforms: What learners need to know - The Guardian Nigeria News",
+      "link": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQLW5nQ3lEMXNHbUJJNFBnanItNXlaT3czME40b0g2M2I0WkhZMUNDZjNoZUFzWDRLUGFuU1pHX2N3Y2VOTFUtVDRNY2JyRFBTdWdUUVhUMDBHN3JxQ2JaUHhlQV9ya2tlQ2J4aFFKd0hkVTM4NmV2aVBFNkdKdzB3azhicEE3NENtZTQ0MEdCQVQtQQ?oc=5",
+      "source": "The Guardian Nigeria News",
+      "publishedAt": "Thu, 01 Oct 2026 19:13:00 GMT",
+      "description": "Zero-rated education platforms: What learners need to know &nbsp;&nbsp; The Guardian Nigeria News",
       "region": "Nigeria"
     },
     {
-      "title": "NIGERIA@66: Education Key to Nigeria’s Development, Says Minister Alausa - TVC News",
-      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQTklTN05PeXg0V01CZzNOSW5vaVpSWl9ONmtnLXBzc2R4TzZBbDNPQThYd3RkclI1TVV4MTRsUi1UeDV5dVc4NmZSNmkyeVNtbWVRTnZpb29qTEcwZnhucFh2Q0hqLWg5TUdPZGlCWHdST2pYWmpDZ2tsUzQwYlprcXZmdDJKb2w4MzhodGVCemljdjlkM1JR?oc=5",
-      "source": "TVC News",
-      "publishedAt": "Thu, 01 Oct 2026 12:38:00 GMT",
-      "description": "NIGERIA@66: Education Key to Nigeria’s Development, Says Minister Alausa &nbsp;&nbsp; TVC News",
+      "title": "Nigeria’s Education Policy Theatre Must End – Today Marks 66 Years After Independence - Tekedia",
+      "link": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxPb0RjU2Yxc0FjLTA3czZPU0tBOGY1Y3M5eEhxSm5IS2JoamxCX1FNZmtSQUFXZkRFQk1iZ0NrWUE5ZEtlVUFQZC1Ldm9IbnBiUnFqTFhPbE1UZUt1d1dmV09WVkVLWnRESVhOMEtDaWFzMWYyWFJpYnpWOXlPUlBSci1EQTk4bUtVT1B6dE1kSUJoQU9GWmFtTVF2c1o4NHE3MWZ4NnBVaE9BMG8?oc=5",
+      "source": "Tekedia",
+      "publishedAt": "Thu, 01 Oct 2026 14:42:26 GMT",
+      "description": "Nigeria’s Education Policy Theatre Must End – Today Marks 66 Years After Independence &nbsp;&nbsp; Tekedia",
       "region": "Nigeria"
     },
     {
@@ -124,14 +132,6 @@
       "source": "Channels Television",
       "publishedAt": "Fri, 02 Oct 2026 22:41:37 GMT",
       "description": "Nigeria’s Amos Dangut Assumes Office As WAEC Registrar/CEO &nbsp;&nbsp; Channels Television",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Minister Calls For Renewed Commitment to Peace, Unity - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1EZzVVUDlXUU1lRzZ0UXdibXdzSzZ0UktKN3MwTEQ3NFFMVktSSW5CWkhHT2hzTEJoQnZCNk9CTUwtZ1NMZG5WcTZkejNIUk1NMzlNdEdKbzlfUVdyWGEyU2ZMT2F5cXZqbTZRbXJ0cVNZNEg3T0VjQnhrNmc?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Thu, 01 Oct 2026 16:00:37 GMT",
-      "description": "Minister Calls For Renewed Commitment to Peace, Unity &nbsp;&nbsp; Voice of Nigeria",
       "region": "Nigeria"
     },
     {
@@ -151,19 +151,19 @@
       "region": "Nigeria"
     },
     {
-      "title": "Zero-rated education platforms: What learners need to know - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMikgFBVV95cUxQLW5nQ3lEMXNHbUJJNFBnanItNXlaT3czME40b0g2M2I0WkhZMUNDZjNoZUFzWDRLUGFuU1pHX2N3Y2VOTFUtVDRNY2JyRFBTdWdUUVhUMDBHN3JxQ2JaUHhlQV9ya2tlQ2J4aFFKd0hkVTM4NmV2aVBFNkdKdzB3azhicEE3NENtZTQ0MEdCQVQtQQ?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Thu, 01 Oct 2026 19:13:00 GMT",
-      "description": "Zero-rated education platforms: What learners need to know &nbsp;&nbsp; The Guardian Nigeria News",
+      "title": "World Teachers’ Day: Nigeria’s teachers at crossroads of AI, welfare, professional dignity - icirnigeria.org",
+      "link": "https://news.google.com/rss/articles/CBMitAFBVV95cUxPaFhFbV90NHM5YmRmLURjbHRpcDN0WmxnajFNektvUXhyNjlBaWNrZVMzTlBqREY5YUZZMDlSV2tFamVSUTdyeHlUMWMxNERSMmZ2STV4bmRMSmtDQ2Y0Z3Z6Yno3bEh5NHJpdG1wZ0JIYUV1MmE4LTBwcm1mZnBlalpBR0ZsZ2czczYyYlJIYlBwdnBHdm9KdTYxam94Ry10dE51VGc3dG13cE1BSU1tazExSW8?oc=5",
+      "source": "icirnigeria.org",
+      "publishedAt": "Mon, 05 Oct 2026 09:33:06 GMT",
+      "description": "World Teachers’ Day: Nigeria’s teachers at crossroads of AI, welfare, professional dignity &nbsp;&nbsp; icirnigeria.org",
       "region": "Nigeria"
     },
     {
-      "title": "Nigeria’s independence project should be education transformation – Instructor - Realnews Magazine",
+      "title": "Nigeria’s independence project should be education transformation – Instructor - realnewsmagazine.net",
       "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxQV3RLem9SZFlYenV6Y25yUndJRm9ickhkNWNnbW5uMkQtc1l3M0VTRGR0b3AwNEFRLXNhS2JGeF92LW9IRjNCTC1XOXc3T2diZlJBcEFvZjJYNmZRTllVRnREQmdLYnVxclhKbElOUTYwbnFVaEo1ejZxNlYzYlY3UjFhV3JhdFdHaFJrU0FRNmZ2ZGxhYTBESTNzTWh6NG1jM2RDYi1wWjA?oc=5",
-      "source": "Realnews Magazine",
+      "source": "realnewsmagazine.net",
       "publishedAt": "Fri, 02 Oct 2026 16:06:05 GMT",
-      "description": "Nigeria’s independence project should be education transformation – Instructor &nbsp;&nbsp; Realnews Magazine",
+      "description": "Nigeria’s independence project should be education transformation – Instructor &nbsp;&nbsp; realnewsmagazine.net",
       "region": "Nigeria"
     }
   ]
