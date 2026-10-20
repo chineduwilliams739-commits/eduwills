@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T10:47:36.289Z",
+  "generatedAt": "2026-10-20T10:05:39.981Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
@@ -10,40 +10,8 @@
       "title": "Nigeria @ 66: Education expands as learning crisis deepens - The Guardian Nigeria News",
       "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNcnNQZGNremNhenppWU16WjhXSjl2N3NrV3MyQUNjRVFFWjJaRFppWkE2MUlWR2FfaEhQckY3SFdLcVVLOGZEQ3pxT3JRN2QyM2VmWUZmQ19Cb0hEWGRCWkZ1YzFfY1hhaU9oSjhtOUhnYWRkbWF4d0hfVERfVkNDTzUyREFYR2pQQWZBNTBGVQ?oc=5",
       "source": "The Guardian Nigeria News",
-      "publishedAt": "Thu, 15 Oct 2026 03:42:23 GMT",
+      "publishedAt": "Thu, 15 Oct 2026 04:00:00 GMT",
       "description": "Nigeria @ 66: Education expands as learning crisis deepens &nbsp;&nbsp; The Guardian Nigeria News",
-      "region": "Nigeria"
-    },
-    {
-      "title": "WalletHub Ranks the Best Schools for 2027 - Poets&Quants for Undergrads",
-      "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxPNmcwOElIS0pQRjdndWlOWEtocVhUZGF1a0NjNjZVQkhvdUlGd29hQmE2NTNLRXFJa1BWSEh0QVJEcFdkV0t3SC1DRzYzRWRVNzFYWTRHZEFLbUh0NzhQalFRU0ROVzI1aGV0LVNTT2NJeV9IbVZYTlhGWFVXM2ZNWlp5STY3c3VsNGJXT2RueGw?oc=5",
-      "source": "Poets&Quants for Undergrads",
-      "publishedAt": "Thu, 15 Oct 2026 14:17:48 GMT",
-      "description": "WalletHub Ranks the Best Schools for 2027 &nbsp;&nbsp; Poets&Quants for Undergrads",
-      "region": "International"
-    },
-    {
-      "title": "First Lady Moves to Tackle Menstrual Barriers to Education - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMihAFBVV95cUxPME93NjlCWFhiWkFJUnQwbXl2SXUzU25WR0MyQ2RJbHNKbnlQc1AtY19ySTN3a0NiMGRfMVNLcnc5eEpGTXF2NXMzY2dwRTlhdTFmWW01al90UHpJYURkNS1qektoUk4yVE9ZZHVMejhNOXdwaEdLcXE3VGJzbU9IdS02Nnc?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Tue, 13 Oct 2026 05:53:16 GMT",
-      "description": "First Lady Moves to Tackle Menstrual Barriers to Education &nbsp;&nbsp; Voice of Nigeria",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Bringing college credit deeper into high school CTE - Community College Daily",
-      "link": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQSm5tNndVcS1MVGdxQ1BVSE5MWHhPeUVIRTh4YWhDdi1EMThWXzdqT3gwS2pCZzN3bmdVZXVTdEFYSFNELVM4d3l3UEV4X0I4cVZfOHNMOXp2QS0xS3RLaklnS291QXBSYXA3VEsyQ1p1dUZyUEljel9OV0x5UWE0amx3VjdsSEhTaDZwbA?oc=5",
-      "source": "Community College Daily",
-      "publishedAt": "Fri, 16 Oct 2026 00:42:11 GMT",
-      "description": "Bringing college credit deeper into high school CTE &nbsp;&nbsp; Community College Daily",
-      "region": "International"
-    },
-    {
-      "title": "113 Million Nigerians Are Deprived Of Health, Education, Living Standards — UN - Channels Television",
-      "link": "https://news.google.com/rss/articles/CBMiswFBVV95cUxOLU1KNFVvRWxhSEh2S2NVUFh1VHB0RWhhN1F5T2FJaDZrWmVGYkVGdHpGMjlHYm9ublN6N2owcUZlUFVSQ1d1d1ExenhjRDZGR1g1U2V1Vy1ndnRjc2JqYzNpUHRyNTRBSjgwN0RVcVY3bEk1b1BIb2NYTHlOTElkLXQzS1JHOTJRRE1zZ2V2eGU3cWFQSVNIR2Z4c05GUTZkSmh1Qkd4dk9wWXR5cVRyREVzQQ?oc=5",
-      "source": "Channels Television",
-      "publishedAt": "Mon, 12 Oct 2026 14:23:50 GMT",
-      "description": "113 Million Nigerians Are Deprived Of Health, Education, Living Standards — UN &nbsp;&nbsp; Channels Television",
       "region": "Nigeria"
     },
     {
@@ -55,19 +23,35 @@
       "region": "International"
     },
     {
-      "title": "Stakeholders seek unified framework for school safety in Nigeria - Premium Times Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPXzZkZ0pDOVY3LTdSY1AzWjY3OUdCdkVZQ0pvLWVkVVNJcjU2V3hQcS1hN1ZLUDJKNWJSOFYxbFJVaWFlMnVVS2JlRFBYaTJjelhxbjZBOXVpcUtzZkNzYWt0Y053dm5uSHhFYUExUFQ5MlJ1ejFCRVRMWEo0b0h0SnJMLW00V0owSkl5SFc5WWJzTGZ4WUpUNjBnOWM4WlpsS0cyWTVWcUg3T3pDRWRIOHpoQWdOamo5UXpOX3FR?oc=5",
+      "title": "Indonesian scholar proposes reform for Almajiri education in Nigeria - Premium Times Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxNaWgwV04xNF90TVZxTUlJUVZXSzl5V0JDeWhSRUo2ZzFFS0VWTnV6TVZMZnVmUEhlemxtWWVaNEFjeFg2Y2RvWHJUV2tQQmEyUHRwZVZ1WEJSX2JWeTNWZ2pmcGtPYklVYXlRM3FBYzFFVEU2X29yVVdfVkdYRmtmS25aSmE0Y3kwM0N1NlJvNFA0UEdKSHpJOEh1U0llZldSVXRqY21RcHF2MHp2TkY2UVJVTS1MdWMyY1pEZ05uaTlRYkZW?oc=5",
       "source": "Premium Times Nigeria",
-      "publishedAt": "Fri, 16 Oct 2026 08:53:55 GMT",
-      "description": "Stakeholders seek unified framework for school safety in Nigeria &nbsp;&nbsp; Premium Times Nigeria",
+      "publishedAt": "Mon, 19 Oct 2026 15:16:13 GMT",
+      "description": "Indonesian scholar proposes reform for Almajiri education in Nigeria &nbsp;&nbsp; Premium Times Nigeria",
       "region": "Nigeria"
     },
     {
-      "title": "Detroit Public Schools, Michigan State University Partner to Address Special Education Teacher Shortage - Model D",
-      "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxNM1lzSFVqV3A4bFdxT3BSRGNrNDBjMzJGREZrbDhlc3o2STg3UWRmbTJrUDBhWWlxaE1HUzZWZlBOM3BEbGZpNjAxMFJ1aUJBX3VncW16UmJyTGtZUmMzajFXcUtrOHNIcHZKNEFYaDFNbXRaeUVaZ0oxLWM5Z2M5UjFqOWRxckgyS2VGNjNKWjlsaXV0ZDlnbXBXNklueTF2aDhzSHdDdXpocWo2R3YwUFB1eU9IU0J6Qks1a1lnN1BZTExsQlE?oc=5",
-      "source": "Model D",
-      "publishedAt": "Tue, 13 Oct 2026 19:51:25 GMT",
-      "description": "Detroit Public Schools, Michigan State University Partner to Address Special Education Teacher Shortage &nbsp;&nbsp; Model D",
+      "title": "Out-of-state universities are choosin’ Texas. Tarrant-area colleges hope students do, too - Fort Worth Report",
+      "link": "https://news.google.com/rss/articles/CBMixAFBVV95cUxQTlo1SzNoNkY4by1uaGxMS3VYSDNVUkluYTVndkRtZ3FEZWZoQ25tSlZydW9ybGNkbmhNN1dMZ05sb2ZvMl9YREhIMlZxYjlqNWotQk1reWxnTTBvcEE0Z0RwM1NmTEZYNXNXa1d2SnNZaUtwUTR1TTZsY3F0ekU4N2pnLVhwQkY5cUYyVy1vZWQwMVdoSm85bkRPNzNVRnJ6NXBvN0RGeTEyblM3TmZlYl9sMGRKdnVtOERsQThkT0Y4UU55?oc=5",
+      "source": "Fort Worth Report",
+      "publishedAt": "Sun, 18 Oct 2026 17:30:00 GMT",
+      "description": "Out-of-state universities are choosin’ Texas. Tarrant-area colleges hope students do, too &nbsp;&nbsp; Fort Worth Report",
+      "region": "International"
+    },
+    {
+      "title": "Nigeria Unveils Blockchain Education Drive to Boost Digital Skills - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNY1pidUx6SjhBd0xWQTNnTUxtbFNUZ0xqZ2pKZkVDN2l1cWZtM29Yd3RvdWwxQXhSTUdFMGg3Wno5VWtueDRZMFczci1ESUlnSFNrOV96dTZhWk9TRlNGb1dhLUYxMXZjUGVUUU9tNUJMaFlVNG5mXzZ3Vl92NEo4MFRsVExWcUZ2YUdsN1NTTQ?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Sat, 17 Oct 2026 09:47:19 GMT",
+      "description": "Nigeria Unveils Blockchain Education Drive to Boost Digital Skills &nbsp;&nbsp; Voice of Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Opinion | I Teach at a Business School. It’s Time to Shut Them Down. - The New York Times",
+      "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxQTHZ6eFBKSXJ2cUhwamdJZWFaM2pYTmlmTmRwNmtTb1FSdzNRTDl6UzA3U0syOGk3WXB0clM0b3V5Zk82aVZBclBxbkpzaURPQWVxZWRHVThCV3dNY09PcXp1X20xaVRLUWJJMlFWeVFYaDQ5RkpiOTQyZnlCWE8tcXYzdm5sdU9DblEtbVFzODhnbE11VUJSUw?oc=5",
+      "source": "The New York Times",
+      "publishedAt": "Sun, 18 Oct 2026 05:00:06 GMT",
+      "description": "Opinion | I Teach at a Business School. It’s Time to Shut Them Down. &nbsp;&nbsp; The New York Times",
       "region": "International"
     },
     {
@@ -103,14 +87,6 @@
       "region": "International"
     },
     {
-      "title": "FG Unveils Fresh Interventions to Revamp Nigeria’s Education Sector - THISDAYLIVE",
-      "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPQTRGZ0hmdmU3WFVFNTlwWE4zUi1YZjNvU0lqSmJXZVNkdDdNdjBoZUxRZ3c5OTBLRXk3SVdiX0ljY2xNNTlsXzlTc2M2YjlCUndaRGt2NUZLOGw2NFBzb2RjWXZxRjdoOW5Rc05sZ1MzN0hVN2JnZ3FDX3RuZjJfWFZMRklkS1Y4TEx4dTlaa1M3YWJWM0NiVERxQ25DMFVQUDFwcjR2TFp2Zw?oc=5",
-      "source": "THISDAYLIVE",
-      "publishedAt": "Wed, 14 Oct 2026 02:30:20 GMT",
-      "description": "FG Unveils Fresh Interventions to Revamp Nigeria’s Education Sector &nbsp;&nbsp; THISDAYLIVE",
-      "region": "Nigeria"
-    },
-    {
       "title": "Limb Difference: Nigerian Student Overcomes Challenges To Attain University Education - News Agency of Nigeria",
       "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxPcXV1WjJpOE55N2NOUzUtWTFlb3Ewb3c2VWhaQmd0cmpGcGZ5amhyS0lFaG82MGJQbW9sM3ZBNjMyZGQxcXozRlVueXVIZWd5ZlJoVVE5aDY2QmRQRGxaUncwbHNFWU0weTVNcXFTWGc5VGdqdVg5UXpxbmJXLTRRZVRQNXBCOWJzR1lqXzNSdHdwQ2RRcHM2amcwdzdxREY1UGpVN1k3UQ?oc=5",
       "source": "News Agency of Nigeria",
@@ -119,43 +95,59 @@
       "region": "Nigeria"
     },
     {
-      "title": "How to fix foundational learning for Nigerian girls - TheCable",
-      "link": "https://news.google.com/rss/articles/CBMiggFBVV95cUxOOFhKRmVHWllFbnRRWHlPYkg0M011OG1hbGZRT3RMYW5QNVJjZG11Y21uU1NvUWcyeGNDekN3emxDM1BWeGJmcjM1QlZiYUlCS1lNaEVNRFBzS0RxdG0wdGZSVHQ2T0NTWGd6VGtBbFVPeVp1X3M3eDBXOWItRG50U3d3?oc=5",
-      "source": "TheCable",
-      "publishedAt": "Mon, 12 Oct 2026 11:51:00 GMT",
-      "description": "How to fix foundational learning for Nigerian girls &nbsp;&nbsp; TheCable",
-      "region": "Nigeria"
+      "title": "Columbia University School of General Studies Opens New Residence for Nontraditional Students - Columbia University",
+      "link": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxQUDVKdmlCQ3FLUmpZV1laRF94YnZ3LTZ3dXlTV0xSVkZRYV9VaW5jUWdEWDZPU0dNOWlxWXlmd2VJZUhuMTA0bEJoWEc2WlBwNG1wbjd6N0lPN1pGQ0hRYnF4OG5uMUpkM1hneFE4SnB6cW5kaFdPQk4tMDFubmJZWmtVR1lib2dDMHg4eDZFaFZQWVVDZW5LcmlQSUxYM1o2anZsTjFPaWxoYUlnbkZHeFNIUFl3cGlXd1dj?oc=5",
+      "source": "Columbia University",
+      "publishedAt": "Thu, 15 Oct 2026 19:56:14 GMT",
+      "description": "Columbia University School of General Studies Opens New Residence for Nontraditional Students &nbsp;&nbsp; Columbia University",
+      "region": "International"
     },
     {
-      "title": "N267bn in education funds lie idle as 70% of Nigerian children can’t read - Vanguard News",
-      "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxNWFd4MmdZdE5BalZYdDJQT180cXRfSEhTVjB2NG5hbHQ1OUJoaTBGbWZoTDQxNWNDZDFXZ05GT0FuWDdHR2cyVjEyM0pBRU9nSW5EMDVVVDg5cWZmYUgyc1EtX0g5NHZ5RmtLMVlpV2QtUTVnVHpETzlpY1pRWE4zY2VFMUd0a255MVBNUFJQOVB6ZVhHRVI0bTVqcXhFbmYzLUhCT0RXX1RCSVNs0gGyAUFVX3lxTFBsOU9objktanlBdy1VbU43TkZlNEZOWE5CSUQ0Z2RURW9WcWZmR0pUNlA5Wkd4akJQMmVwODdPQ3RSSkJ2TzU3Z0g5S3FmVHJFU0JvV1JvbE9zbW5sLWY2bV9icjR1SURiMy1xYWFHY3hRdmJoQkR5UHp2cVBhM3hiRmhRcHZEWVFlblI1dTR2c0ptRWpuMG9IVE1kVEJ5TnhWWjlJM1U5by02RHRXTWRNUHc?oc=5",
+      "title": "Nigeria @ 66: Redirecting the Education Curriculum for Industrial Growth and National Development - Vanguard News",
+      "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxQVkJtYlVkWkZlWUJxaW5CS3l1emt4VnQ1UzJ1TEVyMmRnNFhZb0lyUmNCdW5xLVM2ZmlDUVYybnNydkZ5QjB0T1JOVGc2dUY0X1h3ZmNoRlhubnZBc25PdmlwaXFyOXV1a1pDUFJfOXhGaWZLVnRIMWotbllweTJRX20xcmhueEhnQ25XbTBBM2hEUGM0RGdxdkd2SXNYbG1ob0lEeS1FY283MHZpd0Nma2ZDYWtyZU4xd05pcEk2RlZxb3pWVk9CTzhzMNIB0AFBVV95cUxNZGdkN2VJVEs3TlVzR1FEQlp2WXdkZ3JtcGxJOWtfcnlGR2R3MElIelYyNFA5b3ctbTZmU01VblFLRUdQeG1qZGt1WkdMTFgwWnNNZXhSVXhmV2FMamR3UGM4QkxLaUlGbFU3VFZzQ24taGticVJmZG5ucGZGVldxUExOWjhZUk5GZXVUVko0VUhxWUszTlRyZW9QXy1rWVFiOGVBajlLUHpRdE51dGxHZWJXU0pDRHRDU3dSVGZ2Y2dmcXM5Qjl1bmJZNHFQWFBw?oc=5",
       "source": "Vanguard News",
-      "publishedAt": "Mon, 12 Oct 2026 15:59:22 GMT",
-      "description": "N267bn in education funds lie idle as 70% of Nigerian children can’t read &nbsp;&nbsp; Vanguard News",
+      "publishedAt": "Tue, 20 Oct 2026 05:57:24 GMT",
+      "description": "Nigeria @ 66: Redirecting the Education Curriculum for Industrial Growth and National Development &nbsp;&nbsp; Vanguard News",
       "region": "Nigeria"
     },
     {
-      "title": "Stakeholder Calls For Skills-Based Education Across Africa - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMihAFBVV95cUxQSW9taGdWWTU2WVhMWndaem5TWXFXRm5icHJZb1VtazBXU1pHSkRSclBEaHJzSEFSNzU5N1piMGNDQ3BGcFp5NktrNkpvYVpBVmJrRmhnVHVBLUlHNlFSNHQ2NC12MDY4TGR6bXVOUHB2eFZpYUIyZlZRQzJwb0U2cWwxZ1I?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Tue, 13 Oct 2026 09:03:34 GMT",
-      "description": "Stakeholder Calls For Skills-Based Education Across Africa &nbsp;&nbsp; Voice of Nigeria",
+      "title": "FG Unveils Fresh Interventions to Revamp Nigeria’s Education Sector - THISDAYLIVE",
+      "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPQTRGZ0hmdmU3WFVFNTlwWE4zUi1YZjNvU0lqSmJXZVNkdDdNdjBoZUxRZ3c5OTBLRXk3SVdiX0ljY2xNNTlsXzlTc2M2YjlCUndaRGt2NUZLOGw2NFBzb2RjWXZxRjdoOW5Rc05sZ1MzN0hVN2JnZ3FDX3RuZjJfWFZMRklkS1Y4TEx4dTlaa1M3YWJWM0NiVERxQ25DMFVQUDFwcjR2TFp2Zw?oc=5",
+      "source": "THISDAYLIVE",
+      "publishedAt": "Wed, 14 Oct 2026 02:30:20 GMT",
+      "description": "FG Unveils Fresh Interventions to Revamp Nigeria’s Education Sector &nbsp;&nbsp; THISDAYLIVE",
       "region": "Nigeria"
     },
     {
-      "title": "Oriental Energy’s Uwem Ite elected chairman of Nigeria’s greening education institute - Premium Times Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMi7AFBVV95cUxPZXBWYVFta3FpVTdFb0JNUmFQNnNWNjQ1Y2Q0QmNiWXNha2JjWDVRS0Q2aTktSFpoNkNsckNoSHFLeEFWSjN6UGY5YzVfYzA4SHdPcVVkd3hFZzVRWExFX1JtemswemhRU2Npb0RhUnYwVXJJQk1uSGo5TFVpZ3BZLTl5eGw4RmNuLU1jd2dDSkVaS0FpME14cm1BWHVidzNicmdRempHZ1MwRkRGWmVlUEVaZ3Z6OVZjOHJZcHRRN3ZXVkxPZWhadnNKYXY1d2g4MTFQQzVHdGdnYnByMEM2LWc2NXVSWUxaMnhPdg?oc=5",
+      "title": "Nigerian Students Receive Learning Materials as MTN Foundation Expands Education Drive - Nigeria Communications Week",
+      "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxOUE9fNlpzLVprR2ozVFI1eVJCbGFybDMxajRwWlk3SDVNT2dLeXZnRVNYVDNPRXdRV2JTSVIzT2Q4VkhfTzBrcDZqZ3Jzd1RYb1FkVjZfcDZhbDc0cUFNcUNjWlJOQXFfMEFMcHZZN1hmMXFsRG5jR2NidzVpOHUzYUZXOUo0dVFvNm5iRzVQSFFkNTNGTmFqbEZZeU9tN3FqSmlUSlRneS16MjRjVDF3a1A5UjZ5YTlLUnVzOUhaMDcyRFBFSW9GWW1zVzJhNWRPa2hNMw?oc=5",
+      "source": "Nigeria Communications Week",
+      "publishedAt": "Wed, 14 Oct 2026 02:08:57 GMT",
+      "description": "Nigerian Students Receive Learning Materials as MTN Foundation Expands Education Drive &nbsp;&nbsp; Nigeria Communications Week",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Education Is the foundation of a new Nigeria - Realnews Magazine",
+      "link": "https://news.google.com/rss/articles/CBMif0FVX3lxTFB5S2t6OXoxbVg0Qzh3OUR1bGNEbmVRYVVNX2lEMFZOMEhYQ1lpLTFPYm9pcmV6VXlYUmlzY0tKTF9MVWRSdHJiYjl3QlNMV1JRX1RhQ29jdXdKcV9IVkxFaFJlSXFWMXA3cjJnZ25FVkhzOEEwUkc1RXdoY21aX2c?oc=5",
+      "source": "Realnews Magazine",
+      "publishedAt": "Sat, 17 Oct 2026 10:35:27 GMT",
+      "description": "Education Is the foundation of a new Nigeria &nbsp;&nbsp; Realnews Magazine",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Stakeholders seek unified framework for school safety in Nigeria - Premium Times Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPXzZkZ0pDOVY3LTdSY1AzWjY3OUdCdkVZQ0pvLWVkVVNJcjU2V3hQcS1hN1ZLUDJKNWJSOFYxbFJVaWFlMnVVS2JlRFBYaTJjelhxbjZBOXVpcUtzZkNzYWt0Y053dm5uSHhFYUExUFQ5MlJ1ejFCRVRMWEo0b0h0SnJMLW00V0owSkl5SFc5WWJzTGZ4WUpUNjBnOWM4WlpsS0cyWTVWcUg3T3pDRWRIOHpoQWdOamo5UXpOX3FR?oc=5",
       "source": "Premium Times Nigeria",
-      "publishedAt": "Tue, 13 Oct 2026 11:40:54 GMT",
-      "description": "Oriental Energy’s Uwem Ite elected chairman of Nigeria’s greening education institute &nbsp;&nbsp; Premium Times Nigeria",
+      "publishedAt": "Fri, 16 Oct 2026 08:53:55 GMT",
+      "description": "Stakeholders seek unified framework for school safety in Nigeria &nbsp;&nbsp; Premium Times Nigeria",
       "region": "Nigeria"
     },
     {
-      "title": "‎Nigeria’s $11.1bn foreign education bill raises concerns over local institutions - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxObk0yOHRXUktKbldYazdfWVloUGMwQVM3bGZEWUNRa1hLX1pDQ0JPZ1FqMUt0bVlvVnVvNzBXU2dENXRNOFhZamRucERZdFhyMk5jY0VmNFFOYXN6NTVmSkJyRU01d3pOekMtand5MkpZZ0dRelhDaTBOYTEtMS0xcGxJbmwyVm53LTE1ekNPWWpZRmxUSzhkTnF6MHhDdmlWc3RKN1V0RQ?oc=5",
-      "source": "The Guardian Nigeria News",
-      "publishedAt": "Wed, 14 Oct 2026 22:01:00 GMT",
-      "description": "‎Nigeria’s $11.1bn foreign education bill raises concerns over local institutions &nbsp;&nbsp; The Guardian Nigeria News",
+      "title": "Education Minister Unveils Birmingham, UNILAG World-Class Joint Degrees - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPS0hUY19fRmxPcmNWVGxvZENqSy1WV1d5MkxCQ1JqVGVBQ2YzMk9xZTJ1Tzd2SUpxNjV4TXJKM3dnREc5c0IycFRScHRnQnlIU1EyNGlRMnR5V3dWMGxoM0hidHBpVFdpa1o5aEVPZ0NjcTFnMWFSOXN4dEdraWpJcEdpS25iOTA2Z29PU1ZscXI2dloy?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Sun, 18 Oct 2026 06:40:56 GMT",
+      "description": "Education Minister Unveils Birmingham, UNILAG World-Class Joint Degrees &nbsp;&nbsp; Voice of Nigeria",
       "region": "Nigeria"
     },
     {
@@ -164,6 +156,14 @@
       "source": "Independent Newspaper Nigeria",
       "publishedAt": "Wed, 14 Oct 2026 05:04:30 GMT",
       "description": "EWAN Set To Address Nigeria’s Unfinished Battle To Keep Schools Safe &nbsp;&nbsp; Independent Newspaper Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Nigeria must shift education from certificates to skills- experts - The Guardian Nigeria News",
+      "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxONUVwTlhSdTRDSlMzTE44dDhacURiRDJKOVBvRTIyQzRuWl9BRnY5cjNhUWNzWlE4cXZIYmxEbHQyMG1XWFIxMFk3dXFpUDlBVXFjZXNwZVVHRFJWLUd5SlZjVW9yRVZhUHZBV0pFVGFxTDBfV2s3UENEVjdCT2RIOUdCR09ua0FKUU9maWpxT2ZPSTdCU2xzbUVYWFVHbG8?oc=5",
+      "source": "The Guardian Nigeria News",
+      "publishedAt": "Fri, 16 Oct 2026 15:21:00 GMT",
+      "description": "Nigeria must shift education from certificates to skills- experts &nbsp;&nbsp; The Guardian Nigeria News",
       "region": "Nigeria"
     }
   ]
