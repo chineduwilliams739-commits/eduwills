@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-26T11:08:40.916Z",
+  "generatedAt": "2026-10-27T10:36:19.709Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
@@ -12,22 +12,6 @@
       "source": "UNICEF",
       "publishedAt": "Thu, 22 Oct 2026 08:42:41 GMT",
       "description": "UNICEF, Airtel Africa and the Government of Nigeria advance digital learning following Lagos and Abuja visits &nbsp;&nbsp; UNICEF",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Pope urges Catholic schools to help young people find new way to live in world - Vatican News",
-      "link": "https://news.google.com/rss/articles/CBMitAFBVV95cUxPbWJrM2ZFUHE5QUNMTEp2d0V2Z0FVZHpoeHhiYjVSblU2U2V6LU9fN0hlWmNlVnJSSmlXWGZSOXoyT0NXamdhVGgyVnpIU3BWWEJsVXcyUmFGV3NHX1pkdW9tcldyeEJYUnh4Y2dyTDVKSHF6c1JQX3RMQWlXWVItTUJ6TFJRdHF4NnBxY0F0RE8zcjVidUtUdDhuLVJPaG1VeHAyTWk2NEhHWTlQNWxXeUVBQkI?oc=5",
-      "source": "Vatican News",
-      "publishedAt": "Thu, 22 Oct 2026 09:38:25 GMT",
-      "description": "Pope urges Catholic schools to help young people find new way to live in world &nbsp;&nbsp; Vatican News",
-      "region": "International"
-    },
-    {
-      "title": "Senate Moves To Strengthen Senior Secondary Education Nationwide - Channels Television",
-      "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxPSEh0LTZURlM5MUVUVDhsMnpIX0I0aGlvSWd4dVAxOW41MTRnZlZMaVRGeUQ0cFZvaXZSa3cxbDNtb0Z0MkhSbmZWeGVZRHdNc0dKd1B4WFJTRnRDNnJZblZhdVRvb21mVVdkSFFpMldjeFgxU19UVDlaOFFPUkJLRGcwYllnTVdacEpuaE5PWk4ybEhFREQ2MmxjTzJoeWNBMmczc1FR?oc=5",
-      "source": "Channels Television",
-      "publishedAt": "Tue, 20 Oct 2026 18:19:55 GMT",
-      "description": "Senate Moves To Strengthen Senior Secondary Education Nationwide &nbsp;&nbsp; Channels Television",
       "region": "Nigeria"
     },
     {
@@ -47,6 +31,22 @@
       "region": "Nigeria"
     },
     {
+      "title": "COMMENTARY: How Compton High made 133 more students eligible for four-year college - EdSource",
+      "link": "https://news.google.com/rss/articles/CBMieEFVX3lxTE9penU3YUp1WjdlRkVaTWhuQ2dib3hjNy1OT2NrUko5LWJmNWxudmdLSXAyMkV5cUo0U1hGOGtTTFFYV3VpbDFVd2FHeTlDYy12UE1xUHVGa0xuazFHSnFVZW1BNHhtZnlCSmlVek54Mk5RNDNUUlhYZg?oc=5",
+      "source": "EdSource",
+      "publishedAt": "Fri, 23 Oct 2026 21:22:21 GMT",
+      "description": "COMMENTARY: How Compton High made 133 more students eligible for four-year college &nbsp;&nbsp; EdSource",
+      "region": "International"
+    },
+    {
+      "title": "Senate Moves To Strengthen Senior Secondary Education Nationwide - Channels Television",
+      "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxPSEh0LTZURlM5MUVUVDhsMnpIX0I0aGlvSWd4dVAxOW41MTRnZlZMaVRGeUQ0cFZvaXZSa3cxbDNtb0Z0MkhSbmZWeGVZRHdNc0dKd1B4WFJTRnRDNnJZblZhdVRvb21mVVdkSFFpMldjeFgxU19UVDlaOFFPUkJLRGcwYllnTVdacEpuaE5PWk4ybEhFREQ2MmxjTzJoeWNBMmczc1FR?oc=5",
+      "source": "Channels Television",
+      "publishedAt": "Tue, 20 Oct 2026 18:19:55 GMT",
+      "description": "Senate Moves To Strengthen Senior Secondary Education Nationwide &nbsp;&nbsp; Channels Television",
+      "region": "Nigeria"
+    },
+    {
       "title": "Are Utah’s public colleges edging closer to the expected ‘demographic cliff?’ - Deseret News",
       "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxOeFM4LXFWamJsX0NfS3FvQ2djYkZLMG5jOG1ZWjNEbWxNVEFMTEtscmlOSXJOUDluNmVqb0VIczN4OWVVNWtLam1qaVZXMEgxOXFCbE5tRjUxSVNKS3JHdDFJa2RjWVBwQVY3em5mTnpGOEtfVWp4V3VHcjlLVE9acUFna0VJRFdscDNiazNR?oc=5",
       "source": "Deseret News",
@@ -55,11 +55,11 @@
       "region": "International"
     },
     {
-      "title": "Nigeria Replaces Theory-Heavy Agric Education With 80% Practical Training - Arise News",
-      "link": "https://news.google.com/rss/articles/CBMimgFBVV95cUxOYVpkQVNvRXRyTmw1SFR0Y21XcmNtdWh1U0E3N3dxUllnSHMzWG8zVi10SUkzU09HZnJsMTFTclNaLVNSNmFuQXh3XzZNR092X1BRYUg2MHBocVFfQnFOMW9ZS0UyZGQ3WTBhbDhLbDhnaVBYVUNCWEh6UGZQM25jT2Q4RkFpM0lqcVBPT0RoUmdqVW1rVHItN0ZB?oc=5",
-      "source": "Arise News",
-      "publishedAt": "Tue, 20 Oct 2026 06:43:53 GMT",
-      "description": "Nigeria Replaces Theory-Heavy Agric Education With 80% Practical Training &nbsp;&nbsp; Arise News",
+      "title": "OWSD-UNILAG Empowers Girls to Develop AI Solutions for Nigeria’s Future at 2026 Celebration - University Of Lagos",
+      "link": "https://news.google.com/rss/articles/CBMiswFBVV95cUxNOU5HVW5OUVBKNFd6WGVrR0l1eU9lMDFUNUdLeUg5Nkh2QVRFdXQtbUhxeFRVZW9RTkxqZWc1dkJhSk5UTWItVDhFUk1qZHRUOVU1LUJ3WERBeE1JczRRRUh0eVNFZElpUWowdVVUSzh0NzZxMGRwUlVINjlGcUVuWFVCU1liMWpQWFVtRXFnY05rR3lENHJndmZnTWJCRTRpZkVmeER5Y3liQW9BVG5YMUlmdw?oc=5",
+      "source": "University Of Lagos",
+      "publishedAt": "Wed, 21 Oct 2026 17:24:47 GMT",
+      "description": "OWSD-UNILAG Empowers Girls to Develop AI Solutions for Nigeria’s Future at 2026 Celebration &nbsp;&nbsp; University Of Lagos",
       "region": "Nigeria"
     },
     {
@@ -79,36 +79,28 @@
       "region": "Nigeria"
     },
     {
-      "title": "Discourse and Debate: If Columbia cares about access to higher education, it needs to start paying taxes - Columbia Daily Spectator",
-      "link": "https://news.google.com/rss/articles/CBMi7AFBVV95cUxOUmV5NExmRWxYOThlNDBRQ1JyUGpYMkcxclhrUnZBdFoxR3BlQ0ZVclhTSkZNb0ZoWWNvc0VfRXFqZlE3Nkp6MDF1OUhJMmJaaVBKb1R0NEFRWGlWU3BCTG1YekZrZEJ5dThLWjg2Y09lc21IajJhRWVGQU9KWHVZa3JpS3M3OVFmUDJLengtVWhfSHptVTRCZnpZTXJGS2M0V2hGd0pTSDhjbTZYdUl4S1c4ay1ueTVrdjJRVzA2bGtLeE42bjdoeHJkUmVHY2NucTNoMlpGa3lQcXhjNmVuek9UQUg5ZU1vWWpQdg?oc=5",
-      "source": "Columbia Daily Spectator",
-      "publishedAt": "Sun, 25 Oct 2026 23:53:04 GMT",
-      "description": "Discourse and Debate: If Columbia cares about access to higher education, it needs to start paying taxes &nbsp;&nbsp; Columbia Daily Spectator",
+      "title": "CPS high school graduation and college enrollment rates rise, but many students still struggle to finish - WBEZ Chicago",
+      "link": "https://news.google.com/rss/articles/CBMi3gFBVV95cUxPTU1TazlYZXhqMDRING90Wk9kVHFnNEJjTkVQYTUzblc3UkJYOUl3bkRYeGlZNk9ySDIxbEtZU0FuRkxrdFVxbnBGZFIzWUJic1VNV1cwU3RnUFh0Q0N5VU5TQjlsTzNLV1piRVdyWlRDVkdrcmlRWEVVY2xxVnVSaTNycmczV3VzTU0tMnlfUjBaOW5HTUl0Qm9kS0VJNjdYMGtiOVlVUlBuRXNSTFpFdnVabElKcFU5ZEhnd3BLYjd0ZmJ3VHRVYU5wWi1NMFFNTG92MExlUXYyMk1QV0E?oc=5",
+      "source": "WBEZ Chicago",
+      "publishedAt": "Fri, 23 Oct 2026 23:02:00 GMT",
+      "description": "CPS high school graduation and college enrollment rates rise, but many students still struggle to finish &nbsp;&nbsp; WBEZ Chicago",
       "region": "International"
     },
     {
-      "title": "SPECIAL REPORT: Beyond tuition, extra school charges deepen financial strain on Nigerian parents - Premium Times Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMi4AFBVV95cUxPZmtBTzMxNmF6RGtIdDhIa1ByTHZ6R0gzV0JLZXpzUUhoS1o2MEVCTnRFVno0dV9ua0lvOTNSWlRtal81UHFlOW9ZZXF1OWxMOEs1a1A4WkJ0WjFjRkhXQ1BsamVZUzQzSzFMaXV3SlIzbS1oZ2JiQnZYZGpzLWlFMmZZWHdGZVVZa29KZUkya3BqZ2ZieXo2d3RZbWdvM2pza3JZMkhWT0pIUWRmOXZyb0tfaFpTazdNaTVzYy0yZThTLVpzRTJPeUhpRDRNNWpuUGJQaHd3cm82bERCbmptOA?oc=5",
-      "source": "Premium Times Nigeria",
-      "publishedAt": "Thu, 22 Oct 2026 12:13:11 GMT",
-      "description": "SPECIAL REPORT: Beyond tuition, extra school charges deepen financial strain on Nigerian parents &nbsp;&nbsp; Premium Times Nigeria",
+      "title": "Someone Like Me: Linking Peer Mentorship and Education to Accessible SRHR Services for Adolescents in Borno State | International Rescue Committee - ReliefWeb",
+      "link": "https://news.google.com/rss/articles/CBMi-AFBVV95cUxNU2d6T19tYTNiLVZXYXRKSGp3TmlCUmpVY3JsWGxJWXlHY0ROeUl1WUVRQ0tkVlNtNVI5S2VQZVZiZ1NYWkNyZVQ1SUZrV1hNbWs1aHltTnk4OTUtOTBCQy1yMFlDd2JwZ1h1aXhlRnUxbHhiOUcycWxKR1NYZ1A2dzUxODZweGFzaUtkRjRpSDVvSWZHeVBsZFJkN2o5N1JoTEdYcHFiWk9reU5ZUy1Qbk05YkVSNHdFeDNaN1BDaGUxeW9TS25xY3JHckNjb1Q4TVpIWXg0WWdJVGF4alhURXJiR2tKSUppSVdMTFBidUhQVUhHejlNbQ?oc=5",
+      "source": "ReliefWeb",
+      "publishedAt": "Fri, 23 Oct 2026 17:33:09 GMT",
+      "description": "Someone Like Me: Linking Peer Mentorship and Education to Accessible SRHR Services for Adolescents in Borno State | International Rescue Committee &nbsp;&nbsp; ReliefWeb",
       "region": "Nigeria"
     },
     {
-      "title": "Public Colleges Are Passing the $50,000-a-Year Mark. For Locals. - The New York Times",
-      "link": "https://news.google.com/rss/articles/CBMif0FVX3lxTFBWVW14d1AxRzMxYXNLekhnTGpCTGppUUpCa0x5bkx6N1MyOFpsSTVBcHBnX1J4ZFRncW95Q2tTTTRTeS1zV01kZGVENjBIM2hNUklhWUt0MTJTTHhsR3dwczFIZFMyeHk2dlRRM0IzdTQ4dXp5VG5XUEVuakdVZG8?oc=5",
-      "source": "The New York Times",
-      "publishedAt": "Sun, 25 Oct 2026 09:01:31 GMT",
-      "description": "Public Colleges Are Passing the $50,000-a-Year Mark. For Locals. &nbsp;&nbsp; The New York Times",
+      "title": "Kyoto Koka University students learned about education across the University, local schools and Lake Tahoe - University of Nevada, Reno",
+      "link": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE1hU0MzdHRlM3ZSdHZBbjJLSUo5dVRIVjlqTkR6RUwtQlZwcHBMT2E4VlpXSmxfUWl6LUtXRko5amRlWkhKaU1ZT29xUGJULWxYR3JXWHNYcDBVRUd1TXNEdmZfMGFuODZQ?oc=5",
+      "source": "University of Nevada, Reno",
+      "publishedAt": "Fri, 23 Oct 2026 17:29:03 GMT",
+      "description": "Kyoto Koka University students learned about education across the University, local schools and Lake Tahoe &nbsp;&nbsp; University of Nevada, Reno",
       "region": "International"
-    },
-    {
-      "title": "Airtel Nigeria and UNICEF Strengthen Partnership to Expand Digital Education - TechAfrica News",
-      "link": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNZWFoR1FXTTVXa0JfNnpLTlpCQWxhMXN4WURNa3J5el9kSTM5TFBkaHhfQnZtVjN5Z0M4Vm9sWjRXaEdaOW41MFJLSGlYT21jeHFzREVTN1hhRmZQb0l1VU5EY1h0aElEam8yZkxHVXRvdnZYZExVZDFDQ1hkNEJDUW9WLXBnSzJ6cWdWcmV3?oc=5",
-      "source": "TechAfrica News",
-      "publishedAt": "Fri, 23 Oct 2026 07:26:51 GMT",
-      "description": "Airtel Nigeria and UNICEF Strengthen Partnership to Expand Digital Education &nbsp;&nbsp; TechAfrica News",
-      "region": "Nigeria"
     },
     {
       "title": "Education Minister Inaugurates Nigeria’s First Robotic Surgery Academy - News Agency of Nigeria",
@@ -119,11 +111,11 @@
       "region": "Nigeria"
     },
     {
-      "title": "Nigeria @ 66: Redirecting the Education Curriculum for Industrial Growth and National Development - Vanguard News",
-      "link": "https://news.google.com/rss/articles/CBMiywFBVV95cUxQVkJtYlVkWkZlWUJxaW5CS3l1emt4VnQ1UzJ1TEVyMmRnNFhZb0lyUmNCdW5xLVM2ZmlDUVYybnNydkZ5QjB0T1JOVGc2dUY0X1h3ZmNoRlhubnZBc25PdmlwaXFyOXV1a1pDUFJfOXhGaWZLVnRIMWotbllweTJRX20xcmhueEhnQ25XbTBBM2hEUGM0RGdxdkd2SXNYbG1ob0lEeS1FY283MHZpd0Nma2ZDYWtyZU4xd05pcEk2RlZxb3pWVk9CTzhzMNIB0AFBVV95cUxNZGdkN2VJVEs3TlVzR1FEQlp2WXdkZ3JtcGxJOWtfcnlGR2R3MElIelYyNFA5b3ctbTZmU01VblFLRUdQeG1qZGt1WkdMTFgwWnNNZXhSVXhmV2FMamR3UGM4QkxLaUlGbFU3VFZzQ24taGticVJmZG5ucGZGVldxUExOWjhZUk5GZXVUVko0VUhxWUszTlRyZW9QXy1rWVFiOGVBajlLUHpRdE51dGxHZWJXU0pDRHRDU3dSVGZ2Y2dmcXM5Qjl1bmJZNHFQWFBw?oc=5",
-      "source": "Vanguard News",
-      "publishedAt": "Tue, 20 Oct 2026 05:57:24 GMT",
-      "description": "Nigeria @ 66: Redirecting the Education Curriculum for Industrial Growth and National Development &nbsp;&nbsp; Vanguard News",
+      "title": "SPECIAL REPORT: Beyond tuition, extra school charges deepen financial strain on Nigerian parents - Premium Times Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMi4AFBVV95cUxPZmtBTzMxNmF6RGtIdDhIa1ByTHZ6R0gzV0JLZXpzUUhoS1o2MEVCTnRFVno0dV9ua0lvOTNSWlRtal81UHFlOW9ZZXF1OWxMOEs1a1A4WkJ0WjFjRkhXQ1BsamVZUzQzSzFMaXV3SlIzbS1oZ2JiQnZYZGpzLWlFMmZZWHdGZVVZa29KZUkya3BqZ2ZieXo2d3RZbWdvM2pza3JZMkhWT0pIUWRmOXZyb0tfaFpTazdNaTVzYy0yZThTLVpzRTJPeUhpRDRNNWpuUGJQaHd3cm82bERCbmptOA?oc=5",
+      "source": "Premium Times Nigeria",
+      "publishedAt": "Thu, 22 Oct 2026 12:13:11 GMT",
+      "description": "SPECIAL REPORT: Beyond tuition, extra school charges deepen financial strain on Nigerian parents &nbsp;&nbsp; Premium Times Nigeria",
       "region": "Nigeria"
     },
     {
@@ -143,6 +135,14 @@
       "region": "Nigeria"
     },
     {
+      "title": "Airtel Africa Foundation and UNICEF Connect 977,670 Students to Digital Learning in Nigeria - TechAfrica News",
+      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOVXd4R1ZEbng3VEllaGhVN3N0NkZTaUcwVlJWWUlhaU9CV012UmswMzFPMEluajlxX0tlMmFDSUt4ckdQaVdMeEZORUE3S1VGclBoQWlMa2xKNWJlSmcyaml6Y2JDUVFNdXJWMm80SW5vVVlqRzdqcURZVE9LR1NDbE9fZnprc3kxS1dIekJ6clFRaWRpR0NhY2syRQ?oc=5",
+      "source": "TechAfrica News",
+      "publishedAt": "Tue, 27 Oct 2026 07:30:11 GMT",
+      "description": "Airtel Africa Foundation and UNICEF Connect 977,670 Students to Digital Learning in Nigeria &nbsp;&nbsp; TechAfrica News",
+      "region": "Nigeria"
+    },
+    {
       "title": "BETA 2026: Stakeholders Call for Improved Basic Education - Voice of Nigeria",
       "link": "https://news.google.com/rss/articles/CBMiggFBVV95cUxPcmFxZ2Y1NWdXdXhNaEl5MWp3OThOeVJqTlZoM18tZVlCUEdYS2NaVFk5T2NfdWJ0WTd1Tkl2VmxtS2xaTWRlbGFhODR1Q09Mc0ZqTHBzdmU2MHRKRl9KNkNxRXdSOFBidE5QYnB3YUZoMjU1dWd5eENSZWJmOVZ6d19B?oc=5",
       "source": "Voice of Nigeria",
@@ -151,19 +151,19 @@
       "region": "Nigeria"
     },
     {
-      "title": "From Policy To Plant: Rethinking Nigerian Education For Productivity - Independent Newspaper Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPck9lNlFRNERHQ2k4M0xuLWZndmtJNWpvY0Z3WEhfUld0R1hxZXdIZHhQbndTcmtaYS1oT2h4UkM0SUc1a0V3cEpTR1ROZnZyZDNxd012aVVrM3FhSW5pM0U4TERLSV85SVRmY2RBV212NThhQ2YzckF3Q2hZWmtadmM2WkNqc2FOT3pNV1FpOGNtUWZKSVE?oc=5",
-      "source": "Independent Newspaper Nigeria",
-      "publishedAt": "Fri, 23 Oct 2026 01:55:12 GMT",
-      "description": "From Policy To Plant: Rethinking Nigerian Education For Productivity &nbsp;&nbsp; Independent Newspaper Nigeria",
-      "region": "Nigeria"
-    },
-    {
       "title": "2027: Kwankwaso pledges jobs, security, education as Obi misses Plateau meeting - Premium Times Nigeria",
       "link": "https://news.google.com/rss/articles/CBMi2gFBVV95cUxQNkN0TmhPWVc3ekJkNkFUd19lS3RscUpHN2hWcEZHYklId3lMdlFfMGl3Z2lDLXF3ZDdhWVIwY3A2UXE3Y05kLUpXeElpSG9BalpyT3Z5OHAwZkR4Vm0zZGpwUGhHajNvcEpDV2R1TmxfNGlpMFE0QnVaYTFXWEdXZTVOUDBRTUpjOWRZX2tRVF82QnEyWDdTN2tjQ0ZsQllrdTdBRnlUZG5ycy11VlJNUnpFUGFXWVBGSGw4X0JpOXR4OVBSYTZPbmU4bXVrMkRtekJjN2p2ZmNQUQ?oc=5",
       "source": "Premium Times Nigeria",
       "publishedAt": "Fri, 23 Oct 2026 21:03:54 GMT",
       "description": "2027: Kwankwaso pledges jobs, security, education as Obi misses Plateau meeting &nbsp;&nbsp; Premium Times Nigeria",
+      "region": "Nigeria"
+    },
+    {
+      "title": "From Policy To Plant: Rethinking Nigerian Education For Productivity - Independent Newspaper Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPck9lNlFRNERHQ2k4M0xuLWZndmtJNWpvY0Z3WEhfUld0R1hxZXdIZHhQbndTcmtaYS1oT2h4UkM0SUc1a0V3cEpTR1ROZnZyZDNxd012aVVrM3FhSW5pM0U4TERLSV85SVRmY2RBV212NThhQ2YzckF3Q2hZWmtadmM2WkNqc2FOT3pNV1FpOGNtUWZKSVE?oc=5",
+      "source": "Independent Newspaper Nigeria",
+      "publishedAt": "Fri, 23 Oct 2026 01:55:12 GMT",
+      "description": "From Policy To Plant: Rethinking Nigerian Education For Productivity &nbsp;&nbsp; Independent Newspaper Nigeria",
       "region": "Nigeria"
     }
   ]
