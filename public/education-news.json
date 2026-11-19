@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T14:00:48.654Z",
+  "generatedAt": "2026-11-19T14:27:05.073Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
@@ -12,6 +12,22 @@
       "source": "BBC",
       "publishedAt": "Tue, 17 Nov 2026 00:08:19 GMT",
       "description": "BBC launches educational show in Hausa for millions out of school in West Africa &nbsp;&nbsp; BBC",
+      "region": "Nigeria"
+    },
+    {
+      "title": "At University of California, a decline in students who took advanced math in high school - EdSource",
+      "link": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE02VExUT3hQVFRpYnVVR0RoZ2FmMm9TV3V6RURiYWRKSlN0X25CeC1qa1dFdFZJdGRCZ002aE1HWDZlUjAxRjYtQkxYUFRKb1loWjhiaURfVm9IdXZlUmdmS2ItNA?oc=5",
+      "source": "EdSource",
+      "publishedAt": "Wed, 18 Nov 2026 20:40:34 GMT",
+      "description": "At University of California, a decline in students who took advanced math in high school &nbsp;&nbsp; EdSource",
+      "region": "International"
+    },
+    {
+      "title": "Nigeria cannot afford Atiku’s tertiary education privatisation plan — Oshiomhole - Punch Newspapers",
+      "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOMy1pRFJsaVpWNDVnejJpazlpWmlqRkZCSEdsaGJoT3RPUXlrb1BOakpDTURqcXFrTEt5ZXlubVF6dkIxa05PQjAzWGRJV3Fnd0dDVmtseGIyWGFEMVBCV190TlM5NldHWDV0dGp1VWU2SjNURFZjSWx2dkxSdXlmYlFXUmtFMHM0MGhmWUdaSzVLcVc1LTRMSjNTdFlyYWM?oc=5",
+      "source": "Punch Newspapers",
+      "publishedAt": "Mon, 16 Nov 2026 18:50:59 GMT",
+      "description": "Nigeria cannot afford Atiku’s tertiary education privatisation plan — Oshiomhole &nbsp;&nbsp; Punch Newspapers",
       "region": "Nigeria"
     },
     {
@@ -31,27 +47,11 @@
       "region": "Nigeria"
     },
     {
-      "title": "At University of California, a decline in students who took advanced math in high school - EdSource",
-      "link": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE02VExUT3hQVFRpYnVVR0RoZ2FmMm9TV3V6RURiYWRKSlN0X25CeC1qa1dFdFZJdGRCZ002aE1HWDZlUjAxRjYtQkxYUFRKb1loWjhiaURfVm9IdXZlUmdmS2ItNA?oc=5",
-      "source": "EdSource",
-      "publishedAt": "Tue, 17 Nov 2026 23:14:37 GMT",
-      "description": "At University of California, a decline in students who took advanced math in high school &nbsp;&nbsp; EdSource",
-      "region": "International"
-    },
-    {
-      "title": "Nigeria cannot afford Atiku’s tertiary education privatisation plan — Oshiomhole - Punch Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOMy1pRFJsaVpWNDVnejJpazlpWmlqRkZCSEdsaGJoT3RPUXlrb1BOakpDTURqcXFrTEt5ZXlubVF6dkIxa05PQjAzWGRJV3Fnd0dDVmtseGIyWGFEMVBCV190TlM5NldHWDV0dGp1VWU2SjNURFZjSWx2dkxSdXlmYlFXUmtFMHM0MGhmWUdaSzVLcVc1LTRMSjNTdFlyYWM?oc=5",
-      "source": "Punch Newspapers",
-      "publishedAt": "Mon, 16 Nov 2026 18:50:59 GMT",
-      "description": "Nigeria cannot afford Atiku’s tertiary education privatisation plan — Oshiomhole &nbsp;&nbsp; Punch Newspapers",
-      "region": "Nigeria"
-    },
-    {
-      "title": "ASU Prep schools send students well on their way to a college degree - ASU News",
-      "link": "https://news.google.com/rss/articles/CBMivAFBVV95cUxNZm5yZTFHOE5famRua1NFeG1QSC1DUVF2ZkprSFJqVFE1N2pIekhBbXZRZEdyTTd3ejFDTWIyUVptRkZqbFlOMlhrMXRNd2JWdjdQZ0pSRFAyMlZYaUgwYnUyT2xkZDZMVmlTZzlpRDF4NnEwUGJCeXFtSFU2Uk1FN3ZrLXM1WW9NNllPRHlVMWpJRjFpdnZWMjNocjlncE5FRl8zZm9GeGRobjlMbm5ZaTlVeTAyT3d1dTRCRQ?oc=5",
-      "source": "ASU News",
-      "publishedAt": "Tue, 17 Nov 2026 18:48:39 GMT",
-      "description": "ASU Prep schools send students well on their way to a college degree &nbsp;&nbsp; ASU News",
+      "title": "How Does North Carolina State University Rank Among America's Best Colleges? - U.S. News & World Report",
+      "link": "https://news.google.com/rss/articles/CBMiekFVX3lxTE5wT0NYdGZBTU9HeTFLdFV6cDJKQ1pITFdyc2tTVUVZVDBaOUN0RmFBSGlSZ3dZWkdJM0RkQ2V6eEFmODNycWk5RHFXSFhQbk4tS1dMNDJMN25CTUgxVmZzX1d0blpFMU5oNmRwVFJiNFpFdl9UcmtlaklB?oc=5",
+      "source": "U.S. News & World Report",
+      "publishedAt": "Wed, 18 Nov 2026 12:34:11 GMT",
+      "description": "How Does North Carolina State University Rank Among America's Best Colleges? &nbsp;&nbsp; U.S. News & World Report",
       "region": "International"
     },
     {
@@ -63,27 +63,27 @@
       "region": "Nigeria"
     },
     {
-      "title": "Kennesaw State receives funding to help high school students prepare for college - Kennesaw State University",
-      "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQMmMycFJiMEtMdmZrbVJONEJXa0doVFlQdU5WcGg5dVp0TWs3TUV2X0lUaTRSTWZ3aUVyN3lqekU0TjQtMlZ3aFc0RW9YNEg4VlF2ZTBZQlZyWmFwMWNqU1JmdFVRQlZDdUJNMlVTSFpMTVI5TFlYRHhYOS1qZkZaZDJWci1iNHJtMjhqZ3BtTjl0OUZraXMxYW8tNDFLcGQ0aHc?oc=5",
-      "source": "Kennesaw State University",
-      "publishedAt": "Tue, 17 Nov 2026 14:52:02 GMT",
-      "description": "Kennesaw State receives funding to help high school students prepare for college &nbsp;&nbsp; Kennesaw State University",
+      "title": "Pomona College Launches 4+1 Program with Johns Hopkins Carey Business School - Pomona College",
+      "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxPTExzS1VyNWphenBISWZHTkVyeW5JQzJnVkZ6UVdzU0FOUmVRalFiVDZjcEp6YThPRV94THk4QjVrTWZVYWFYVFZzMUNjZVlqMTdTRjZfc3BWTnRJRFRxcnhiRnZJVVd6V2FTRjd0SDdwTnBiUjFOSThkSmxBVU8tRFJwYzR1U2t6U3BjdGpHMTdVbWd4OFRyUnZXbVZLcWc3aTd4VnpWQ0JDMnJXV1E?oc=5",
+      "source": "Pomona College",
+      "publishedAt": "Tue, 17 Nov 2026 22:26:10 GMT",
+      "description": "Pomona College Launches 4+1 Program with Johns Hopkins Carey Business School &nbsp;&nbsp; Pomona College",
       "region": "International"
     },
     {
       "title": "Reps Move to Reconsider Federal College of Education (Technical) Ajegunle Bill - NALTF",
       "link": "https://news.google.com/rss/articles/CBMioAFBVV95cUxPTi1mTzR4c1Jicm1SZWs3TkU5cUFUVGJ0Rmh0dFZxN1hoSjdqMzd5NnZNbG9VdW1rWnhWejFObDlsUzIxQ3ByT3ctazdybHhKcGQ5el9Kb0QtOUJJR3ZFNWNubWVnMzlObUZXalFVU20ydmU2RkpCLWlEVHFSZXVqUFBQbTlwUVFzTWVxSEFpN2Zmd0poX25QN0xZRlg1ajNv?oc=5",
       "source": "NALTF",
-      "publishedAt": "Wed, 18 Nov 2026 13:53:55 GMT",
+      "publishedAt": "Wed, 18 Nov 2026 14:08:36 GMT",
       "description": "Reps Move to Reconsider Federal College of Education (Technical) Ajegunle Bill &nbsp;&nbsp; NALTF",
       "region": "Nigeria"
     },
     {
-      "title": "Shrinking pool of high school graduates creates challenges for Iowa’s public universities - Business Record",
-      "link": "https://news.google.com/rss/articles/CBMivAFBVV95cUxNM3dTeTE5U3NkT05PTE9FVXE0WDZJQjgxbmJJT3BvSTIxLUpjOUwyRkhoS1dELUhiS2I0WF9xSDNNTlAzMUJZd2ZxMjhQcUQ0amVmMFZWVE5kcHdGNmMyWU41M3dERm1hQ3JkS3RjZFVHYkVfYTVnMHQwQVlMRGlZTjNqWmlKTzhRS3h5eHFTendwNmFBR0JheU92WU96cWp6MWo2T3BJME14RmpYNHo5ekJkcVRwZ3FSY2x5ag?oc=5",
-      "source": "Business Record",
-      "publishedAt": "Mon, 16 Nov 2026 22:38:11 GMT",
-      "description": "Shrinking pool of high school graduates creates challenges for Iowa’s public universities &nbsp;&nbsp; Business Record",
+      "title": "North Dakota - Education, Schools, Universities - Britannica",
+      "link": "https://news.google.com/rss/articles/CBMiZkFVX3lxTFBMT3BOZ2g2SlAta0w3ZzVCb2NsRGI2d1ZuNWFZTV9wQ3pyNzl3akVWbE5WSVduNlROLUdYWjdaNEZSaEZ4aTV0aFRiVEFOMkJhb25fSjJIUzZzXzRYSWNucnEzQkZJZw?oc=5",
+      "source": "Britannica",
+      "publishedAt": "Mon, 16 Nov 2026 08:00:00 GMT",
+      "description": "North Dakota - Education, Schools, Universities &nbsp;&nbsp; Britannica",
       "region": "International"
     },
     {
@@ -95,20 +95,12 @@
       "region": "Nigeria"
     },
     {
-      "title": "Texas university ahead of Ivy League schools in new national ranking - Chron",
-      "link": "https://news.google.com/rss/articles/CBMijwFBVV95cUxNNjFKZFhWczJEUmhHSlJSVGpyOXZXUFpkX1JQM0hFS3JFVVM1RkJSVzd5YkJfQW1tcFZMVUJQQWhEdm9SZFJfVlBUOXdXN1laVGRabnVmdXdjYzNwbC00VnNJUnZjbFhwRkJlMXo4Zk1jRG5Nb3YtVFIwZEV5WHhiMHFUandtNGxKeDFmV3hmZw?oc=5",
-      "source": "Chron",
-      "publishedAt": "Mon, 16 Nov 2026 12:25:02 GMT",
-      "description": "Texas university ahead of Ivy League schools in new national ranking &nbsp;&nbsp; Chron",
+      "title": "UNT College of Music named a top 20 music school by Hollywood Reporter - Denton Record-Chronicle",
+      "link": "https://news.google.com/rss/articles/CBMinwJBVV95cUxQajRPXzMyWDJzeTRJVGx3REJveXdYT1A4SnlScEo1dzB4aGptWGU0aGNvR2dnbnpIOFJVb1pfTFVNNXY1X2xLcThiOUhVeGlpOGtVamUwNjNSSVRwZ2RJWXpTUm9UdVFjUXBzeU0wTVcyVFMta2tkNlJZWGFSUnJ3OFpEbGM5eGJ1UW92bFlfWkVqNmhLR1lROEpBMVhXWWRpQmo3dWNHSEFCWUcySFpDUU1vZmR0elJXNjNsZFdRYWUxU1BlTFQ2OUJrWVpqMnR6QU9vVFlsZDJIY2dYMmdxMXRnaFFleVFTaldEX216SFM1dEZVT0RXTDg1aHY3U1oyTmdoVUhuTkVVZ3QxVzNnNUU1cm9TRTBnOUUtUC04Yw?oc=5",
+      "source": "Denton Record-Chronicle",
+      "publishedAt": "Sun, 15 Nov 2026 23:00:00 GMT",
+      "description": "UNT College of Music named a top 20 music school by Hollywood Reporter &nbsp;&nbsp; Denton Record-Chronicle",
       "region": "International"
-    },
-    {
-      "title": "Why did Western education spread more rapidly in southern Nigeria than in northern Nigeria? - Britannica",
-      "link": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxOZHotdDhiWXNCOHhjdVEyWGVmQzNUTE5HanpjN19JcHVqR1hIQlZHSUFMU1VSTG03dzNXb0xQUUZtN0tFbkh4cTQwS3I0WF9fZnBDUFZ6aG0zdzVMc1h0eFdkQl96b19Kd3YweGdFcno2ak9oZVRUMHNHckVOVG94R2Iyaks3cmpYWXlYcngtc3FOZDVjV1NfMDVKeWxyN2FNcWxuM3BYRnVCNmF2Ry1LOHY1WDhmU1hPaDNCZ1ZNczg?oc=5",
-      "source": "Britannica",
-      "publishedAt": "Wed, 11 Nov 2026 22:38:55 GMT",
-      "description": "Why did Western education spread more rapidly in southern Nigeria than in northern Nigeria? &nbsp;&nbsp; Britannica",
-      "region": "Nigeria"
     },
     {
       "title": "Atiku Abubakar, education and Nigeria’s future, By Margee Ensign, William Bertrand and Lionel Rawlins - Premium Times Nigeria",
@@ -127,14 +119,6 @@
       "region": "Nigeria"
     },
     {
-      "title": "Dual Mandate Critical To Survival Of Teacher Education In Nigeria, NCCE Boss - https://thefact.ng/",
-      "link": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOSkxhTFZfb1ZGNDZQaUdCeVFNX24xZnY5bkdRMzRTcWFnOVlsR1ItaWwxOUUwZ2NlQkYwSVJRQVRuSXZRX3pleHFVYWJJdFJfS2xQbTFVLV9rVGtvamNQOGIza3EtRERVMHlRZnFsVko5bTd2M1BqU2N5d0VfWXhUc29pd2V0UmJCODU1dU9jNklocDFxcExoYUZRWQ?oc=5",
-      "source": "https://thefact.ng/",
-      "publishedAt": "Thu, 12 Nov 2026 08:15:50 GMT",
-      "description": "Dual Mandate Critical To Survival Of Teacher Education In Nigeria, NCCE Boss &nbsp;&nbsp; https://thefact.ng/",
-      "region": "Nigeria"
-    },
-    {
       "title": "Nigeria Launches National EdTech Strategy to Improve Learning Outcomes - TechAfrica News",
       "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQVGs0cGxxUk9QeXpCN2QwRTBPWk1ScnZud3ZoVDEwWEhQTUlCNVgtMHRjMEpwZFpKMXpKSjJlclIyZUk3dnpReGNHdmw2c3VRLXhWSVV3LVBmS0xFVHFia0h2aVlrRHZrekdzWFF5WDNYQUV6WDZpQ1FIS2lSVlRfRG0zbll2TlUxcUIySEIwR05CeTQyZHBycW0zQ1ZjbElrMXd3SnRBVlVxQQ?oc=5",
       "source": "TechAfrica News",
@@ -143,11 +127,35 @@
       "region": "Nigeria"
     },
     {
-      "title": "BBC start educational show in Hausa for millions out of school pikin dem for West Africa - BBC",
-      "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFA5SFpBWV9yOGpjaU5NNkowRGpMbVVpem5oaWJBc0ZnaXJaeXNRY0N0YzQxODJtTE11WnU0T3V2c1lZMm5OaHFaS0ZiREN2UzNOX3NsM1Y1YzVnNTVqVkHSAWNBVV95cUxOakVvM0xGOWxIYTNxTTR4UDJHNnZHaEZTaTdRZl85M0p0MERndXpjY1V2MUZJRXFOSmhPTlM3eW9KYmRobXBNZ1ZIS2doV2JYV0hCYmFTVVNRZ0dDQWdXQTZmS0k?oc=5",
+      "title": "Only education can defeat terrorism in Nigeria, says Buratai - TheCable",
+      "link": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQdzVxcl9ZWE1qaUVXTllWVTZxbXo5c3hZa0l4V1cxZ0RCU3ozWUsyd0t3dGhfRlBQcDZuc2ZReW5wY3Q2cUllWVoyQ1pGeEJ0dXR5RlVKWjc4dnQySzBSYXJCV2pTeXB2WE9kX2QtbVVRNzZkQS05RHBjbnljTXpBRzlVQjVXSkpCSHF5NA?oc=5",
+      "source": "TheCable",
+      "publishedAt": "Thu, 19 Nov 2026 08:30:00 GMT",
+      "description": "Only education can defeat terrorism in Nigeria, says Buratai &nbsp;&nbsp; TheCable",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Bayelsa Education Fund equips 16 schools with medical facilities - https://dailynewsngr.com.ng/",
+      "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxPTE5FN183WmhGWjc4d1gwWU9QRXgweTZBN2lHX3Bxd0VmcEdIU1c4Z29vTmhrNWZuS0VGU3ZreXo0UXJYMURXRVplbE5nV21BRXBIWUhYbm5Ic0hpMU0xWmx4Zy1CR0NLdDV4bThWd1dXNlRsbUEtcWFuWFhTYzZJcUFvVk1xTzJsWlBwMm9qdlF6OVNzbmVLSE1xTnFqV1NIRWZQLXpKdw?oc=5",
+      "source": "https://dailynewsngr.com.ng/",
+      "publishedAt": "Tue, 17 Nov 2026 21:45:24 GMT",
+      "description": "Bayelsa Education Fund equips 16 schools with medical facilities &nbsp;&nbsp; https://dailynewsngr.com.ng/",
+      "region": "Nigeria"
+    },
+    {
+      "title": "National Universities Commission: Nigeria govment declare operation of University of America and London College of Management and Leadership Education illegal - BBC",
+      "link": "https://news.google.com/rss/articles/CBMiY0FVX3lxTFAxRHg1QlhGbEhtRDFpQXZSYW5oMmtxczRFZmNIN3V6N3M4TGwxOUYzSklVS0Y3ZERLbU5TUjgwN2JQSkRMZ0dxeHhFMHF4bVMwaV9MRjRRdmk0aV9GeTVueVVld9IBY0FVX3lxTFAxRHg1QlhGbEhtRDFpQXZSYW5oMmtxczRFZmNIN3V6N3M4TGwxOUYzSklVS0Y3ZERLbU5TUjgwN2JQSkRMZ0dxeHhFMHF4bVMwaV9MRjRRdmk0aV9GeTVueVVldw?oc=5",
       "source": "BBC",
-      "publishedAt": "Tue, 17 Nov 2026 17:25:08 GMT",
-      "description": "BBC start educational show in Hausa for millions out of school pikin dem for West Africa &nbsp;&nbsp; BBC",
+      "publishedAt": "Wed, 18 Nov 2026 17:16:14 GMT",
+      "description": "National Universities Commission: Nigeria govment declare operation of University of America and London College of Management and Leadership Education illegal &nbsp;&nbsp; BBC",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Nigeria Unveils EdTech Strategy to Transform Education System - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPTThPeW5kVnZuVm5kSEo4ZVpGeW5Mb2hLcTRGQTJ4OHFZQjFJUTFKaUpPRE1XOW1MUXItekJ3aEZyRjZTbGhaelViakZ2QVJxMVhqRUNMb3otOEhuUkVnakR5R2JsTmJ6Q0VoMHhjMkNXN2tBbGJyeEVMZWV4M1Z0a3FGbmFlVEJk?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Wed, 18 Nov 2026 07:46:53 GMT",
+      "description": "Nigeria Unveils EdTech Strategy to Transform Education System &nbsp;&nbsp; Voice of Nigeria",
       "region": "Nigeria"
     },
     {
@@ -156,14 +164,6 @@
       "source": "Punch Newspapers",
       "publishedAt": "Tue, 17 Nov 2026 15:40:14 GMT",
       "description": "Nigeria can’t afford to ignore technology in education — Minister &nbsp;&nbsp; Punch Newspapers",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Airtel Nigeria Receives Commendations for School Adoption Programme - TechAfrica News",
-      "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxOVDBONmxQUUVjN0dmam5RVXpuZEJkaE5zNHpqT2hnMWl3bW5yZnR4VmJEQV9vZEVHa1NiZkFac0xEM3FIV1RPYzUwbGNKeU1kdkJhQ2lRblEyQy1uZ1lPYWx5YjRNQ3VzTC1aOXlFODdNYUtUOW5weTdfeGl0MGZEMXp3T1R1elB6by00THF1Umctc2lTUlgzUQ?oc=5",
-      "source": "TechAfrica News",
-      "publishedAt": "Mon, 16 Nov 2026 07:36:07 GMT",
-      "description": "Airtel Nigeria Receives Commendations for School Adoption Programme &nbsp;&nbsp; TechAfrica News",
       "region": "Nigeria"
     }
   ]
