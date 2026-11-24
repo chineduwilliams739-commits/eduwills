@@ -1,27 +1,11 @@
 {
-  "generatedAt": "2026-11-23T15:59:40.973Z",
+  "generatedAt": "2026-11-24T15:54:11.359Z",
   "mix": {
     "nigeria": 0.7,
     "international": 0.3,
     "total": 20
   },
   "items": [
-    {
-      "title": "BBC launches educational show in Hausa for millions out of school in West Africa - BBC",
-      "link": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE9MRlpUbEc0b2E5ejRrbktaS2dBcnBIbjFuNF91T1BVNUFPM2R4R0I3S2cyQVktYlhEc0YwVlB3cUhfQVJlLTVMMXZLWXhIVkVRTUF4OUd3UFh5Q2s?oc=5",
-      "source": "BBC",
-      "publishedAt": "Tue, 17 Nov 2026 00:08:19 GMT",
-      "description": "BBC launches educational show in Hausa for millions out of school in West Africa &nbsp;&nbsp; BBC",
-      "region": "Nigeria"
-    },
-    {
-      "title": "How Does University of Chicago Rank Among America's Best Colleges? - U.S. News & World Report",
-      "link": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5ERkVXR3BfeWNvQzBXSFc3V3EtX09PTS1CYjRKR05XempDc3pYQnlWSnlIZmo5azZrS3ZWSnR3MUpEQU9kRTVsRG9fN1ZuN1ZqNWFDYjNlbHU1ZnRWcFF2Yjg3TEVRNXdjOE9feHBvVHI?oc=5",
-      "source": "U.S. News & World Report",
-      "publishedAt": "Sat, 21 Nov 2026 02:08:20 GMT",
-      "description": "How Does University of Chicago Rank Among America's Best Colleges? &nbsp;&nbsp; U.S. News & World Report",
-      "region": "International"
-    },
     {
       "title": "Nigeria school kidnapping crisis: Is there a way out? - DW.com",
       "link": "https://news.google.com/rss/articles/CBMikgFBVV95cUxObDBjLUtaUDloaUNWeVM0YWk4dmI3YTY0dXk0T1pDOE9LdkhaVXE3ZE4tVTVSeWFSYWQ2MzdKX0dQTV9UdVFVTEJpMU5RTVVZVENBd2liellLVHVxSkRhcXpObkdjejJSMm80Z20wb2xEQVZyYVJjdHNzY095Y0M2ZXJnLV9fX2tDVGs4V3ZrVmNTUQ?oc=5",
@@ -31,43 +15,43 @@
       "region": "Nigeria"
     },
     {
-      "title": "Rice University experts available to discuss historic decline in Texas public school enrollment - Rice University",
-      "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPRnBVU09Kc2FiR1BoQXNuRUJlaWl5eDRwaGRXSktGa0xfaklURFdxdWo5WE9xNzN2Q2VQOHB5ZUxRc1VnU3FtOFNSN2NORWlzeTBpZk5TOUswMnRkVmxfU1FuTG1NSm9LM0JnY3NaNW9NZUlqSU85RldPZzdxRHg4VGRja1JjTkhkYTRzTWxWTWpqUnBzaGlUdjlnMjhRLW8wWWNndEN1QVhnbEt4Sm5SdjhEMk5FZXJUdkFtbHl3?oc=5",
-      "source": "Rice University",
-      "publishedAt": "Fri, 20 Nov 2026 17:56:19 GMT",
-      "description": "Rice University experts available to discuss historic decline in Texas public school enrollment &nbsp;&nbsp; Rice University",
+      "title": "Bangladesh schools bring students, teachers and parents together to tackle violence and bullying - UNESCO",
+      "link": "https://news.google.com/rss/articles/CBMixgFBVV95cUxPamFoMFBBc0lCVVFwT1BNWUFzTjd2OFZ5WlZDM1lwclRlTzRaSnpOTkFCX25maHJhVUYxWEQzV3cyQzVISU1rdThCUVpjWG1vTjViZ3ptZldNU1U3UXRtZllDRXYzZl9ha3Y1aEp3NTl4ZVJxWUJ2QXVVZXFfZ1FxSENyajVXX2dGeGlkRUNKMHlBb21MS19JWWxiVEUyMEpOSFpjdHZfUUZQZjJqaDZxMk10YnBGaHkySnNwcVNORy1aakstRkE?oc=5",
+      "source": "UNESCO",
+      "publishedAt": "Thu, 19 Nov 2026 08:00:00 GMT",
+      "description": "Bangladesh schools bring students, teachers and parents together to tackle violence and bullying &nbsp;&nbsp; UNESCO",
       "region": "International"
     },
     {
-      "title": "Nigeria cannot afford Atiku’s tertiary education privatisation plan — Oshiomhole - Punch Newspapers",
-      "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOMy1pRFJsaVpWNDVnejJpazlpWmlqRkZCSEdsaGJoT3RPUXlrb1BOakpDTURqcXFrTEt5ZXlubVF6dkIxa05PQjAzWGRJV3Fnd0dDVmtseGIyWGFEMVBCV190TlM5NldHWDV0dGp1VWU2SjNURFZjSWx2dkxSdXlmYlFXUmtFMHM0MGhmWUdaSzVLcVc1LTRMSjNTdFlyYWM?oc=5",
-      "source": "Punch Newspapers",
-      "publishedAt": "Mon, 16 Nov 2026 18:50:59 GMT",
-      "description": "Nigeria cannot afford Atiku’s tertiary education privatisation plan — Oshiomhole &nbsp;&nbsp; Punch Newspapers",
+      "title": "Nigeria Cannot Build Its Future While Millions of Girls Remain Out of School - The Budgit Foundation",
+      "link": "https://news.google.com/rss/articles/CBMinAFBVV95cUxNT2xyVEJic3QwXzVXWFpxV1A2cHQ3QTBYLTdCMjRrMF9iRmsycmh1SzBsOEswbFI3Z1hVLVhhVXBTZWU0RklSN0U2dlFLY1huRWZ6RlpIUWd0dkR2TVBDWGx0ajJrLTFQZWFzU3FqMmQtOU5tXy1DNjBmWVJXcjduNExYemZSdEtmSkpzOFdrWGVyU25IVkt0V09KdDY?oc=5",
+      "source": "The Budgit Foundation",
+      "publishedAt": "Mon, 23 Nov 2026 14:48:25 GMT",
+      "description": "Nigeria Cannot Build Its Future While Millions of Girls Remain Out of School &nbsp;&nbsp; The Budgit Foundation",
       "region": "Nigeria"
     },
     {
-      "title": "A Diploma Is No Longer Enough. High Schools Rethink College and Career Readiness - Education Week",
-      "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxPMjRHQzNWM2NUdnYxSnhHWEZ3WllHTUZoMV9qemVIazl4bXRLUkdYMVEwMDN2WkdCWU0zUVk3T0NBc1dtNzVJYk1fWWJKNDBlRmxIU056bDFhNzFsWW5vcklIZmdOX0RUd3Jyd0dHb1FYdlVGT3FmdGd6ZjNRbUpXSDVMQjdMei1YSHo4M0JMTjdsckh1dlFwMUpKckVSd3VVTE5wZ3ZBMTBDTDliQkQxbGV4dDFLN2Z0TGJiakJSN0JtXzF6Smxn?oc=5",
-      "source": "Education Week",
-      "publishedAt": "Mon, 23 Nov 2026 10:04:49 GMT",
-      "description": "A Diploma Is No Longer Enough. High Schools Rethink College and Career Readiness &nbsp;&nbsp; Education Week",
+      "title": "UNESCO releases AI media literacy teaching guide to strengthen critical thinking - EdTech Innovation Hub",
+      "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxObGJwU2FGV3FVb3VNNFJLSllzRUFueWpya2k0b0JiOUhhcnJieVl1UEFuMTQybXB1WS1yYjJ6UV9FOXNBTXNiT3lib1FNY2pOTTNQVmNnZkpybGdIQldZVWlMdGdoRnN0d0hJYXZlNUl4YTAyTk5ISjI3NllEYnRDdDlDejMyVUtTZ190NzBBQmp0ZkdwT004QzBvWmZIWXB6c3ZpRmtxaHE3NHJRbVJLb1pfQll2VGtWRTJ0SmFB?oc=5",
+      "source": "EdTech Innovation Hub",
+      "publishedAt": "Tue, 17 Nov 2026 00:34:37 GMT",
+      "description": "UNESCO releases AI media literacy teaching guide to strengthen critical thinking &nbsp;&nbsp; EdTech Innovation Hub",
       "region": "International"
     },
     {
-      "title": "UNILAG Emerges Nigeria’s Highest-Ranked University in 2027 QS Sustainability Rankings, Climbs Over 700 Places Globally - University Of Lagos",
-      "link": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxPSFRjVTVFR1gyMldMOTRaODZtLTZuY0JTenZpZkIwUnFjeXZjS0ZoYml3dTROSkRvSjlzZmFzRjFBUi1qZEFsWklsSVlQRjFVaU45TmtZVGQ5T21DaUk3T2NybXdIMnBTd1NDQ0llZS1uRGVkZ2d3ZjVsZmFia2daVVRmb0lMVUtpTTdLYUpjR3JJU0xOR2c2WFRubWFNeFZmX0FLN1hLOWVHUFk?oc=5",
-      "source": "University Of Lagos",
-      "publishedAt": "Tue, 17 Nov 2026 15:01:19 GMT",
-      "description": "UNILAG Emerges Nigeria’s Highest-Ranked University in 2027 QS Sustainability Rankings, Climbs Over 700 Places Globally &nbsp;&nbsp; University Of Lagos",
+      "title": "Family Wealth Education Nigeria: A 2026 Guide - Global Advisory Experts",
+      "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNRjJCVEtUUGUzNHpqbFdQU2RBMVBWcG51akZFZHdNUWZveXc4VWtDN0NxREtaNHFaMUpUYzlqZHctaWFQR3ItSHlmb3A3Uk1JTWN0YTNEaGZfWlQ1YjQxcXB0QUlOcEI3MEJzem9ZYmNmV05qSUV2NjJsTWREQmpkQkRsUWtWLVQzYnlvbmRtSHBJODA?oc=5",
+      "source": "Global Advisory Experts",
+      "publishedAt": "Tue, 24 Nov 2026 00:13:24 GMT",
+      "description": "Family Wealth Education Nigeria: A 2026 Guide &nbsp;&nbsp; Global Advisory Experts",
       "region": "Nigeria"
     },
     {
-      "title": "Trump’s College Crackdown Struggles to Rein In Tuition - Bloomberg.com",
-      "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQcWtfUkVXbjQ3ZzB1VW40ekxpbnN3SGxwa2Y2ajRodDdyT2x4WFNrdG5lRmphcjg1SDRWQlV5VEZnLTVZclU5MmYtNFVYOVdXLWpIOWN5cUk3cVYxQXVsRmJ5RF91cm4zR1l0Um5DNVNVUTFNQUFfU2hrLTVHSzdlWF9PVnpid0dod1FFUlpEMDduSVBmSnlrNGtrakdhd1RxRUNUbGNfVDRRRjRLWkZF?oc=5",
-      "source": "Bloomberg.com",
-      "publishedAt": "Fri, 20 Nov 2026 13:15:05 GMT",
-      "description": "Trump’s College Crackdown Struggles to Rein In Tuition &nbsp;&nbsp; Bloomberg.com",
+      "title": "New UNESCO global report: Lifelong teacher professional development must be a right - UNESCO",
+      "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxPTnpFbDBQWkppMUxTdHBMb3RYbzkxLWtNZjZwS2tUcWhPUmJKX1AwTElranQ1c1B5VVUtQW5mSlFXakx6c3NGX0JHR3lodE1HYVJpLVNtbzNhYTBtRXVvOTRtRDM0ZHNXT2xtajZKZXBNWFhLVU1Wajg1MzBmVEZiTUxIc0pwUmNaX05fd3RaV1R2RFBuQW03VldEb1AwYklaTGJIeHN5R1pUS1F4OTBQczVHd01wdw?oc=5",
+      "source": "UNESCO",
+      "publishedAt": "Mon, 23 Nov 2026 09:54:04 GMT",
+      "description": "New UNESCO global report: Lifelong teacher professional development must be a right &nbsp;&nbsp; UNESCO",
       "region": "International"
     },
     {
@@ -79,27 +63,27 @@
       "region": "Nigeria"
     },
     {
-      "title": "Trump administration ready to deploy ‘secret weapon’ against higher education - The Hill",
-      "link": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOWDJNelB6Sk85UDVpMjhPX2FjcDRwM1dmQlYtUk5jemZxcFBCNXlzSVJ0cU1GTGZIOWxBRHBzRjdwZ19nYTdRYWhDNDBZemJZZW11ZXBGQjRDWVQyWnlsd3NOTVNTQ21wQnZWaEFWRzlMamRyVDJQRzlQNTRKVDBsTmJ4bXdWSEpXSkRIY2JIbXNDc00zY2FoSjdWWENucTDSAaQBQVVfeXFMT1RsSkNHSzFyazlsQXZXSFNBVXNoRThjei0xTHlfLU9ZMEtOU2YwLWJ1V3hTLVZ3dnhLWVhYOVpOZXJ1d0lURWViNnVsSGZwV1MxWkhyTEk4Um0tLWFDN2I5b3hwcm1veXNzYVpRUzJJcFhKNWNCQ2FGby10RU5nTlFVN3NBaTZDMDVYU0ljOG05WDhUWndiWHBQRkZydEpaUldlU0Q?oc=5",
-      "source": "The Hill",
-      "publishedAt": "Sun, 22 Nov 2026 11:00:00 GMT",
-      "description": "Trump administration ready to deploy ‘secret weapon’ against higher education &nbsp;&nbsp; The Hill",
+      "title": "Seven Takeaways From UNESCO’s First Review of Arab Higher Education - Al-Fanar Media",
+      "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxNWW1CNERkeWF3N29FQkpfLWlxNGlTOVBhd05LZE5ialJtUTBBQXRlT2xyM2Ribzg3TjltbzRjWVpjUkd3aXJvM0tQamdMY2JhdXkzWmJ6OXhGRlNGSmlOM2Q2Mjd1SHJMLTdCMEplQlBWRWdlVk92emVUQ2ZjSTliazJGVm5NOTVQSW9uaXhlRjctdXJUNkJRcDl1UHZKZkFnNlY4?oc=5",
+      "source": "Al-Fanar Media",
+      "publishedAt": "Sat, 21 Nov 2026 19:36:52 GMT",
+      "description": "Seven Takeaways From UNESCO’s First Review of Arab Higher Education &nbsp;&nbsp; Al-Fanar Media",
       "region": "International"
     },
     {
-      "title": "Nigeria Unveils EdTech Strategy to Transform Education System - Voice of Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPTThPeW5kVnZuVm5kSEo4ZVpGeW5Mb2hLcTRGQTJ4OHFZQjFJUTFKaUpPRE1XOW1MUXItekJ3aEZyRjZTbGhaelViakZ2QVJxMVhqRUNMb3otOEhuUkVnakR5R2JsTmJ6Q0VoMHhjMkNXN2tBbGJyeEVMZWV4M1Z0a3FGbmFlVEJk?oc=5",
-      "source": "Voice of Nigeria",
-      "publishedAt": "Wed, 18 Nov 2026 07:46:53 GMT",
-      "description": "Nigeria Unveils EdTech Strategy to Transform Education System &nbsp;&nbsp; Voice of Nigeria",
+      "title": "National Universities Commission: Nigeria govment declare operation of University of America and London College of Management and Leadership Education illegal - BBC",
+      "link": "https://news.google.com/rss/articles/CBMiXkFVX3lxTFAzTFBjd05BY2stVVlCNWdOakpRanhvQktDaExmblF3MzM5TjU4REJueGpjN2lMMmdFR29RSThEcGFwOXNZbVVvR2tmSGxaN0toNHV2MkVOM04wcjEwclHSAWNBVV95cUxQMUR4NUJYRmxIbUQxaUF2UmFuaDJrcXM0RWZjSDd1ejdzOExsMTlGM0pJVUtGN2RES21OU1I4MDdiUEpETGdHcXh4RTBxeG1TMGlfTEY0UXZpNGlfRnk1bnlVZXc?oc=5",
+      "source": "BBC",
+      "publishedAt": "Wed, 18 Nov 2026 17:24:47 GMT",
+      "description": "National Universities Commission: Nigeria govment declare operation of University of America and London College of Management and Leadership Education illegal &nbsp;&nbsp; BBC",
       "region": "Nigeria"
     },
     {
-      "title": "International Student Enrollment Plunged. Schools Are Bracing for More Losses. - The New York Times",
-      "link": "https://news.google.com/rss/articles/CBMilwFBVV95cUxOV2F3SHZOb2ljcEF5VFpuR25ORV9XZ2M0M1loQ2Fmc2hFZTY4R0hQaUdOM1l6TzF2SUh5ci1obTE1OENZSjN0YXpsNldDOWVwWjlfWEVZd3F4dUtKOUF5ZFgyUDZlNk04NmVCUDNxamZ0enRsdllhSl9VQlVwRVk2cFRYeHU0OGdKU0NRZkVDTjBrN2JCUTVR?oc=5",
-      "source": "The New York Times",
-      "publishedAt": "Sat, 21 Nov 2026 10:00:31 GMT",
-      "description": "International Student Enrollment Plunged. Schools Are Bracing for More Losses. &nbsp;&nbsp; The New York Times",
+      "title": "From mentoring to AI: UNESCO calls for training that fits teachers’ real working lives - Devdiscourse",
+      "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxOd21iMWVOVDRnTEl6SE8xTXpPQTNUQkpkMDRFaHJnWXhELU1SSzRsMFFESDJ5OEJra3F2ejZjWTNLRzVLQ2ttbHJmbGFSTXZrTkEzQUVQMEZuM3ljcXNjQmxLWXJtQ2pKc2VEZVVIQTNYTWJPNDRNcUlJazVSb2V0U0ZLTzJBUzBXTldlbFIwU1lOVlFQRXVDQkRxWkNTZGNxN19Fb3haUVhXLTU0TnpCanYzNXplU0QwR2x1aktMQ0FLY1NQSm1Ud21XMHExMUFUZWllQjd30gHbAUFVX3lxTE85ZTdKNGR1TXNnWmpvMnhCZ09nOE55NWczUXB1RVg1WkMwSnJITmFEaGxXRTN1U0NyUV9Zc0MwRkZWS3l4V2tIcVF4X2FvZHNfZlA4OTFBYTM1U0NSbk40WlBMZnZIWTVGUDZJdmtYMW9CTHUzUHdoMlpVVjkwS05jMHlNNGxUaGtFeVBGOHpuVTdQYTNwZWdGd2NGeTNfV3hGbEh4T0hrc3FNeVJyTklSRzFNRWJPX1JTeEJ2WWE5N1Y4SUhidk1uMlRUTHpVSUdhajNRNWo4VkdrTQ?oc=5",
+      "source": "Devdiscourse",
+      "publishedAt": "Tue, 24 Nov 2026 08:03:04 GMT",
+      "description": "From mentoring to AI: UNESCO calls for training that fits teachers’ real working lives &nbsp;&nbsp; Devdiscourse",
       "region": "International"
     },
     {
@@ -111,19 +95,27 @@
       "region": "Nigeria"
     },
     {
+      "title": "Cell Phones in Schools | Pros, Cons, Debate, Education, Technology, Distraction, & Emergency - Britannica",
+      "link": "https://news.google.com/rss/articles/CBMiYkFVX3lxTE45cEtUcnRTUExIMWdmUk91VnJhcll5S3g0bjZERWpWLWNoaTlvUi1keWhKU2dsZDdUTnZ6NFFGakhZM242clU3RnZXRTZWRzlpOWMxUDRLLWRYN24zVUxZZmFB?oc=5",
+      "source": "Britannica",
+      "publishedAt": "Tue, 17 Nov 2026 08:00:00 GMT",
+      "description": "Cell Phones in Schools | Pros, Cons, Debate, Education, Technology, Distraction, & Emergency &nbsp;&nbsp; Britannica",
+      "region": "International"
+    },
+    {
+      "title": "Nigeria Unveils EdTech Strategy to Transform Education System - Voice of Nigeria",
+      "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPTThPeW5kVnZuVm5kSEo4ZVpGeW5Mb2hLcTRGQTJ4OHFZQjFJUTFKaUpPRE1XOW1MUXItekJ3aEZyRjZTbGhaelViakZ2QVJxMVhqRUNMb3otOEhuUkVnakR5R2JsTmJ6Q0VoMHhjMkNXN2tBbGJyeEVMZWV4M1Z0a3FGbmFlVEJk?oc=5",
+      "source": "Voice of Nigeria",
+      "publishedAt": "Wed, 18 Nov 2026 07:46:53 GMT",
+      "description": "Nigeria Unveils EdTech Strategy to Transform Education System &nbsp;&nbsp; Voice of Nigeria",
+      "region": "Nigeria"
+    },
+    {
       "title": "Only education can defeat terrorism in Nigeria, says Buratai - TheCable",
       "link": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQdzVxcl9ZWE1qaUVXTllWVTZxbXo5c3hZa0l4V1cxZ0RCU3ozWUsyd0t3dGhfRlBQcDZuc2ZReW5wY3Q2cUllWVoyQ1pGeEJ0dXR5RlVKWjc4dnQySzBSYXJCV2pTeXB2WE9kX2QtbVVRNzZkQS05RHBjbnljTXpBRzlVQjVXSkpCSHF5NA?oc=5",
       "source": "TheCable",
       "publishedAt": "Thu, 19 Nov 2026 08:30:00 GMT",
       "description": "Only education can defeat terrorism in Nigeria, says Buratai &nbsp;&nbsp; TheCable",
-      "region": "Nigeria"
-    },
-    {
-      "title": "Atiku Abubakar, education and Nigeria’s future, By Margee Ensign, William Bertrand and Lionel Rawlins - Premium Times Nigeria",
-      "link": "https://news.google.com/rss/articles/CBMi9wFBVV95cUxPMjAwckVtcWpLdDgzR3RTX1hHR3U3cVY5YmRrbFFlNmdQTy1aNkxiT2FtOElfVFdlZ0E2U04tM3ZKQXdrSlBVTkxFYjZfbDdpY0g2Nmx6VUVmWnhubzFjVTdGcTVUVjBPeXF1OXFSbGFDMXFvd2N3UHlPOXhES1hfcFROQlMxdTNYb3V4TUN0VWZ3ZW9BejEwZ0ZMNzk2UnNDejFLenpoZ2VIeF9FaFlNYWdPOHFJdjByT0hCaUxTc1JRc2RGQ3BvdjJERlN3T3FPeEZreXpVZnQyZWg5TVNFVVk1aGo1aE1qek5uNG9TN1MtejRCLWow?oc=5",
-      "source": "Premium Times Nigeria",
-      "publishedAt": "Mon, 16 Nov 2026 17:48:52 GMT",
-      "description": "Atiku Abubakar, education and Nigeria’s future, By Margee Ensign, William Bertrand and Lionel Rawlins &nbsp;&nbsp; Premium Times Nigeria",
       "region": "Nigeria"
     },
     {
@@ -135,11 +127,11 @@
       "region": "Nigeria"
     },
     {
-      "title": "The Price of “Free” Education - The Southern Examiner",
-      "link": "https://news.google.com/rss/articles/CBMif0FVX3lxTE93RWNVX1hrUm9XTW41TG41MVZWdjlRWXpPU2I0Z2hwem1aVzlreWtxWEFJclZqQzVWN1k4UG8yTkZEempyMm4zRTd6TU9XWW44UWZ0VUZ5dXBJYmFHbmdHTmhvMVhOdGhjbWp0b25VejJlNHRhaTBSNS11TDJuLTg?oc=5",
-      "source": "The Southern Examiner",
-      "publishedAt": "Wed, 18 Nov 2026 04:13:41 GMT",
-      "description": "The Price of “Free” Education &nbsp;&nbsp; The Southern Examiner",
+      "title": "Borno school enrolment nearly doubles after years of conflict - Al Jazeera",
+      "link": "https://news.google.com/rss/articles/CBMipgFBVV95cUxNT3BzcDFVRGcxVTd2QkQtdXNaajNOUWFpRkdqcEIwV2otMFl3aGV4am9fTmR6c0ZPRm1uNHVIMzlSWWZKSndiVUx2eFB0SV9WY3piZWg1MkFjODEzR1dNZTA3cXFwZDRNbGtJQXpQMllnUG1XR2VqNHhyN2lFU1ZlQVhuUWFuRmo3RlpTeHVEM0wtU1IxU3Fidlc5Z3hfb0FPVGtZTEF30gGrAUFVX3lxTE4wQWk3QXQ3U1pxOHMwMmpBX2V1WXpPWkhVU2xudWJrbjcxYUI5VzR1MmtNVVdaYzRUYl92VkI2TS1DbDdNaWdScGZXZ0wtc2FWdThucFhfY3p6ckY3R29jdi1zdEJRQUxMdGZxUlpuSGVGWjV6Sy1mSTRyUU81Q2FqcWZaTGQyeHZQUzlZUkd2TldxNDhVTGJCYU5XSVVGX0lCZHZpZnhVc09EQQ?oc=5",
+      "source": "Al Jazeera",
+      "publishedAt": "Tue, 24 Nov 2026 00:04:36 GMT",
+      "description": "Borno school enrolment nearly doubles after years of conflict &nbsp;&nbsp; Al Jazeera",
       "region": "Nigeria"
     },
     {
@@ -151,19 +143,27 @@
       "region": "Nigeria"
     },
     {
-      "title": "E-DON catalyst for Nigeria’s educational transformation, CNYGG declares - The Guardian Nigeria News",
-      "link": "https://news.google.com/rss/articles/CBMiogFBVV95cUxOR2lTUGtZVVdRVG5UWlRPOU5mUjN6UW9ua1U5QWpUU0dVSGZIdVFwR1lTd2ppQ0cxbGVVQ0RiNlpSZ3c3Ymx6bUtLNU9oVXdwQmtyM21yMW1UTE54bllqZHFkNmFXcHRuVzVlbHBydG9HNHRtdzBzU2cyeWdobVBMRGdjLUVYQlFKcGZYMzFXa01YUV85ZnVFVUFrdmRJM0tfT0E?oc=5",
+      "title": "27 Nigerian universities make global ranking, Covenant retains Africa’s top spot - The Guardian Nigeria News",
+      "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxOeXpSRzlhUlpzc2QwaEJfRmp5X1h4ejBGVE16NFlKU1pVRVVyM0hnOElYQUNpcVgwbW5JbjdLR2pCWHkxcFphR2xES0ZrWDQyR29nak5pclJGcVloU3F3bXhINURfWEViZkR1M3BtcTJJVXAwd3ZBV2VMMDdDTU9tU2NtTDdKeUhYSWtRZzlENWtza1VKQTkzc1VZSU0tZHcxaU0zNDNaYW1XeklIV0E?oc=5",
       "source": "The Guardian Nigeria News",
-      "publishedAt": "Thu, 19 Nov 2026 20:57:29 GMT",
-      "description": "E-DON catalyst for Nigeria’s educational transformation, CNYGG declares &nbsp;&nbsp; The Guardian Nigeria News",
+      "publishedAt": "Wed, 18 Nov 2026 13:09:51 GMT",
+      "description": "27 Nigerian universities make global ranking, Covenant retains Africa’s top spot &nbsp;&nbsp; The Guardian Nigeria News",
       "region": "Nigeria"
     },
     {
-      "title": "Nigeria, Benin universities plan wider academic ties - Galaxy Television",
-      "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNUWMzRzNYSzNwUTdZRldnaHZFa0pfZjR1MUZPWEc4YnlUaFJVSkhiMWpxSVg5Y0R0VjRSZVA0WjZjRllob1lYUTFuUjU4U2d5X0hqUjJHU2VLT25Ia0RjZDZ0NUN2UlQ1akpyeU9EZGFlN18zZWZBU1NDWERhU0hjdV9CUDlacjI0YU9CejdDNnRyeFItOUE4QzhaaXBYOU1CT2tVOWpESUk?oc=5",
-      "source": "Galaxy Television",
-      "publishedAt": "Tue, 17 Nov 2026 09:55:40 GMT",
-      "description": "Nigeria, Benin universities plan wider academic ties &nbsp;&nbsp; Galaxy Television",
+      "title": "The Price of “Free” Education - The Southern Examiner",
+      "link": "https://news.google.com/rss/articles/CBMif0FVX3lxTE93RWNVX1hrUm9XTW41TG41MVZWdjlRWXpPU2I0Z2hwem1aVzlreWtxWEFJclZqQzVWN1k4UG8yTkZEempyMm4zRTd6TU9XWW44UWZ0VUZ5dXBJYmFHbmdHTmhvMVhOdGhjbWp0b25VejJlNHRhaTBSNS11TDJuLTg?oc=5",
+      "source": "The Southern Examiner",
+      "publishedAt": "Wed, 18 Nov 2026 04:13:41 GMT",
+      "description": "The Price of “Free” Education &nbsp;&nbsp; The Southern Examiner",
+      "region": "Nigeria"
+    },
+    {
+      "title": "Nigeria Launches National EdTech Strategy to Improve Learning Outcomes - TechAfrica News",
+      "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQVGs0cGxxUk9QeXpCN2QwRTBPWk1ScnZud3ZoVDEwWEhQTUlCNVgtMHRjMEpwZFpKMXpKSjJlclIyZUk3dnpReGNHdmw2c3VRLXhWSVV3LVBmS0xFVHFia0h2aVlrRHZrekdzWFF5WDNYQUV6WDZpQ1FIS2lSVlRfRG0zbll2TlUxcUIySEIwR05CeTQyZHBycW0zQ1ZjbElrMXd3SnRBVlVxQQ?oc=5",
+      "source": "TechAfrica News",
+      "publishedAt": "Wed, 18 Nov 2026 07:31:41 GMT",
+      "description": "Nigeria Launches National EdTech Strategy to Improve Learning Outcomes &nbsp;&nbsp; TechAfrica News",
       "region": "Nigeria"
     }
   ]
